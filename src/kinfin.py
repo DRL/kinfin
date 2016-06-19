@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import division
-
 import sys
 import os
 import numpy as np
@@ -27,14 +26,15 @@ To Do:
 #############################################
 ################## CLASSES ##################
 #############################################
-class CladeObj(self, name):
-    self.name = name
-    self.cluster_multispecies_count = 0
-    self.protein_multispecies_count = 0
-    self.cluster_monospecies_count = 0
-    self.protein_monospecies_count = 0
-    self.cluster_singleton_count = 0
-    self.protein_singleton_count = 0
+class CladeObj():
+    def __init__(self, name):
+        self.name = name
+        self.cluster_multispecies_count = 0
+        self.protein_multispecies_count = 0
+        self.cluster_monospecies_count = 0
+        self.protein_monospecies_count = 0
+        self.cluster_singleton_count = 0
+        self.protein_singleton_count = 0
 
 # DATA
 class DataObj():
@@ -224,8 +224,11 @@ class DataObj():
             output = ""
             for clusterObj in self.yield_clusterObjs():
                 if clusterObj.nematode_name_fraction >= percentage:
+                    print clusterObj.__dict__
                     good = 1
                     for species_name, protein_count in clusterObj.proteins_by_species_name.items():
+                        print species_name, protein_count
+                        print assemblies
                         if protein_count > assemblies[species_name]: # based on how many assemblies are present for a species
                             good = 0
                     if (good):
@@ -689,6 +692,16 @@ if __name__ == "__main__":
         groups_fs = sys.argv[3:]
     except:
         sys.exit("./kinfin.py SPECIESID_FILE SPECIESCLASSIFICATION_FILE GROUPS_FILE")
+
+    # for filtering clusters that have a mean min length of MIN_MEAN_LENGTH_OF_PROTEIN
+    MIN_MEAN_LENGTH_OF_PROTEIN = 40 # and less than one ASSEMBLY
+    # make a better ClassificationFile
+    # write documentation for Orthofinder
+    # check mean/median for species/
+
+    # add multiple category-levels
+    # plot proteins count by cluster-type for each category
+
 
     # Define taxa to be excluded
     EXCLUDE_TAXA = set()
