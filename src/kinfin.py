@@ -26,7 +26,7 @@ To Do:
 #############################################
 ################## CLASSES ##################
 #############################################
-class CladeObj():
+class OldCladeObj():
     def __init__(self, name):
         self.name = name
         self.cluster_multispecies_count = 0
@@ -37,7 +37,7 @@ class CladeObj():
         self.protein_singleton_count = 0
 
 # DATA
-class DataObj():
+class OldDataObj():
     def __init__(self, inflation_value):
         self.order_of_clusters = [] # IDs
         self.order_of_species_ids = [] # IDs
@@ -341,35 +341,9 @@ class DataObj():
                 self.add_clusterObj(clusterObj)
         print
 
-# SPECIES
-class SpeciesObj():
-    def __init__(self, species_f):
-        self.file = species_f
-        self.fields = species_f.split(".")
-        self.id = self.fields[0]
-        self.name = self.fields[1]
-        self.source = self.fields[-3]
-        self.type = self.fields[-2]
-        self.clade = CLASS[self.id]
-
-        # changed later
-        self.cluster_ids = set() # cluster_ids of clusters the species is a member of
-        self.cluster_count = 0
-        self.protein_count = 0
-
-        self.cluster_monospecies_ids = set()
-        self.cluster_monospecies_count = 0  # private clusters (mono-species)
-
-        self.cluster_multispecies_ids = set()
-        self.cluster_multispecies_count = 0  # multispecies clusters
-
-        self.protein_monospecies_count = 0  # proteins in private clusters (mono-species)
-        self.protein_multispecies_count = 0  # proteins in private clusters (mono-species)
-
-        self.protein_singleton_count = 0   # singleton proteins (unclustered)
 
 # CLUSTERS
-class ClusterObj():
+class OldClusterObj():
     def __init__(self, cluster_id, proteins, species_by_id):
         self.id = cluster_id
         self.proteins = set(proteins)
@@ -425,28 +399,6 @@ class ClusterObj():
 #############################################
 ################## FUNCTIONS ################
 #############################################
-
-def parse_classification(species_classification_f):
-    clade = {}
-    assemblies = {}
-    with open(species_classification_f) as fh:
-        for l in fh:
-            line = l.rstrip("\n").split()
-            clade[line[0]] = line[1]
-            assemblies[line[2]] = assemblies.get(line[2], 0) + 1
-    return clade, assemblies
-
-def generate_dataObjs(species_ids_f, groups_fs):
-    results = {}
-    for groups_f in groups_fs:
-        if os.path.isfile(groups_f) and groups_f.endswith(".txt"):
-            print "Parsing %s" % (groups_f)
-            inflation_value = os.path.basename(groups_f).lstrip("OrthologousGroups_").rstrip(".txt")
-            dataObj = DataObj(inflation_value)
-            dataObj.parse_species_ids(species_ids_f)
-            dataObj.parse_groups(groups_f)
-            results[inflation_value] = dataObj
-    return results
 
 def output(results):
 
@@ -684,31 +636,204 @@ def output(results):
     cluster_stats_fh.close()
     cluster_binary_fh.close()
 
+def parse_classification(species_classification_f):
+    clade = {}
+    assemblies = {}
+    with open(species_classification_f) as fh:
+        for l in fh:
+            line = l.rstrip("\n").split()
+            clade[line[0]] = line[1]
+            assemblies[line[2]] = assemblies.get(line[2], 0) + 1
+    return clade, assemblies
+
+def generate_dataObjs(species_ids_f, groups_fs):
+    results = {}
+    for groups_f in groups_fs:
+        if os.path.isfile(groups_f) and groups_f.endswith(".txt"):
+            print "Parsing %s" % (groups_f)
+            inflation_value = os.path.basename(groups_f).lstrip("OrthologousGroups_").rstrip(".txt")
+            dataObj = DataObj(inflation_value)
+            dataObj.parse_species_ids(species_ids_f)
+            dataObj.parse_groups(groups_f)
+            results[inflation_value] = dataObj
+    return results
+
+################ NEW
+
+# Data
+class DataObj():
+    def __init__(self):
+        self.proteomeObjs = {} # by ID
+        self.proteome_count = 0
+        self.proteome_order = []
+
+        self.clusterObjs = {} # by IV
+        self.cluster_count = {} # by IV
+        self.cluster_order = {} # by IV
+
+        self.class_order = []
+        self.class_levels = {}
+        self.inflation_values = []
+
+    def add_proteomeObjs(self, species_ids_f):
+        with open(species_ids_f) as fh:
+            for l in fh:
+                number, species_f = l.rstrip("\n").split(": ")
+                proteomeObj = ProteomeObj(number, species_f)
+                self.proteomeObjs[proteomeObj.id] = proteomeObj
+                self.proteome_count += 1
+                self.proteome_order.append(proteomeObj.id)
+
+    def add_class_to_proteomeObjs(self, species_classification_f):
+        with open(species_classification_f) as fh:
+            for l in fh:
+                if l.startswith("#"):
+                    temp = [x.strip() for x in l.lstrip("#").rstrip("\n").split()]
+                    if not temp[0] == "proteome":
+                        sys.exit("[ERROR] - First column of %s has to be 'proteome'" % species_classification_f)
+                    self.class_order = temp
+                else:
+                    temp = l.rstrip("\n").split()
+                    proteome_id = temp[0]
+                    self.proteomeObjs[proteome_id].classifications = temp
+                    ### need to add all elements of a level, so that can calculate fractions ...
+
+
+        if not (self.class_order):
+            sys.exit("[ERROR] - %s does not have a header" % species_classification_f)
+        for proteomeObj in self.proteomeObjs.values():
+            if not (proteomeObj.classifications):
+                sys.exit("[ERROR] - %s did not provide a classification for %s" % (species_classification_f, proteomeObj.id))
+            if not len(proteomeObj.classifications) == len(self.class_order):
+                sys.exit("[ERROR] - Number of classifications for %s (%s) did not match header of %s (%s)" % (proteomeObj.id, len(proteomeObj.classifications), species_classification_f, len(self.class_order)))
+
+    def add_groups(self, groups_fs):
+        for groups_f in groups_fs:
+            if os.path.isfile(groups_f) and groups_f.endswith(".txt"):
+                inflation_value = os.path.basename(groups_f).lstrip("OrthologousGroups_").rstrip(".txt")
+                print "[STATUS] - Parsing %s : inflation value = %s" % (groups_f, inflation_value)
+                self.parse_group_f(inflation_value, groups_f)
+            else:
+                sys.exit("[ERROR] - %s is not a file" % (groups_f))
+
+    def parse_group_f(self, inflation_value, groups_f):
+        with open(groups_f) as fh:
+            for line in fh:
+                cluster_id, protein_string = line.rstrip("\n").split(": ")
+                clusterObj = ClusterObj(cluster_id, protein_string.split(), inflation_value)
+                self.add_clusterObj(clusterObj)
+
+    def add_clusterObj(self, clusterObj):
+        ### Classify clusters as mono, single, multi based on classification
+        for idx, classification in enumerate(self.class_order):
+            flavours_in_cluster = [self.proteomeObjs[proteome_id].classifications[idx] for proteome_id in clusterObj.proteomes]
+            clusterObj.protein_count_by_class[classification] = {}
+            for flavour in flavours_in_cluster:
+                clusterObj.protein_count_by_class[classification][flavour] = clusterObj.protein_count_by_class[classification].get(flavour, 0) + 1
+            unique_flavours_in_cluster = set(flavours_in_cluster)
+            # cluster type by class
+            if clusterObj.protein_count == 1:
+                clusterObj.type_by_class[classification] = "singleton"
+            else:
+                if len(unique_flavours_in_cluster) == 1:
+                    clusterObj.type_by_class[classification] = "mono"
+                else:
+                    clusterObj.type_by_class[classification] = "multi"
+        print clusterObj.__dict__
+
+        #clusterObj.proteomes
+        if not clusterObj.inflation_value in self.inflation_values:
+            self.inflation_values.append(clusterObj.inflation_value)
+            self.clusterObjs[clusterObj.inflation_value] = {}
+            self.cluster_count[clusterObj.inflation_value] = 0
+            self.cluster_order[clusterObj.inflation_value] = []
+        self.clusterObjs[clusterObj.inflation_value][clusterObj.id] = clusterObj
+        self.cluster_count[clusterObj.inflation_value] += 1
+        self.cluster_order[clusterObj.inflation_value].append(clusterObj.id)
+
+    def yield_clusterObjs(self):
+        '''
+        yields all clusterObjs across all inflation values
+        '''
+        for inflation_value in self.inflation_values:
+            for cluster_id in self.cluster_order[inflation_value]:
+                yield self.clusterObjs[inflation_value][cluster_id]
+
+    def yield_proteomeObjs(self):
+        for proteome_id in self.proteome_order:
+            yield self.proteomeObjs[proteome_id]
+
+    def update_clusterObjs(self):
+        for classification in self.class_order:
+            for clusterObj in self.yield_clusterObjs():
+                pass
+
+
+
+# CLUSTERS
+class ClusterObj():
+    def __init__(self, cluster_id, proteins, inflation_value):
+        self.id = cluster_id
+        self.inflation_value = inflation_value
+        self.proteins = set(proteins)
+        self.protein_count = len(proteins)
+        self.proteomes = [x.split(".")[0] for x in proteins]
+
+        self.type_by_class = {}
+        self.protein_count_by_class = {}
+        self.fraction_by_class = {}
+        self.mean_by_class = {}
+        self.median_by_class = {}
+
+# Proteomes
+class ProteomeObj():
+    def __init__(self, number, species_f):
+        self.file = species_f
+        self.fields = species_f.split(".")
+        self.id = self.fields[0]
+        self.idx = int(number)
+        self.classifications = []
+
+        ## changed later
+        #self.cluster_ids = set() # cluster_ids of clusters the species is a member of
+        #self.cluster_count = 0
+        #self.protein_count = 0
+        #self.cluster_monospecies_ids = set()
+        #self.cluster_monospecies_count = 0  # private clusters (mono-species)
+        #self.cluster_multispecies_ids = set()
+        #self.cluster_multispecies_count = 0  # multispecies clusters
+        #self.protein_monospecies_count = 0  # proteins in private clusters (mono-species)
+        #self.protein_multispecies_count = 0  # proteins in private clusters (mono-species)
+        #self.protein_singleton_count = 0   # singleton proteins (unclustered)
+
 if __name__ == "__main__":
 
+    species_ids_f, species_classification_f, groups_fs = '','',''
     try:
         species_ids_f = sys.argv[1]
         species_classification_f = sys.argv[2]
-        groups_fs = sys.argv[3:]
+        groups_fs = sys.argv[3:] # one or more, format "OrthologousGroups_INFLATIONVALUE.txt"
     except:
         sys.exit("./kinfin.py SPECIESID_FILE SPECIESCLASSIFICATION_FILE GROUPS_FILE")
 
-    # for filtering clusters that have a mean min length of MIN_MEAN_LENGTH_OF_PROTEIN
-    MIN_MEAN_LENGTH_OF_PROTEIN = 40 # and less than one ASSEMBLY
-    # make a better ClassificationFile
-    # write documentation for Orthofinder
-    # check mean/median for species/
-
-    # add multiple category-levels
-    # plot proteins count by cluster-type for each category
-
-
-    # Define taxa to be excluded
-    EXCLUDE_TAXA = set()
-    # Define classification for cladeing of plots
-    CLASS, assemblies = parse_classification(species_classification_f)
-
     PERCENTAGES = [0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.5, 0.55, 0.60, 0.65, 0.75, 0.80, 0.85, 0.90, 0.95, 1.0]
+
+    dataObj = DataObj()
+    dataObj.add_proteomeObjs(species_ids_f)
+    dataObj.add_class_to_proteomeObjs(species_classification_f)
+    dataObj.add_groups(groups_fs)
+    dataObj.update_clusterObjs()
+    #for proteomeObj in dataObj.yield_proteomeObjs():
+    #    print proteomeObj.__dict__
+    #for inflation_value, clusterObj in dataObj.yield_clusterObj():
+    #    print inflation_value, clusterObj.__dict__
+
+    sys.exit("done")
+    # for filtering clusters that have a mean min length of MIN_MEAN_LENGTH_OF_PROTEIN
+    # - provide fasta length file
+    MIN_MEAN_LENGTH_OF_PROTEIN = 40 # and less than one ASSEMBLY
+
+
 
     results = generate_dataObjs(species_ids_f, groups_fs)
 
