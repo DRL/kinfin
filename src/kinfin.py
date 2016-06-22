@@ -21,7 +21,56 @@ RULES:
 To Do:
 - remove formating for fractions for clusters by species
 - add counts for clusters by species
+
+
+- classification_f:
+categories : columns
+elements : elements of categories
+ulements : unique elements
+
+Data:
+A) plot 1:1 shared by X taxa:
+    - for each inflation value
+        - for each category (proteome, species, genus, ...)
+            - for each combination of X taxa within category (ulements)
+                    - get number of 1:1's limited to those taxa
+
+B) plot Rarefraction curve:
+    - for each inflation value
+        - for each category (proteome, species, genus, ...)
+            - get rarefraction data for N repetitions
+
+C) plot Cluster/Protein Count by type (VENN)
+    1. cluster/protein count by type for each category
+        for each inflation value
+            - for each PROTEOME
+                -  for each category
+                    - get count of clusters/proteins that are:
+                        - singletons
+                        - monotons
+                        - multitons with any other ulement in category
+                        => CP1207 :
+                            -singleton cluster/protein count
+                            -monoton cluster/protein count
+                            -multiton cluster/protein count w/ CMPRLs
+                            -multiton cluster/protein count w/ notCMPRLs
+                            -multiton cluster/protein count w/ CBOT
+                            -multiton cluster/protein count w/ CBOT + CMPRLs
+                            -multiton cluster/protein count w/ CBOT + CMPRLs
+
+D) For each inflation value:
+    - for each PROTEOME
+        -  for each category
+            get count proteins/clusters
+                - singletons
+                - monotons (same species)
+
+            pan = core (in all strains) + accessory (not in all strains)
+            accessory = singletons + monotons + multi-within + multi-with-others = not core
+
+
 '''
+
 
 #############################################
 ################## CLASSES ##################
@@ -671,9 +720,11 @@ class DataObj():
         self.cluster_count = {} # by IV
         self.cluster_order = {} # by IV
 
-        self.class_order = []
-        self.class_levels = {}
+        self.label_keys = []
+        self.unique_labels = {} # unique labels by key
+
         self.inflation_values = []
+        self.dirs = {}
 
     def add_proteomeObjs(self, species_ids_f):
         with open(species_ids_f) as fh:
@@ -684,28 +735,40 @@ class DataObj():
                 self.proteome_count += 1
                 self.proteome_order.append(proteomeObj.id)
 
-    def add_class_to_proteomeObjs(self, species_classification_f):
+    def add_categories_to_proteomeObjs(self, species_classification_f):
+        unique_labels = {}
         with open(species_classification_f) as fh:
             for l in fh:
                 if l.startswith("#"):
                     temp = [x.strip() for x in l.lstrip("#").rstrip("\n").split()]
                     if not temp[0] == "proteome":
                         sys.exit("[ERROR] - First column of %s has to be 'proteome'" % species_classification_f)
-                    self.class_order = temp
+                    self.label_keys = temp
+                    unique_labels = {x : set() for x in self.label_keys}
                 else:
                     temp = l.rstrip("\n").split()
                     proteome_id = temp[0]
-                    self.proteomeObjs[proteome_id].classifications = temp
-                    ### need to add all elements of a level, so that can calculate fractions ...
-
-
-        if not (self.class_order):
+                    self.proteomeObjs[proteome_id].labels = {label : value for label, value in zip(self.label_keys, temp)}
+        if not (self.label_keys):
             sys.exit("[ERROR] - %s does not have a header" % species_classification_f)
         for proteomeObj in self.proteomeObjs.values():
-            if not (proteomeObj.classifications):
+            if not (proteomeObj.labels):
                 sys.exit("[ERROR] - %s did not provide a classification for %s" % (species_classification_f, proteomeObj.id))
-            if not len(proteomeObj.classifications) == len(self.class_order):
-                sys.exit("[ERROR] - Number of classifications for %s (%s) did not match header of %s (%s)" % (proteomeObj.id, len(proteomeObj.classifications), species_classification_f, len(self.class_order)))
+            if not len(proteomeObj.labels) == len(self.label_keys):
+                sys.exit("[ERROR] - Number of labels for %s (%s) did not match header of %s (%s)" % (proteomeObj.id, len(proteomeObj.labels), species_classification_f, len(self.label_keys)))
+
+    def setup_dirs(self):
+        result_path = os.path.join(os.getcwd(), "cb_results")
+        self.dirs['results'] = result_path
+        print "[STATUS] - Creating directories \n\t%s" % (result_path)
+        if not os.path.exists(result_path):
+            os.mkdir(result_path)
+        for label in self.label_keys:
+            label_path = os.path.join(result_path, label)
+            self.dirs[label] = label_path
+            if not os.path.exists(label_path):
+                print "\t%s" % (label_path)
+                os.mkdir(label_path)
 
     def add_groups(self, groups_fs):
         for groups_f in groups_fs:
@@ -725,8 +788,8 @@ class DataObj():
 
     def add_clusterObj(self, clusterObj):
         ### Classify clusters as mono, single, multi based on classification
-        for idx, classification in enumerate(self.class_order):
-            flavours_in_cluster = [self.proteomeObjs[proteome_id].classifications[idx] for proteome_id in clusterObj.proteomes]
+        for idx, classification in enumerate(self.categories):
+            flavours_in_cluster = [self.proteomeObjs[proteome_id].categories[idx] for proteome_id in clusterObj.proteomes]
             clusterObj.protein_count_by_class[classification] = {}
             for flavour in flavours_in_cluster:
                 clusterObj.protein_count_by_class[classification][flavour] = clusterObj.protein_count_by_class[classification].get(flavour, 0) + 1
@@ -764,7 +827,7 @@ class DataObj():
             yield self.proteomeObjs[proteome_id]
 
     def update_clusterObjs(self):
-        for classification in self.class_order:
+        for classification in self.categories:
             for clusterObj in self.yield_clusterObjs():
                 pass
 
@@ -792,7 +855,7 @@ class ProteomeObj():
         self.fields = species_f.split(".")
         self.id = self.fields[0]
         self.idx = int(number)
-        self.classifications = []
+        self.labels = {}
 
         ## changed later
         #self.cluster_ids = set() # cluster_ids of clusters the species is a member of
@@ -820,9 +883,14 @@ if __name__ == "__main__":
 
     dataObj = DataObj()
     dataObj.add_proteomeObjs(species_ids_f)
-    dataObj.add_class_to_proteomeObjs(species_classification_f)
-    dataObj.add_groups(groups_fs)
-    dataObj.update_clusterObjs()
+    if not species_classification_f:
+        dataObj.add_categories_to_proteomeObjs(species_classification_f)
+    else:
+
+    dataObj.setup_dirs()
+    #dataObj.add_groups(groups_fs)
+    #dataObj.update_clusterObjs()
+
     #for proteomeObj in dataObj.yield_proteomeObjs():
     #    print proteomeObj.__dict__
     #for inflation_value, clusterObj in dataObj.yield_clusterObj():
