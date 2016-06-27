@@ -720,8 +720,17 @@ class DataObj():
         self.cluster_count = {} # by IV
         self.cluster_order = {} # by IV
 
-        self.label_keys = []
-        self.unique_labels = {} # unique labels by key
+        '''
+        self.category_keys: is read from header of species_classification_f
+        self.category_labels: is read from rows of species_classification_f and unique'd
+        self.category_labels_combinations: is build from taking all combinations of self.category_labels
+
+        => These are used to get counts (cluster, proteins) and cluster names of all subsets for each category (venn diagram)
+        '''
+
+        self.category_keys = []
+        self.category_labels = {}
+        self.category_labels_combinations = set()
 
         self.inflation_values = []
         self.dirs = {}
@@ -736,26 +745,32 @@ class DataObj():
                 self.proteome_order.append(proteomeObj.id)
 
     def add_categories_to_proteomeObjs(self, species_classification_f):
-        unique_labels = {}
+        unique_category_labels = {}
         with open(species_classification_f) as fh:
             for l in fh:
                 if l.startswith("#"):
                     temp = [x.strip() for x in l.lstrip("#").rstrip("\n").split()]
                     if not temp[0] == "proteome":
                         sys.exit("[ERROR] - First column of %s has to be 'proteome'" % species_classification_f)
-                    self.label_keys = temp
-                    unique_labels = {x : set() for x in self.label_keys}
+                    self.category_keys = temp
+                    unique_category_labels = {x : set() for x in self.category_keys}
                 else:
                     temp = l.rstrip("\n").split()
                     proteome_id = temp[0]
-                    self.proteomeObjs[proteome_id].labels = {label : value for label, value in zip(self.label_keys, temp)}
-        if not (self.label_keys):
+                    self.proteomeObjs[proteome_id].category_labels = {label : value for label, value in zip(self.category_keys, temp)}
+                    unique_category_labels = ()
+        if not (self.category_keys):
             sys.exit("[ERROR] - %s does not have a header" % species_classification_f)
         for proteomeObj in self.proteomeObjs.values():
-            if not (proteomeObj.labels):
+            print proteomeObj.__dict__
+            if not (proteomeObj.category_labels):
                 sys.exit("[ERROR] - %s did not provide a classification for %s" % (species_classification_f, proteomeObj.id))
-            if not len(proteomeObj.labels) == len(self.label_keys):
-                sys.exit("[ERROR] - Number of labels for %s (%s) did not match header of %s (%s)" % (proteomeObj.id, len(proteomeObj.labels), species_classification_f, len(self.label_keys)))
+        if not len(proteomeObj.category_labels) == len(self.category_keys):
+            sys.exit("[ERROR] - Number of labels for %s (%s) did not match header of %s (%s)" % (proteomeObj.id, len(proteomeObj.category_labels), species_classification_f, len(self.category_keys)))
+        # generate combinations in category_labels_combinations
+        for combination in itertools.combinations(self.category_labels.keys(), len(self.proteomeObjs)):
+            print "test"
+            print combination
 
     def setup_dirs(self):
         result_path = os.path.join(os.getcwd(), "cb_results")
@@ -855,7 +870,7 @@ class ProteomeObj():
         self.fields = species_f.split(".")
         self.id = self.fields[0]
         self.idx = int(number)
-        self.labels = {}
+        self.category_labels = {}
 
         ## changed later
         #self.cluster_ids = set() # cluster_ids of clusters the species is a member of
@@ -883,12 +898,10 @@ if __name__ == "__main__":
 
     dataObj = DataObj()
     dataObj.add_proteomeObjs(species_ids_f)
-    if not species_classification_f:
+    if species_classification_f:
         dataObj.add_categories_to_proteomeObjs(species_classification_f)
-    else:
-
     dataObj.setup_dirs()
-    #dataObj.add_groups(groups_fs)
+    dataObj.add_groups(groups_fs)
     #dataObj.update_clusterObjs()
 
     #for proteomeObj in dataObj.yield_proteomeObjs():
