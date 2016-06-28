@@ -802,7 +802,19 @@ class DataObj():
                 self.add_clusterObj(clusterObj)
 
     def add_clusterObj(self, clusterObj):
-        ### Classify clusters as mono, single, multi based on classification
+        '''
+         ClusterObjs are created
+          - protein count
+          - for each groups
+                - set of members
+                - type of cluster : singleton/monoton/multiton
+                - if not singleton (singleton can't be core)
+                     - get percentage of total of group (store where?)
+
+
+        '''
+
+
         for idx, classification in enumerate(self.categories):
             flavours_in_cluster = [self.proteomeObjs[proteome_id].categories[idx] for proteome_id in clusterObj.proteomes]
             clusterObj.protein_count_by_class[classification] = {}
