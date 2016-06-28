@@ -785,7 +785,7 @@ class DataObj():
                 print "\t%s" % (label_path)
                 os.mkdir(label_path)
 
-    def add_groups(self, groups_fs):
+    def add_orthologous_groups(self, groups_fs):
         for groups_f in groups_fs:
             if os.path.isfile(groups_f) and groups_f.endswith(".txt"):
                 inflation_value = os.path.basename(groups_f).lstrip("OrthologousGroups_").rstrip(".txt")
@@ -901,7 +901,7 @@ if __name__ == "__main__":
     if species_classification_f:
         dataObj.add_categories_to_proteomeObjs(species_classification_f)
     dataObj.setup_dirs()
-    dataObj.add_groups(groups_fs)
+    dataObj.add_orthologous_groups(groups_fs)
     #dataObj.update_clusterObjs()
 
     #for proteomeObj in dataObj.yield_proteomeObjs():
