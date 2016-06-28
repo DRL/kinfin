@@ -1,4 +1,4 @@
-# proteome   strains    species  group
+# proteome   strain    species  group
 CBOT   CBOT clostridium_botulinum   CBOT
 CP1207   CP1207 clostridium_perfringens notCPMPRL
 CP13     CP13 clostridium_perfringens   notCPMPRL

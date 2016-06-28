@@ -1,0 +1,10 @@
+QUALITIES OF CLUSTER
+category ['group']
+    - members => CBOT : {CBOT_A, CBOT_B}, CMPRL : {CMPRL1.2, CMPRL2.3}, notCMPRL : {CP1.2, CP3.1}
+    - counts => CBOT : len(members[CBOT]), ...
+    - perc => CBOT : len(members[CBOT]/total_CBOT), ...
+    - type => singleton/monoton/multiton
+
+
+INITIALISE Scheme for each cluster using CategoryObj
+-

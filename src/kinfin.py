@@ -744,33 +744,10 @@ class DataObj():
                 self.proteome_count += 1
                 self.proteome_order.append(proteomeObj.id)
 
-    def add_categories_to_proteomeObjs(self, species_classification_f):
-        unique_category_labels = {}
-        with open(species_classification_f) as fh:
-            for l in fh:
-                if l.startswith("#"):
-                    temp = [x.strip() for x in l.lstrip("#").rstrip("\n").split()]
-                    if not temp[0] == "proteome":
-                        sys.exit("[ERROR] - First column of %s has to be 'proteome'" % species_classification_f)
-                    self.category_keys = temp
-                    unique_category_labels = {x : set() for x in self.category_keys}
-                else:
-                    temp = l.rstrip("\n").split()
-                    proteome_id = temp[0]
-                    self.proteomeObjs[proteome_id].category_labels = {label : value for label, value in zip(self.category_keys, temp)}
-                    unique_category_labels = ()
-        if not (self.category_keys):
-            sys.exit("[ERROR] - %s does not have a header" % species_classification_f)
-        for proteomeObj in self.proteomeObjs.values():
-            print proteomeObj.__dict__
-            if not (proteomeObj.category_labels):
-                sys.exit("[ERROR] - %s did not provide a classification for %s" % (species_classification_f, proteomeObj.id))
-        if not len(proteomeObj.category_labels) == len(self.category_keys):
-            sys.exit("[ERROR] - Number of labels for %s (%s) did not match header of %s (%s)" % (proteomeObj.id, len(proteomeObj.category_labels), species_classification_f, len(self.category_keys)))
-        # generate combinations in category_labels_combinations
-        for combination in itertools.combinations(self.category_labels.keys(), len(self.proteomeObjs)):
-            print "test"
-            print combination
+    def add_ranks_to_proteomeObjs(self, categoryObj):
+        for proteomeObj_id, ranks in categoryObj.ranks_by_proteome.items():
+            self.proteomeObjs[proteomeObj_id].ranks = ranks
+
 
     def setup_dirs(self):
         result_path = os.path.join(os.getcwd(), "cb_results")
@@ -805,8 +782,9 @@ class DataObj():
         '''
          ClusterObjs are created
           - protein count
-          - for each groups
+          - for each category
                 - set of members
+                - count of members
                 - type of cluster : singleton/monoton/multiton
                 - if not singleton (singleton can't be core)
                      - get percentage of total of group (store where?)
@@ -869,6 +847,25 @@ class ClusterObj():
         self.protein_count = len(proteins)
         self.proteomes = [x.split(".")[0] for x in proteins]
 
+        '''
+        member_count_at_rank['species'] = ('X' : 2, 'O' : 3)
+        member_count_at_rank['proteomes'] = ('A' : 2, 'B' : 1, 'C' : 1,'D' : 1, 'E' :1)
+        members_at_rank['species'] = set(member_count_at_rank['species'].keys())        # ('X', 'O')
+        members_at_rank['proteome'] = set(member_count_at_rank['proteomes']).keys())    # ('A', 'B', 'C','D', 'E')
+        member_perc_at_rank['species'] = ('X' : 1.0, 'O' : 1.0)
+        member_perc_at_rank['proteomes'] = ('A' : 1.0, 'B' : 1.0, 'C' : 1.0,'D' : 1.0, 'E' :1.0)
+        cluster_type_at_rank['species'] = (multiton)
+        cluster_type_at_rank['proteome'] = (multiton)
+        '''
+
+        { : for proteome in self.proteomes}
+        self.members_at_rank = {}
+        self.member_count_at_rank = {}
+        self.member_perc_at_rank = {}
+        self.cluster_type_at_rank = {}
+
+        self.category_of_members = {}
+
         self.type_by_class = {}
         self.protein_count_by_class = {}
         self.fraction_by_class = {}
@@ -882,7 +879,7 @@ class ProteomeObj():
         self.fields = species_f.split(".")
         self.id = self.fields[0]
         self.idx = int(number)
-        self.category_labels = {}
+        self.ranks = set()
 
         ## changed later
         #self.cluster_ids = set() # cluster_ids of clusters the species is a member of
@@ -896,6 +893,43 @@ class ProteomeObj():
         #self.protein_multispecies_count = 0  # proteins in private clusters (mono-species)
         #self.protein_singleton_count = 0   # singleton proteins (unclustered)
 
+class CountObj():
+    def __init__(self):
+        self
+
+class CategoryObj():
+    def __init__(self, members_by_rank, ranks_by_proteome):
+        self.ranks = set(members_by_rank.keys())                                        # rank_keys
+        self.members_by_rank = members_by_rank                                          # rank_key : rank_values
+        self.member_count_by_rank = {x : len(v) for x, v in members_by_rank.items()}    # rank_key : members count
+        self.ranks_by_proteome = ranks_by_proteome                                      # proteome : rank_key : rank_value
+
+class ClusterCountScheme():
+    def __init__(self, categoryObj):
+        self.members_at_rank = {}
+        self.member_count_at_rank = {}
+        self.member_perc_at_rank = {}
+        self.cluster_type_at_rank = {}
+
+def parse_classification(species_classification_f):
+    ranks_by_proteome = {}
+    members_by_rank = {}
+    header = []
+    with open(species_classification_f) as fh:
+        for l in fh:
+            if l.startswith("#"):
+                header = [x.strip() for x in l.lstrip("#").rstrip("\n").split()]
+                members_by_rank = {rank : set() for rank in header}
+            else:
+                line = l.rstrip("\n").split()
+                for idx, item in enumerate(line):
+                    members_by_rank[header[idx]].add(item)
+                    if not line[0] in ranks_by_proteome:
+                        ranks_by_proteome[line[0]] = {}
+                    ranks_by_proteome[line[0]][header[idx]] = item
+    return members_by_rank, ranks_by_proteome
+
+
 if __name__ == "__main__":
 
     species_ids_f, species_classification_f, groups_fs = '','',''
@@ -908,10 +942,19 @@ if __name__ == "__main__":
 
     PERCENTAGES = [0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.5, 0.55, 0.60, 0.65, 0.75, 0.80, 0.85, 0.90, 0.95, 1.0]
 
+    # Get all info from species_classification_f
+    members_by_rank, ranks_by_proteome = parse_classification(species_classification_f)
+    # Initialise CategoryObj with the info
+    categoryObj = CategoryObj(members_by_rank, ranks_by_proteome)
+
+    # Initialise DataObj
     dataObj = DataObj()
+    # Add proteome-info to DataObj
     dataObj.add_proteomeObjs(species_ids_f)
-    if species_classification_f:
-        dataObj.add_categories_to_proteomeObjs(species_classification_f)
+    # Add category-info to DataObj (CategoryObj.ranks_by_proteome())
+    dataObj.add_ranks_to_proteomeObjs(categoryObj)
+
+
     dataObj.setup_dirs()
     dataObj.add_orthologous_groups(groups_fs)
     #dataObj.update_clusterObjs()
