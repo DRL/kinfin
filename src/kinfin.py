@@ -716,9 +716,10 @@ class DataObj():
         self.proteome_count = 0
         self.proteome_order = []
 
+        self.proteins = {} # proteinID : clusterID
         self.clusterObjs = {} # by IV
         self.cluster_count = {} # by IV
-        self.cluster_order = {} # by IV
+        self.cluster_order = [] # by IV
 
         '''
         self.category_keys: is read from header of species_classification_f
@@ -893,9 +894,37 @@ class ProteomeObj():
         #self.protein_multispecies_count = 0  # proteins in private clusters (mono-species)
         #self.protein_singleton_count = 0   # singleton proteins (unclustered)
 
-class CountObj():
-    def __init__(self):
-        self
+### more general RankInstanceObj()
+'''
+RankInstanceObj:
+    - ProteomeObj, GroupObj, SpeciesObj, ...
+    - rank id
+    - members
+    - clusters to which the at least one member of rank belongs
+        - by type (singleton, monoton, multiton) : list of clusters
+        - by percentage (only monotons, multitons) : list of clusters
+        - by counts :
+    - proteins belonging to rank in clusters of type
+        - by type (singleton, monoton, multiton) : list of proteins
+    -
+
+'''
+class RankInstanceObj():
+    def __init__(self, rank_id):
+        self.rank_id = rank_id
+        self.members = members
+
+class ProteinObj():
+    def __init__(self, proteinID, length, clusterID):
+        self.proteinID = proteinID
+        self.length = length
+        self.clusterID = clusterID
+
+class ClusterObj():
+    def __init__(self, clusterID, proteins):
+        self.clusterID = clusterID
+        self.proteins = proteins
+        self.type_by_rank = {}
 
 class CategoryObj():
     def __init__(self, members_by_rank, ranks_by_proteome):

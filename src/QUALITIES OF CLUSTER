@@ -8,3 +8,25 @@ category ['group']
 
 INITIALISE Scheme for each cluster using CategoryObj
 -
+
+Proteins
+- length : int
+- cluster : str
+- ranks : dict()
+
+Cluster
+- proteins : set of proteins
+- ranks : dict of rank : set of members
+
+RankSubsets : dict
+- rank
+
+
+# get clusters by percentage
+    - limit above/below certain percentage, by type, by members: distribution, core, subsets
+# sample proteins of rank and see how many new clusters are seen (rarefraction)
+    - limit by type, limit by
+# get counts for clusters/proteins
+    -
+# get clusters by subset
+    -
