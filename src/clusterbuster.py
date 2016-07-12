@@ -3,8 +3,6 @@
 
 '''
 Improvements
-- coverage-decay
-    - Adjust coverage-decay-plot markersize for each RLO (avoiding overlaps in the plot)
 - heatmap of counts by RLO presence for each clusterObj
     - get counts for RLOs at each rank
     - sort them somehow
@@ -12,6 +10,7 @@ Improvements
     - cluster based on those counts
 - Rarefraction curve plot
     - for each RLO
+    - generate plot
 - Data output
     - think about folder structure
     - Stats files
@@ -28,7 +27,8 @@ Improvements
 '''
 from __future__ import division
 import sys
-from os.path import basename, isfile, abspath, splitext, join
+from os.path import basename, isfile, abspath, splitext, join, exists
+from os import getcwd, mkdir
 import numpy as np
 import itertools
 import operator
@@ -37,9 +37,14 @@ from collections import Counter
 
 import matplotlib as mat
 import matplotlib.cm as cm
+import matplotlib.colors as colors
 mat.use('agg')
 import matplotlib.pyplot as plt
 plt.style.use('ggplot')
+import seaborn as sns
+sns.set_context("talk")
+#sns.set(font='serif')
+sns.set(style="whitegrid")
 
 def readFasta(infile):
     if not isfile(infile):
@@ -113,7 +118,6 @@ class DataObj():
                         self.levelIDs_by_rankID[rankID].add(levelID)
                         self.levelIDs_by_rankID_by_proteomeID[proteomeID][rankID] = levelID
                         self.proteomeIDs_by_levelID_by_rankID[rankID][levelID].add(proteomeID)
-        print self.count_by_levelID_by_rankID
         self.proteomeIDs_count = len(self.proteomeIDs)
         self.levelIDs_count_by_rankID = {rankID : len(levels) for rankID, levels in self.levelIDs_by_rankID.items()}
 
@@ -178,18 +182,18 @@ class DataObj():
                     self.proteinObjs_by_proteinID[proteinObj.proteinID] = proteinObj
                 self.fasta_parsed = True
 
-    def setup_dirs(self, categoryObj):
-        result_path = os.path.join(os.getcwd(), "cb_results")
-        self.dirs['results'] = result_path
-        print "[STATUS] - Creating directories \n\t%s" % (result_path)
-        if not os.path.exists(result_path):
+    def setup_dirs(self):
+        result_path = join(getcwd(), "cb_results")
+        self.dirs['main'] = result_path
+        print "[STATUS] - Output directories in \n\t%s" % (result_path)
+        if not exists(result_path):
             os.mkdir(result_path)
         for rankID in self.rankIDs:
-            rank_path = os.path.join(result_path, rankID)
-            self.dirs[rank] = rank_path
-            if not os.path.exists(rank_path):
+            rank_path = join(result_path, rankID)
+            self.dirs[rankID] = rank_path
+            if not exists(rank_path):
                 print "\t%s" % (rank_path)
-                os.mkdir(rank_path)
+                mkdir(rank_path)
 
     def output(self, argument): # for debugging
         if argument == 'categories':
@@ -305,12 +309,12 @@ class DataObj():
             coverages_by_levelID_by_rankID[rankID][levelID] = [coverage for coverage in sorted(RLO.coverage_in_clusters, reverse=True)]
         for rankID in coverages_by_levelID_by_rankID:
             # PLOT
-            coverages_out_png = "coverage.%s.png" % (rankID)
+            coverages_out_png = join(self.dirs[rankID], "%s.coverage.png" % (rankID))
             coverages_by_levelID = coverages_by_levelID_by_rankID[rankID]
             plot_coverage_decay(coverages_by_levelID, coverages_out_png)
             for levelID in coverages_by_levelID_by_rankID[rankID]:
                 # TXT
-                coverages_out_txt = "coverage.%s.%s.txt" % (rankID, levelID)
+                coverages_out_txt = join(self.dirs[rankID], "%s.%s.coverage.txt" % (rankID, levelID))
                 with open(coverages_out_txt, "w") as fh:
                     fh.write("%s\n" % (coverages_by_levelID_by_rankID[rankID][levelID]))
 
@@ -342,18 +346,71 @@ class DataObj():
                             RLO.rarefraction_data[sample_size].append(len(seen_clusterIDs))
 
     def output_rarefraction(self):
-        coverages_by_levelID_by_rankID = {}
+        rarefraction_by_levelID_by_rankID = {}
         for RLO in self.yield_RLOs(ranks=['all'], levels=['all']):
             if (RLO.rarefraction_data):
                 rankID = RLO.rankID
                 levelID = RLO.levelID
                 rarefraction_data = RLO.rarefraction_data
-                out_f = "%s.%s.rarefraction_stats.txt" % (rankID, levelID)
+                out_f = join(self.dirs[rankID], "%s.%s.rarefraction.txt" % (rankID, levelID))
+                if not rankID in rarefraction_by_levelID_by_rankID:
+                    rarefraction_by_levelID_by_rankID[rankID] = {}
+                rarefraction_by_levelID_by_rankID[rankID][levelID] = rarefraction_data
                 print "Writing %s" % out_f
                 with open(out_f, "w") as fh:
                     fh.write("%s\t%s\n" % ("sample_size", "\t".join(["Rep" + str(x) for x in range(1, REPETITIONS)])))
                     for sample_size in rarefraction_data:
                         fh.write("%s\t%s\n" % (sample_size, "\t".join([str(x) for x in rarefraction_data[sample_size]])))
+        for rankID in rarefraction_by_levelID_by_rankID:
+            rarefraction_out_png = join(self.dirs[rankID], "%s.rarefraction.png" % (rankID))
+            rarefraction_by_levelID = rarefraction_by_levelID_by_rankID[rankID]
+            plot_rarefraction_data(rarefraction_by_levelID, rarefraction_out_png)
+
+
+def plot_rarefraction_data(rarefraction_by_levelID, rarefraction_out_png):
+    f, ax = plt.subplots(figsize=(24, 12))
+    sns.set_color_codes("pastel")
+    order = {}
+    #print rarefraction_by_levelID
+    #for levelID, rarefraction_data in rarefraction_by_levelID.items():
+    #    counter = Counter(rarefraction_data)
+    #    order[levelID] = counter[1.0]
+    #print order
+    max_number_of_samples = 0
+    for idx, levelID in enumerate(rarefraction_by_levelID):
+        number_of_samples = len(rarefraction_by_levelID[levelID])
+        if number_of_samples > max_number_of_samples:
+            max_number_of_samples = number_of_samples
+        colour = plt.cm.Paired(idx/len(rarefraction_by_levelID))
+        #print levelID, colors.rgb2hex(colour)
+        x_values = []
+        #y_values = []
+        y_mins = []
+        y_maxs = []
+        median_y_values = []
+        median_x_values = []
+
+        for x, y_reps in rarefraction_by_levelID[levelID].items():
+            #print x, len(y_reps), y_reps
+            #x_values.append([x] * len(y_reps))
+            #y_values.append(y_reps)
+            x_values.append(x)
+            y_mins.append(min(y_reps))
+            y_maxs.append(max(y_reps))
+            median_y_values.append(np.median(y_reps))
+            median_x_values.append(x)
+        #ax.scatter(x_values, y_values, color=colour, label=levelID, alpha = 0.8)
+        x_array = np.array(x_values)
+        y_mins_array = np.array(y_mins)
+        y_maxs_array = np.array(y_maxs)
+        ax.plot(median_x_values, median_y_values, '-', color=colour, label=levelID)
+        ax.fill_between(x_array, y_mins_array, y_maxs_array, color=colour, alpha = 0.5)
+
+    ax.set_xlim([0.5, max_number_of_samples + 0.5])
+    ax.set_ylabel("Count of clusters")
+    ax.set_xlabel("Sampled Proteomes")
+    ax.legend(ncol=1, numpoints=1, loc="lower right", frameon=True)
+    f.savefig(rarefraction_out_png, format="png")
 
 def plot_coverage_decay(coverages_by_levelID, coverages_out_png):
     f, ax = plt.subplots(figsize=(24, 12))
@@ -384,7 +441,9 @@ def plot_coverage_decay(coverages_by_levelID, coverages_out_png):
         x_values.append(last_x)
         ax.plot(x_values, y_values, '-o', linestyle = '-', linewidth = 4, label=levelID, markeredgecolor = 'none')
     #ax.set_xlim([-0.9, len(x_values)])
-    ax.set_ylim([0, 1.2])
+    ax.set_ylim([0, 1.1])
+    ax.set_ylabel("Fraction of rank members present in clusters")
+    ax.set_xlabel("Count of clusters")
     ax.legend(ncol=1, numpoints=1, loc="upper right", frameon=True)
     f.tight_layout()
     f.savefig(coverages_out_png, format="png")
@@ -484,7 +543,7 @@ class RankLevelObj():
 
 if __name__ == "__main__":
     # david aanensen, github?
-    REPETITIONS = 25
+    REPETITIONS = 30 + 1
 
     species_ids_f, species_classification_f, groups_f = '','',''
     try:
@@ -492,17 +551,18 @@ if __name__ == "__main__":
         species_classification_f = sys.argv[2]
         groups_f = sys.argv[3]
     except:
-        sys.exit("./kinfin.py SPECIESID_FILE SPECIESCLASSIFICATION_FILE GROUPS_FILE")
+        sys.exit("./clusterbuster.py SPECIESID_FILE SPECIESCLASSIFICATION_FILE GROUPS_FILE")
 
     dataObj = DataObj()
     # Get all info from species_classification_f
     dataObj.parse_species_classification(species_classification_f)
     dataObj.create_RLOs()
     dataObj.parse_species_ids(species_ids_f)
+    dataObj.setup_dirs()
     dataObj.parse_fasta()
     #dataObj.output("categories") # debug
     dataObj.parse_clusters(groups_f)
-    dataObj.output("ranklevelobjs")
+    #dataObj.output("ranklevelobjs")
     dataObj.output_coverages()
     dataObj.calculate_rarefraction_data(REPETITIONS)
     dataObj.output_rarefraction()
