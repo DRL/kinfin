@@ -1,0 +1,3 @@
+rankID	levelID	cluster_count	cluster_singleton_count	cluster_monoton_count	cluster_multiton_count	protein_count	protein_singleton_count	protein_monoton_count	protein_multiton_count	protein_span	members_count	members
+pathogenicity	unknown	6948	2687	619	3642	60507	2687	2549	55271	None	20	CPATCC13124,CPWAL-14572,CPMJR7757A,CPNCTC8239,CPJGS1495,CPSM101,CPCP4,CPJP838,CPJP55,CPJJC,CPF262,CPMPRL4782,CPJGS1987,CPATCC3626,CPJGS1721,CP13,CBOT,CPFORC,CPF4969,CP1207
+pathogenicity	commensal	4147	436	69	3642	20466	436	177	19853	None	7	CPMPRL4477,CPMPRL4350,CPMPRL4492,CPMPRL4450,CPMPRL4725,CPMPRL3750,CPMPRL4716

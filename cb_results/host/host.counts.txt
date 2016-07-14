@@ -1,0 +1,5 @@
+rankID	levelID	cluster_count	cluster_singleton_count	cluster_monoton_count	cluster_multiton_count	protein_count	protein_singleton_count	protein_monoton_count	protein_multiton_count	protein_span	members_count	members
+host	None	6774	2574	423	3777	57215	2574	1448	53193	None	19	CPATCC13124,CPWAL-14572,CPMJR7757A,CPNCTC8239,CPJGS1495,CPSM101,CPCP4,CPJP838,CPJP55,CPJJC,CPF262,CPJGS1987,CPATCC3626,CPJGS1721,CP13,CBOT,CPFORC,CPF4969,CP1207
+host	swan	3166	113	0	3053	3292	113	0	3179	None	1	CPMPRL4782
+host	chicken	3187	83	7	3097	6047	83	14	5950	None	2	CPMPRL4716,CPMPRL4725
+host	human	3801	353	29	3419	14419	353	68	13998	None	5	CPMPRL4477,CPMPRL4350,CPMPRL4492,CPMPRL4450,CPMPRL3750

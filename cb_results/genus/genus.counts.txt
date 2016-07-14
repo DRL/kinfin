@@ -1,0 +1,2 @@
+rankID	levelID	cluster_count	cluster_singleton_count	cluster_monoton_count	cluster_multiton_count	protein_count	protein_singleton_count	protein_monoton_count	protein_multiton_count	protein_span	members_count	members
+genus	clostridium	7453	3123	4330	0	80973	3123	77850	0	None	27	CPATCC13124,CPMPRL4477,CPMPRL4782,CPMPRL4450,CPNCTC8239,CPATCC3626,CPMPRL4725,CBOT,CPF4969,CPJJC,CPWAL-14572,CPMPRL4492,CPJP838,CPFORC,CPMPRL4350,CPJGS1495,CPMJR7757A,CPJGS1987,CPJP55,CP13,CPMPRL4716,CP1207,CPSM101,CPCP4,CPF262,CPMPRL3750,CPJGS1721
