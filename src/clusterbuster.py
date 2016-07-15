@@ -17,7 +17,7 @@ usage: kb.py        -s <FILE> -g <FILE> -c <FILE>
         -l, --median_prot_len <INT>         Median protein length threshold for clusters [default: 0]
         -r, --repetitions <INT>             Number of repetitions for rarefraction curves [default: 30]
 
-        -o, --outprefix <STR>               Output prefix [default: '']
+        -o, --outprefix <STR>               Output prefix
         -p, --plotfmt <STR>                 Plot formats [default: png]
 """
 
@@ -25,6 +25,7 @@ from __future__ import division
 import sys
 sys.setrecursionlimit(10000) # needed for clustering
 from os.path import basename, isfile, abspath, splitext, join, exists
+import shutil
 from os import getcwd, mkdir
 from docopt import docopt, DocoptExit
 import subprocess
@@ -133,7 +134,6 @@ class DataObj():
             for l in fh:
                 if l.startswith("#"):
                     self.rankIDs = [x.strip() for x in l.lstrip("#").rstrip("\n").split(",")]
-                    print len(self.rankIDs)
                     self.rankIDs_count = len(self.rankIDs)
                     self.levelIDs_by_rankID = {rankID : set() for rankID in self.rankIDs}
                     self.proteomeIDs_by_levelID_by_rankID = {rankID : {} for rankID in self.rankIDs}
@@ -367,12 +367,19 @@ class DataObj():
     # Writing Output files
     ############################################################################################
 
-    def setup_dirs(self):
-        result_path = join(getcwd(), "cb_results")
+    def setup_dirs(self, out_prefix):
+        result_path = ''
+        if (out_prefix):
+            result_path = join(getcwd(), "%s.cb_results" % (out_prefix))
+        else:
+            result_path = join(getcwd(), "cb_results")
         self.dirs['main'] = result_path
         print "[STATUS] - Output directories in \n\t%s" % (result_path)
-        if not exists(result_path):
-            mkdir(result_path)
+        if exists(result_path):
+            print "[STATUS] - Directory exists. Deleting directory"
+            shutil.rmtree(result_path)
+        print "[STATUS] - Creating directory"
+        mkdir(result_path)
         for rankID in self.rankIDs:
             rank_path = join(result_path, rankID)
             self.dirs[rankID] = rank_path
@@ -870,7 +877,7 @@ if __name__ == "__main__":
     dataObj.parse_categories(category_f)
     dataObj.create_RLOs()
     dataObj.parse_species_ids(species_ids_f)
-    dataObj.setup_dirs()
+    dataObj.setup_dirs(out_prefix)
     if (fasta_dir):
         dataObj.parse_fasta(fasta_dir)
     #dataObj.output("categories") # debug
