@@ -1,3 +1,4 @@
-data/*
+data/*.txt
+data/*.png
 cb_results/*
 old_results/*

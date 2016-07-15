@@ -1,0 +1,7 @@
+0:   A.fna
+1:   B.fna
+2:   C.fna
+3:   D.fna
+4:   E.fna
+5:   F.fna
+6:   G.fna
