@@ -1,8 +1,0 @@
-# proteome  strain  group   genus
-A   1   one all
-B   1   one all
-C   2   one all
-D   2   two all
-E   3   two all
-F   3   two all
-G   3   two all

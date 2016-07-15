@@ -1,2 +1,0 @@
-sample_size	clusters_data_all_mean	clusters_data_all_max	clusters_data_all_min	Rep1	Rep2	Rep3	Rep4	Rep5	Rep6	Rep7	Rep8	Rep9	Rep10	Rep11	Rep12	Rep13	Rep14	Rep15	Rep16	Rep17	Rep18	Rep19	Rep20	Rep21	Rep22	Rep23	Rep24
-1	2538.00	2538	2538	2538	2538	2538	2538	2538	2538	2538	2538	2538	2538	2538	2538	2538	2538	2538	2538	2538	2538	2538	2538	2538	2538	2538	2538

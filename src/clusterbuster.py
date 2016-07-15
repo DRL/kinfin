@@ -2,37 +2,43 @@
 # -*- coding: utf-8 -*-
 
 """
-usage: kb.py        -s <SPECIESIDFILE> -c <SPECIESCLASSFILE> -g <GROUPSFILE>
-                    [-d FASTADIR] [-l PROTEINLENTHRESHOLD] [-r REPETITIONS]
-                    [-o PREFIX] [-p PLOTFORMAT]
+usage: kb.py        -s <FILE> -g <FILE> -c <FILE>
+                    [-d <DIR>] [-l <INT>] [-r <INT>]
+                    [-o <PREFIX>] [-p <PLOTFORMAT>]
                     [-h|--help]
 
     Options:
         -h --help                           show this
-        <TXT>...                            KMC2 histo txt file(s).
-        --min <MIN>                         Minimum k-mer multiplicity (x) [default: 3]
-        --max <MAX>                         Maximum k-mer multiplicity (x) [default: 500]
-        -o, --out <OUTFILE>                 Output prefix [default: kmer_histogram]
+        -s, --species_file <FILE>           SpeciesIDs.txt used in OrthoFinder
+        -g, --groups <FILE>                 OrthologousGroups.txt produced by OrthoFinder
+        -c, --category_file <FILE>          Category file
 
+        -d, --fasta_dir <DIR>               Directory containing FASTAs used in Orthofinder
+        -l, --median_prot_len <INT>         Median protein length threshold for clusters [default: 0]
+        -r, --repetitions <INT>             Number of repetitions for rarefraction curves [default: 30]
+
+        -o, --outprefix <STR>               Output prefix [default: '']
+        -p, --plotfmt <STR>                 Plot formats [default: png]
 """
 
-REPETITIONS = 30 + 1
-PLOT_FORMAT = 'png'
-species_ids_f, species_classification_f, groups_f = '','',''
-try:
-    species_ids_f = sys.argv[1]
-    species_classification_f = sys.argv[2]
-    groups_f = sys.argv[3]
 from __future__ import division
 import sys
+sys.setrecursionlimit(10000) # needed for clustering
 from os.path import basename, isfile, abspath, splitext, join, exists
 from os import getcwd, mkdir
-import numpy as np
+from docopt import docopt, DocoptExit
+import subprocess
+from ast import literal_eval
+
 import itertools
 import operator
 import random
 from collections import Counter
 import collections
+
+import numpy as np
+from scipy import arange
+import scipy.cluster.hierarchy as sch
 
 import matplotlib as mat
 import matplotlib.cm as cm
@@ -46,12 +52,8 @@ import seaborn as sns
 sns.set_context("talk")
 #sns.set(font='serif')
 sns.set(style="whitegrid")
-
-sys.setrecursionlimit(10000) # needed for clustering
-import scipy
 import pylab
-import scipy.cluster.hierarchy as sch
-from scipy import arange
+import Queue
 
 '''
 Improvements
@@ -62,19 +64,20 @@ Improvements
 
 '''
 
-def readFasta(infile):
-    if not isfile(infile):
-         BtLog.error('0', infile)
-    with open(infile) as fh:
-        header, seqs = '', []
-        for l in fh:
-            if l[0] == '>':
-                if (header):
-                    yield header, ''.join(seqs)
-                header, seqs = l[1:-1].split()[0], [] # Header is split at first whitespace
-            else:
-                seqs.append(l[:-1])
-        yield header, ''.join(seqs)
+def progress(iteration, steps, max_value):
+    if int(iteration) == int(max_value):
+        sys.stdout.write('\r')
+        print "[PROGRESS]\t: %d%%" % (100)
+    elif int(iteration) % int(steps+1) == 0:
+        sys.stdout.write('\r')
+        print "[PROGRESS]\t: %d%%" % (float(int(iteration)/int(max_value))*100),
+        sys.stdout.flush()
+    else:
+        pass
+
+def dump(obj):
+    for attr in dir(obj):
+        print "obj.%s = %s" % (attr, getattr(obj, attr))
 
 ############################################################################################
 # DATA
@@ -113,16 +116,31 @@ class DataObj():
     # Parsing Input files
     ############################################################################################
 
-    def parse_species_classification(self, species_classification_f):
-        with open(species_classification_f) as fh:
+    def readFasta(self, infile):
+        with open(infile) as fh:
+            header, seqs = '', []
+            for l in fh:
+                if l[0] == '>':
+                    if (header):
+                        yield header, ''.join(seqs)
+                    header, seqs = l[1:-1].split()[0], [] # Header is split at first whitespace
+                else:
+                    seqs.append(l[:-1])
+            yield header, ''.join(seqs)
+
+    def parse_categories(self, category_f):
+        with open(category_f) as fh:
             for l in fh:
                 if l.startswith("#"):
-                    self.rankIDs = [x.strip() for x in l.lstrip("#").rstrip("\n").split()]
+                    self.rankIDs = [x.strip() for x in l.lstrip("#").rstrip("\n").split(",")]
+                    print len(self.rankIDs)
                     self.rankIDs_count = len(self.rankIDs)
                     self.levelIDs_by_rankID = {rankID : set() for rankID in self.rankIDs}
                     self.proteomeIDs_by_levelID_by_rankID = {rankID : {} for rankID in self.rankIDs}
                 else:
-                    line = l.rstrip("\n").split()
+                    line = l.rstrip("\n").split(",")
+                    if not len(line) == len(self.rankIDs):
+                        sys.exit("[ERROR] - number of columns in line differs from header\n\t%s\n\t%s" % (self.rankIDs, line))
                     proteomeID = line[0]
                     self.proteomeIDs.append(proteomeID)
                     self.levelIDs_by_rankID_by_proteomeID[proteomeID] = {x : '' for x in self.rankIDs}
@@ -154,12 +172,15 @@ class DataObj():
         for proteome_file, proteome_RLO in zip(proteome_files, self.yield_RLOs(ranks=['proteome'], levels=['all'])):
                 proteome_RLO.file = proteome_file
 
-    def parse_fasta(self):
+    def parse_fasta(self, fasta_dir):
         for proteome_RLO in self.yield_RLOs(ranks=['proteome'], levels=['all']):
-            if not isfile(proteome_RLO.file):
+            proteome_file = join(fasta_dir, proteome_RLO.file)
+            if not isfile(proteome_file):
                 print "[WARN] - %s does not exist." % (proteome_RLO.file)
             else:
-                for header, sequence in readFasta(proteome_RLO.file):
+                print "[STATUS] - parsing FASTA %s" % (proteome_RLO.file)
+                proteome_RLO.file = proteome_file
+                for header, sequence in self.readFasta(proteome_RLO.file):
                     proteinObj = ProteinObj(header, len(sequence), proteome_RLO.levelID)
                     self.proteinObjs_by_proteinID[proteinObj.proteinID] = proteinObj
                 self.fasta_parsed = True
@@ -168,12 +189,25 @@ class DataObj():
         if not isfile(groups_f) and groups_f.endswith(".txt"):
             sys.exit("[ERROR] - %s does not exist." % (groups_f))
         inflation_value = basename(groups_f).lstrip("OrthologousGroups_").rstrip(".txt")
-        print "[STATUS] - Parsing %s : inflation value = %s" % (groups_f, inflation_value)
+        if not (inflation_value):
+            inflation_value = 'N/A'
+
+        print "[STATUS] - Parsing %s : \n\tinflation value = %s" % (groups_f, inflation_value)
+        parsed_clusterObjs = []
         with open(groups_f) as fh:
-            for line in fh:
+            for idx, line in enumerate(fh):
                 clusterID, protein_string = line.rstrip("\n").split(": ")
                 clusterObj = ClusterObj(clusterID, protein_string.split())
-                self.add_clusterObj(clusterObj)
+                parsed_clusterObjs.append(clusterObj)
+
+        number_of_clusters = len(parsed_clusterObjs)
+        steps = number_of_clusters/100
+        print "\tnumber of clusters = %s" % (number_of_clusters)
+
+        print "[STATUS] - Adding clusters"
+        for idx, clusterObj in enumerate(parsed_clusterObjs):
+            self.add_clusterObj(clusterObj)
+            progress(idx+1, steps, number_of_clusters)
 
     ############################################################################################
     # Functionality
@@ -223,25 +257,28 @@ class DataObj():
             yield self.clusterObjs_by_clusterID[clusterID]
 
     def add_clusterObj(self, clusterObj):
-        self.clusterObjs_order.append(clusterObj.clusterID)
-        self.clusterObjs_by_clusterID[clusterObj.clusterID] = clusterObj
-        # determine length parameters
+
+        # set clusterObj.filter_pass
         if self.fasta_parsed == True:
             for proteinID in clusterObj.proteinIDs:
                 protein_length = self.proteinObjs_by_proteinID[proteinID].length
                 clusterObj.protein_length.append(protein_length)
-            clusterObj.protein_length_median = np.median(clusterObj.protein_length)
-            if clusterObj.protein_length_median >= MEDIAN_LENGTH_THRESHOLD:
+            if (MEDIAN_LENGTH_THRESHOLD):
+                clusterObj.protein_length_median = np.median(clusterObj.protein_length)
+                if clusterObj.protein_length_median >= MEDIAN_LENGTH_THRESHOLD:
+                    clusterObj.filter_pass = True
+            else:
                 clusterObj.filter_pass = True
         else:
             clusterObj.filter_pass = True
+
         # dealing with cluster
         if clusterObj.filter_pass == True:
             for rankID in self.rankIDs:
-                # determine clustertype for each rank
-                levelIDs_seen = set()
-                for proteomeID in clusterObj.proteomeIDs:
-                    levelIDs_seen.add(self.levelIDs_by_rankID_by_proteomeID[proteomeID][rankID])
+                levelIDs_seen = set() # levelIDs that are in this clusterObj
+                for proteomeID in clusterObj.proteomeIDs: # based on proteomeIDs in clusterObj ...
+                    levelIDs_seen.add(self.levelIDs_by_rankID_by_proteomeID[proteomeID][rankID]) # add levelIDs to which proteomeID belongs
+
                 if clusterObj.proteinID_count == 1:
                     clusterObj.cluster_type_by_rankID[rankID] = 'singleton'
                 else:
@@ -250,39 +287,57 @@ class DataObj():
                     else:
                         clusterObj.cluster_type_by_rankID[rankID] = 'monoton'
 
-                for levelID in self.levelIDs_by_rankID[rankID]:
+                for levelID in levelIDs_seen:
                     #if not rankID in self.protein_count_by_levelID_by_rankID:
                     #    self.protein_count_by_levelID_by_rankID[rankID] = []
                     # this has to be done by levelID not by proteomeID
 #                    self.protein_count_by_levelID_by_rankID[rankID].append(clusterObj.proteinID_count_by_proteomeID)
-                    if levelID in levelIDs_seen:
-                        # update count in RLOs
-                        for RLO in self.yield_RLOs(ranks=[rankID], levels=[levelID]):
-                            # coverage
-                            if not clusterObj.cluster_type_by_rankID[rankID] == 'singleton':
-                                proteomeIDs_in_cluster = clusterObj.proteomeIDs_unique
-                                proteomeIDs_in_RLO = RLO.proteomeIDs
-                                RLO_proteomeIDs_in_cluster = proteomeIDs_in_cluster.intersection(proteomeIDs_in_RLO)
-                                coverage = float(len(RLO_proteomeIDs_in_cluster)/len(proteomeIDs_in_RLO))
-                                RLO.coverage_in_clusters.append(coverage)
-                            # clusters
-                            RLO.clusterIDs.append(clusterObj.clusterID)
-                            RLO.clusterID_count += 1
-                            cluster_type = clusterObj.cluster_type_by_rankID[rankID]
-                            RLO.clusterID_by_type[cluster_type].append(clusterObj.clusterID)
-                            RLO.clusterID_count_by_type[cluster_type] += 1
-                            # proteins
-                            for proteomeID in RLO.proteomeIDs:
-                                if proteomeID in clusterObj.proteinIDs_by_proteomeID:
-                                    RLO.proteinIDs.extend(clusterObj.proteinIDs_by_proteomeID[proteomeID])
-                                    RLO.proteinID_count += clusterObj.proteinID_count_by_proteomeID[proteomeID]
-                                    RLO.proteinID_by_type[cluster_type].append(clusterObj.proteinIDs_by_proteomeID[proteomeID])
-                                    RLO.proteinID_count_by_type[cluster_type] += clusterObj.proteinID_count_by_proteomeID[proteomeID]
+                    RLO = self.RLO_by_levelID_by_rankID[rankID][levelID]
+                    # CLUSTERS
+                    RLO.clusterIDs.append(clusterObj.clusterID)
+                    RLO.clusterID_count += 1
+                    cluster_type = clusterObj.cluster_type_by_rankID[rankID]
+                    RLO.clusterID_by_type[cluster_type].append(clusterObj.clusterID)
+                    RLO.clusterID_count_by_type[cluster_type] += 1
+                    # proteins
+                    for proteomeID in RLO.proteomeIDs:
+                        if proteomeID in clusterObj.proteinIDs_by_proteomeID:
+                            RLO.proteinIDs.extend(clusterObj.proteinIDs_by_proteomeID[proteomeID])
+                            RLO.proteinID_count += clusterObj.proteinID_count_by_proteomeID[proteomeID]
+                            RLO.proteinID_by_type[cluster_type].append(clusterObj.proteinIDs_by_proteomeID[proteomeID])
+                            RLO.proteinID_count_by_type[cluster_type] += clusterObj.proteinID_count_by_proteomeID[proteomeID]
                             # length
                             if self.fasta_parsed == True:
-                                for proteinID in RLO.proteinIDs:
-                                    RLO.protein_span += sum(clusterObj.protein_length)
+                                RLO.protein_span.append(self.proteinObjs_by_proteinID[proteinID].length)
 
+                    if not cluster_type == 'singleton':
+                        unique_proteomeIDs_in_cluster = clusterObj.proteomeIDs_unique
+                        proteomeIDs_in_RLO = RLO.proteomeIDs
+                        RLO_proteomeIDs_in_cluster = unique_proteomeIDs_in_cluster.intersection(proteomeIDs_in_RLO)
+                        # COVERAGE
+                        coverage = float(len(RLO_proteomeIDs_in_cluster)/len(proteomeIDs_in_RLO))
+                        RLO.coverage_in_clusters.append(coverage)
+                        if len(RLO_proteomeIDs_in_cluster) > 1:
+                            # more than 1 species in RLO
+                            if proteomeIDs_in_RLO.issubset(unique_proteomeIDs_in_cluster):
+                                # all proteomeIDs of RLO present in cluster
+                                proteomeIDs_in_cluster = clusterObj.proteomeIDs # get all proteomes in clusters
+                                proteomeID_count_of_RLO_proteomeID_in_cluster_by_proteomeID = {proteomeID : count for proteomeID, count in dict(clusterObj.proteinID_count_by_proteomeID).items() if proteomeID in proteomeIDs_in_RLO}
+                                #print proteomeID_count_of_RLO_proteomeID_in_cluster_by_proteomeID
+                                #dump(clusterObj)
+                                #print RLO
+                                if all(count == 1 for count in proteomeID_count_of_RLO_proteomeID_in_cluster_by_proteomeID.values()):
+                                    # if all count in RLO 1
+                                    RLO.clusterID_by_type['true_one2one'][cluster_type].append(clusterObj.clusterID)
+                                    RLO.clusterID_count_by_type['true_one2one'][cluster_type] += 1
+                                    for proteomeID in RLO_proteomeIDs_in_cluster:
+                                        RLO.proteinID_by_type['true_one2one'][cluster_type].append(clusterObj.proteinIDs_by_proteomeID[proteomeID])
+                                        RLO.proteinID_count_by_type['true_one2one'][cluster_type] += clusterObj.proteinID_count_by_proteomeID[proteomeID]
+
+                    #print RLO
+        self.clusterObjs_order.append(clusterObj.clusterID)
+        self.clusterObjs_by_clusterID[clusterObj.clusterID] = clusterObj
+        #dump(clusterObj)
 
     def calculate_rarefraction_data(self, REPETITIONS):
         for rankID in self.proteomeIDs_by_levelID_by_rankID:
@@ -346,67 +401,36 @@ class DataObj():
                     with open(coverages_out_txt, "w") as fh:
                         fh.write("%s\n" % (coverages_by_levelID_by_rankID[rankID][levelID]))
 
-    def output(self, argument): # for debugging
-        if argument == 'categories':
-            print "# Ranks : %s" % (self.rankIDs_count)
-            print "\t=> %s" % (", ".join(self.rankIDs))
-            for rankID in self.rankIDs:
-                print "# Levels of rank \"%s\" : %s" % (rankID, self.levelIDs_count_by_rankID[rankID])
-                print "\t=> %s" % (", ".join([levelID for levelID in self.levelIDs_by_rankID[rankID]]))
-            print "# Proteomes by level by rank"
-            for rankID in self.rankIDs:
-                print "\t=> %s" % (rankID)
-                for level, proteomeIDs in self.proteomeIDs_by_levelID_by_rankID[rankID].items():
-                    print "\t %s : %s" % (level, ", ".join(list(proteomeIDs)))
-            print "# Levels by rank by proteome"
-            for proteomeID in self.proteomeIDs:
-                levelIDs = [self.levelIDs_by_rankID_by_proteomeID[proteomeID][rankID] for rankID in self.rankIDs]
-                string = []
-                for rankID, levelID in zip(self.rankIDs, levelIDs):
-                    string.append("\t%s = %s" % (rankID, levelID))
-                print "\t - %s \t %s" % (proteomeID, "\t".join(string))
-        elif argument == 'ranklevelobjs':
-            # all
-            #for RLO in self.yield_RLOs(ranks='all', levels='all'):
-            #    print RLO
-            print "# RLOs"
-            for RLO in self.yield_RLOs(ranks=['species'], levels=['all']):
-                print RLO
-            for RLO in self.yield_RLOs(ranks=['group'], levels=['all']):
-                print RLO
-            for RLO in self.yield_RLOs(ranks=['genus'], levels=['all']):
-                print RLO
-        else:
-            pass
-
     def output_counts_by_RLO(self):
         for rankID in self.rankIDs:
             rank_out_f = join(self.dirs[rankID], "%s.counts.txt" % (rankID))
             rank_out_string = ["\t".join(["rankID", "levelID", \
-                "cluster_count", "cluster_singleton_count", "cluster_monoton_count", "cluster_multiton_count", \
-                "protein_count", "protein_singleton_count", "protein_monoton_count", "protein_multiton_count", \
+                "cluster_count", "cluster_singleton_count", \
+                "cluster_monoton_count", "cluster_multiton_count", \
+                "cluster_monoton_o2o_count", "cluster_multiton_o2o_count", \
+                "protein_count", "protein_singleton_count", \
+                "protein_monoton_count", "protein_multiton_count", \
+                "protein_monoton_o2o_count", "protein_multiton_o2o_count", \
                 "protein_span",  "members_count", "members" \
                 ])]
             for levelID, RLO in self.RLO_by_levelID_by_rankID[rankID].items():
+                protein_span = 0
                 if (self.fasta_parsed):
-                    rank_out_string.append("\t".join([str(x) for x in [ \
-                        RLO.rankID, RLO.levelID, \
-                        RLO.clusterID_count, RLO.clusterID_count_by_type['singleton'], RLO.clusterID_count_by_type['monoton'], RLO.clusterID_count_by_type['multiton'], \
-                        RLO.proteinID_count, RLO.proteinID_count_by_type['singleton'], RLO.proteinID_count_by_type['monoton'], RLO.proteinID_count_by_type['multiton'], \
-                        RLO.protein_span, RLO.proteomeIDs_count, ",".join(RLO.proteomeIDs) \
-                        ]]))
+                    protein_span = sum(RLO.protein_span)
                 else:
-                    rank_out_string.append("\t".join([str(x) for x in [ \
-                        RLO.rankID, RLO.levelID, \
-                        RLO.clusterID_count, RLO.clusterID_count_by_type['singleton'], RLO.clusterID_count_by_type['monoton'], RLO.clusterID_count_by_type['multiton'], \
-                        RLO.proteinID_count, RLO.proteinID_count_by_type['singleton'], RLO.proteinID_count_by_type['monoton'], RLO.proteinID_count_by_type['multiton'], \
-                        "None", RLO.proteomeIDs_count, ",".join(RLO.proteomeIDs) \
-                        ]]))
-                #level_out_f = join(self.dirs[rankID], "%s.%s.counts.txt" % (rankID, levelID))
-                #print levelID
-                #print RLO
+                    protein_span = 'N/A'
+                rank_out_string.append("\t".join([str(x) for x in [ \
+                    RLO.rankID, RLO.levelID, \
+                    RLO.clusterID_count, RLO.clusterID_count_by_type['singleton'], \
+                    RLO.clusterID_count_by_type['monoton'], RLO.clusterID_count_by_type['multiton'], \
+                    RLO.clusterID_count_by_type['true_one2one']['monoton'], RLO.clusterID_count_by_type['true_one2one']['multiton'], \
+                    RLO.proteinID_count, RLO.proteinID_count_by_type['singleton'], \
+                    RLO.proteinID_count_by_type['monoton'], RLO.proteinID_count_by_type['multiton'], \
+                    RLO.proteinID_count_by_type['true_one2one']['monoton'], RLO.proteinID_count_by_type['true_one2one']['multiton'], \
+                    protein_span, RLO.proteomeIDs_count, ",".join(RLO.proteomeIDs) \
+                    ]]))
             with open(rank_out_f, "w") as fh:
-                fh.write("\n".join(rank_out_string))
+                fh.write("\n".join(rank_out_string) + "\n")
 
     def output_clusters_by_type(self):
         for rankID in self.rankIDs:
@@ -415,19 +439,33 @@ class DataObj():
                 if (RLO.clusterID_by_type['singleton']):
                     with open(out_cluster_singleton_f, "w") as out_cluster_singleton_fh:
                         out_cluster_singleton_fh.write("\n".join(RLO.clusterID_by_type['singleton']))
+                        out_cluster_singleton_fh.write("\n")
                 out_cluster_monoton_f = join(self.dirs[rankID], "%s.%s.clusterIDs.monotons.txt" % (rankID, levelID))
                 if (RLO.clusterID_by_type['monoton']):
                     with open(out_cluster_monoton_f, "w") as out_cluster_monoton_fh:
                         out_cluster_monoton_fh.write("\n".join(RLO.clusterID_by_type['monoton']))
+                        out_cluster_monoton_fh.write("\n")
                 out_cluster_multiton_f = join(self.dirs[rankID], "%s.%s.clusterIDs.multitons.txt" % (rankID, levelID))
                 if (RLO.clusterID_by_type['multiton']):
                     with open(out_cluster_multiton_f, "w") as out_cluster_multiton_fh:
                         out_cluster_multiton_fh.write("\n".join(RLO.clusterID_by_type['multiton']))
+                        out_cluster_multiton_fh.write("\n")
+                out_cluster_true_one2one_multiton_f = join(self.dirs[rankID], "%s.%s.clusterIDs.multitons.true_one2one.txt" % (rankID, levelID))
+                if (RLO.clusterID_by_type['true_one2one']['multiton']):
+                    with open(out_cluster_true_one2one_multiton_f, "w") as out_cluster_true_one2one_multiton_fh:
+                        out_cluster_true_one2one_multiton_fh.write("\n".join(RLO.clusterID_by_type['true_one2one']['multiton']))
+                        out_cluster_true_one2one_multiton_fh.write("\n")
+                out_cluster_true_one2one_monoton_f = join(self.dirs[rankID], "%s.%s.clusterIDs.monotons.true_one2one.txt" % (rankID, levelID))
+                if (RLO.clusterID_by_type['true_one2one']['monoton']):
+                    with open(out_cluster_true_one2one_monoton_f, "w") as out_cluster_true_one2one_monoton_fh:
+                        out_cluster_true_one2one_monoton_fh.write("\n".join(RLO.clusterID_by_type['true_one2one']['monoton']))
+                        out_cluster_true_one2one_monoton_fh.write("\n")
+
 
     def output_clusters_by_proteome_count(self):
         out_clusterObj_count_f = join(self.dirs['main'], "cluster_count_by_proteome.txt")
-        out_clusterObj_count_plot_f = join(self.dirs['main'], "cluster_count_by_proteome.%s" % PLOT_FORMAT)
-        out_clusterObj_count_string = ["clusterID\t%s" % "\t".join(self.proteomeIDs)]
+        out_clusterObj_count_plot_f = join(self.dirs['main'], "cluster_count_by_proteome.heatmap.%s" % PLOT_FORMAT)
+        out_clusterObj_count_string = ["#clusterID\t%s" % "\t".join(self.proteomeIDs)]
         out_clusterObj_count_x = self.proteomeIDs
         out_clusterObj_count_y = []
         out_clusterObj_count_z = []
@@ -440,8 +478,16 @@ class DataObj():
                 ))
         with open(out_clusterObj_count_f, 'w') as out_clusterObj_count_fh:
             out_clusterObj_count_fh.write("\n".join(out_clusterObj_count_string))
-        #seaborn_heatmap(out_clusterObj_count_plot_f, out_clusterObj_count_x, out_clusterObj_count_y, out_clusterObj_count_z)
         plot_heatmap(out_clusterObj_count_plot_f, out_clusterObj_count_x, out_clusterObj_count_y, out_clusterObj_count_z)
+
+        out_counts_of_cluster_count_f = join(self.dirs['main'], "counts_of_cluster_count.txt")
+        out_counts_of_cluster_count_string = ["#count\t%s" % "\t".join(self.proteomeIDs)]
+        counts_of_cluster_count = Counter(str(x) for x in out_clusterObj_count_z)
+        for cluster_count, count in counts_of_cluster_count.most_common():
+            out_counts_of_cluster_count_string.append("%s\t%s" % (count, \
+                "\t".join(str(x) for x in literal_eval(cluster_count))))
+        with open(out_counts_of_cluster_count_f, 'w') as out_counts_of_cluster_count_fh:
+            out_counts_of_cluster_count_fh.write("\n".join(out_counts_of_cluster_count_string))
 
 
     def output_rarefraction(self):
@@ -489,12 +535,6 @@ def plot_rarefraction_data(rarefraction_by_levelID, rarefraction_plot_f):
     print "[STATUS] - Plotting rarefraction data \t%s" % (rarefraction_plot_f)
     f, ax = plt.subplots(figsize=(24, 12))
     sns.set_color_codes("pastel")
-    order = {}
-    #print rarefraction_by_levelID
-    #for levelID, rarefraction_data in rarefraction_by_levelID.items():
-    #    counter = Counter(rarefraction_data)
-    #    order[levelID] = counter[1.0]
-    #print order
     max_number_of_samples = 0
     for idx, levelID in enumerate(rarefraction_by_levelID):
         number_of_samples = len(rarefraction_by_levelID[levelID])
@@ -547,9 +587,13 @@ def cmap_discretize(cmap, N):
 def plot_heatmap(out_clusterObj_count_plot_f, out_clusterObj_count_x, out_clusterObj_count_y, out_clusterObj_count_z):
     print "[STATUS] - Plotting heatmap \t%s" % (out_clusterObj_count_plot_f)
     # Coordinates
+    hierarchical_clustering = 0
     spacer = 0.02
     dendrogram_height = 0.15
     heatmap_height = heatmap_width = 0.60
+
+    if not (hierarchical_clustering):
+        dendrogram_height = 0
 
     fig_x_min, fig_y_min = 0.1, 0.1
     fig_x_max, fig_y_max = 0.9, 0.9
@@ -588,29 +632,33 @@ def plot_heatmap(out_clusterObj_count_plot_f, out_clusterObj_count_x, out_cluste
     #def median_compare(x, y):
     #    return int(np.mean(y)) - int(np.mean(x))
     #z = np.array([x for x in sorted(out_clusterObj_count_z, cmp=median_compare)])
-    z = np.array(out_clusterObj_count_z)
+    Z = np.array(out_clusterObj_count_z)
 
-    #print "left started"
-    left_Y = sch.linkage(z, method='ward')
-    ax_dendrogram_left = fig.add_axes(rect_row, frameon=True)
-    #dendrogram_left_Z = sch.dendrogram(left_Y, orientation='left', color_threshold=0.9, show_leaf_counts=True, show_contracted=True, truncate_mode='lastp', distance_sort='ascending')
-    dendrogram_left_Z = sch.dendrogram(left_Y, orientation='left', count_sort='descending', color_threshold=0.9, link_color_func=lambda k: '0.5')
-    ax_dendrogram_left.set_xticks([])
-    ax_dendrogram_left.set_yticks([])
-    ax_dendrogram_left.grid(False)
-    #print "left done"
+    hierarchical_clustering = 0
+    if (hierarchical_clustering):
+        #print "left started"
+        left_Y = sch.linkage(z, method='single')
+        ax_dendrogram_left = fig.add_axes(rect_row, frameon=True)
+        #dendrogram_left_Z = sch.dendrogram(left_Y, orientation='left', color_threshold=0.9, show_leaf_counts=True, show_contracted=True, truncate_mode='lastp', distance_sort='ascending')
+        #dendrogram_left_Z = sch.dendrogram(left_Y, orientation='left', count_sort='descending', color_threshold=0.9, link_color_func=lambda k: '0.5')
+        dendrogram_left_Z = sch.dendrogram(left_Y, orientation='left', color_threshold=0.9, link_color_func=lambda k: '0.5')
+        ax_dendrogram_left.set_xticks([])
+        ax_dendrogram_left.set_yticks([])
+        ax_dendrogram_left.grid(False)
+        #print "left done"
 
-    #print "top started"
-    top_Y = sch.linkage(z.T, method='ward')
-    ax_dendrogram_top = fig.add_axes(rect_col, frameon=True)
-    dendrogram_top_Z = sch.dendrogram(top_Y, show_leaf_counts=True, labels=np.array(x_labels), orientation='top', color_threshold=0.9, link_color_func=lambda k: '0.5')
-    ax_dendrogram_top.set_yticks([])
-    ax_dendrogram_top.set_xticks([])
-    ax_dendrogram_top.grid(False)
-    #print "top done"
+        #print "top started"
+        top_Y = sch.linkage(z.T, method='ward')
+        ax_dendrogram_top = fig.add_axes(rect_col, frameon=True)
+        dendrogram_top_Z = sch.dendrogram(top_Y, show_leaf_counts=True, labels=np.array(x_labels), orientation='top', color_threshold=0.9, link_color_func=lambda k: '0.5')
+        ax_dendrogram_top.set_yticks([])
+        #ax_dendrogram_top.set_xticks([])
+        ax_dendrogram_top.grid(False)
+        #print "top done"
+        #reorder matrix
+        #Z = Z[:, dendrogram_top_Z['leaves']]
+        #Z = Z[dendrogram_left_Z['leaves'], :]
 
-    #reorder leaves
-    Z = z[dendrogram_left_Z['leaves'], :]
 
     axmatrix = fig.add_axes(rect_heat)
     im = axmatrix.matshow(Z, cmap=cmap, aspect='auto', interpolation='nearest', origin='upper', vmin=vmin, vmax=vmax)
@@ -636,9 +684,7 @@ def plot_heatmap(out_clusterObj_count_plot_f, out_clusterObj_count_x, out_cluste
     colorbar.set_ticks(np.linspace(0, vmax+1, vmax+1))
     colorbar.set_ticklabels(["%s" % x if not x == vmax else "%s+" % x for x in range(vmax+1)])
     colorbar.ax.tick_params(labelsize=FONTSIZE)
-
     fig.savefig(out_clusterObj_count_plot_f)
-
 
 def plot_coverage_decay(rankID, coverages_by_levelID, coverages_out_png):
     f, ax = plt.subplots(figsize=(24, 12))
@@ -650,30 +696,43 @@ def plot_coverage_decay(rankID, coverages_by_levelID, coverages_out_png):
     legend_handles = []
     legend_labels = []
     plot_flag = False
+    #print coverages_by_levelID
     for levelID_idx, (levelID, count_100) in enumerate(sorted(order.items(), key=operator.itemgetter(1), reverse=True)):
+        #print levelID, count_100
         colour = ''
         label = ''
         number_of_members = dataObj.count_by_levelID_by_rankID[rankID][levelID]
+        #print number_of_members
         if number_of_members > 1:
             plot_flag = True
-
             x_values = []
             y_values = []
             last_x = None
             for coverage_idx, coverage in enumerate(coverages_by_levelID[levelID]):
-                if not (y_values):
-                    y_values.append(coverage)
-                    x_values.append(coverage_idx)
-                else:
-                    if coverage == y_values[-1]:
-                        last_x = coverage_idx
-                    else:
-                        y_values.append(y_values[-1])
-                        x_values.append(last_x)
-                        y_values.append(coverage)
-                        x_values.append(coverage_idx)
-            y_values.append(y_values[-1])
-            x_values.append(last_x)
+                cluster_count = coverage_idx + 1
+                #print cluster_count, coverage
+                y_values.append(coverage)
+                x_values.append(cluster_count)
+                #if not (y_values):
+                #    print "first"
+                #    y_values.append(coverage)
+                #    x_values.append(cluster_count)
+                #else:
+                #    print "not first"
+                #    if coverage == y_values[-1]:
+                #        last_x = cluster_count
+                #    else:
+                #        y_values.append(coverage)
+                #        x_values.append(cluster_count)
+                #        y_values.append(coverage)
+                #        x_values.append(cluster_count)
+                #print "y = ", y_values
+                #print "x = ", x_values
+
+#            y_values.append(y_values[-1])
+#            x_values.append(last_x)
+            #print y_values
+            #print x_values
             colour, ax._get_lines.color_cycle = next_color(ax)
             ax.plot(x_values, y_values, '-o', linestyle = '-', linewidth = 4, color = colour, label=levelID, markeredgecolor = 'none')
             label = "%s - %s proteomes" % (levelID, number_of_members)
@@ -682,7 +741,6 @@ def plot_coverage_decay(rankID, coverages_by_levelID, coverages_out_png):
             label = "%s - %s proteome" % (levelID, number_of_members)
         legend_handles.append(Line2D([0], [0], color=colour, linewidth = 0.5, linestyle="none", marker="o", alpha=1, markersize=10))
         legend_labels.append(label)
-    #ax.set_xlim([-0.9, len(x_values)])
     ax.set_ylim([0, 1.1])
     ax.set_ylabel("Fraction of rank members present in clusters")
     ax.set_xlabel("Count of clusters")
@@ -752,15 +810,16 @@ class RankLevelObj():
 
         self.proteinIDs = []
         self.proteinID_count = 0
-        self.proteinID_by_type = {'singleton' : [], 'monoton' : [], 'multiton' : []}
-        self.proteinID_count_by_type = {'singleton' : 0, 'monoton' : 0, 'multiton' : 0}
-        self.protein_span = 0
+        self.proteinID_by_type = {'singleton' : [], 'monoton' : [], 'multiton' : [], 'true_one2one': {'monoton' : [], 'multiton' : []}}
+        self.proteinID_count_by_type = {'singleton' : 0, 'monoton' : 0, 'multiton' : 0, 'true_one2one' : {'monoton' : 0, 'multiton' : 0}}
+        self.clusterID_by_type = {'singleton' : [], 'monoton' : [], 'multiton' : [], 'true_one2one': {'monoton' : [], 'multiton' : []}}
+        self.clusterID_count_by_type = {'singleton' : 0, 'monoton' : 0, 'multiton' : 0, 'true_one2one' : {'monoton' : 0, 'multiton' : 0}}
+        self.protein_span = []
+
         self.clusterIDs = []
         self.clusterID_count = 0
-        self.clusterID_by_type = {'singleton' : [], 'monoton' : [], 'multiton' : []}
-        self.clusterID_count_by_type = {'singleton' : 0, 'monoton' : 0, 'multiton' : 0}
-
         self.coverage_in_clusters = []
+
         self.rarefraction_data = {} # repetition : number of clusters
 
     def __str__(self):
@@ -769,9 +828,11 @@ class RankLevelObj():
         string += "rankID : %s\n" % self.rankID
         string += "proteinID_count : %s\n" % self.proteinID_count
         string += "proteinID_count_by_type : %s\n" % self.proteinID_count_by_type
+        #string += "proteinID_count_by_type_unique : %s\n" % {k: len(v) for k, v in self.proteinID_by_type.items()}
         string += "clusterID_count : %s\n" % self.clusterID_count
         string += "clusterID_count_by_type : %s\n" % (str(self.clusterID_count_by_type))
-        string += "coverage : %s\n" % (str(Counter(self.coverage_in_clusters)))
+        #string += "clusterID_count_by_type_unique : %s\n" % {k: len(v) for k, v in self.clusterID_by_type.items()}
+        string += "members : %s\n" % self.proteomeIDs
         return string
 
     def check(self):
@@ -790,23 +851,28 @@ class RankLevelObj():
 
 if __name__ == "__main__":
     # david aanensen, github?
-    REPETITIONS = 30 + 1
-    PLOT_FORMAT = 'png'
-    species_ids_f, species_classification_f, groups_f = '','',''
+    __version__ = 0.1
+    args = docopt(__doc__)
     try:
-        species_ids_f = sys.argv[1]
-        species_classification_f = sys.argv[2]
-        groups_f = sys.argv[3]
-    except:
-        sys.exit("./clusterbuster.py SPECIESID_FILE SPECIESCLASSIFICATION_FILE GROUPS_FILE")
+        species_ids_f = args['--species_file']
+        groups_f = args['--groups']
+        category_f = args['--category_file']
+        fasta_dir = args['--fasta_dir']
+        MEDIAN_LENGTH_THRESHOLD = int(args['--median_prot_len'])
+        REPETITIONS = int(args['--repetitions']) + 1
+        out_prefix = args['--outprefix']
+        PLOT_FORMAT = args['--plotfmt']
+    except docopt.DocoptExit:
+        print __doc__.strip()
 
     dataObj = DataObj()
-    # Get all info from species_classification_f
-    dataObj.parse_species_classification(species_classification_f)
+    # Get all info from category_f
+    dataObj.parse_categories(category_f)
     dataObj.create_RLOs()
     dataObj.parse_species_ids(species_ids_f)
     dataObj.setup_dirs()
-    dataObj.parse_fasta()
+    if (fasta_dir):
+        dataObj.parse_fasta(fasta_dir)
     #dataObj.output("categories") # debug
     dataObj.parse_clusters(groups_f)
     #dataObj.output("ranklevelobjs")
