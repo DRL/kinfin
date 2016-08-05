@@ -1,7 +1,2 @@
-data/*.txt
+data/
 data/*.png
-cb_results/*/*.png
-cb_results/*.png
-cb_results/*/*.txt
-cb_results/*.txt
-old_results/*
