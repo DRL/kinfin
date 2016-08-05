@@ -3,7 +3,8 @@
 
 """
 usage: kb.py        -s <FILE> -g <FILE> -c <FILE>
-                    [-d <DIR>] [-l <INT>] [-r <INT>]
+                    [-d <DIR>] [-f <FILE>]
+                    [-l <INT>] [-r <INT>]
                     [-o <PREFIX>] [-p <PLOTFORMAT>]
                     [-h|--help]
 
@@ -12,7 +13,7 @@ usage: kb.py        -s <FILE> -g <FILE> -c <FILE>
         -s, --species_file <FILE>           SpeciesIDs.txt used in OrthoFinder
         -g, --groups <FILE>                 OrthologousGroups.txt produced by OrthoFinder
         -c, --category_file <FILE>          Category file
-
+        -f, --functional_annotation <FILE>  Functional annotation of proteins
         -d, --fasta_dir <DIR>               Directory containing FASTAs used in Orthofinder
         -l, --median_prot_len <INT>         Median protein length threshold for clusters [default: 0]
         -r, --repetitions <INT>             Number of repetitions for rarefraction curves [default: 30]
@@ -54,7 +55,6 @@ sns.set_context("talk")
 #sns.set(font='serif')
 sns.set(style="whitegrid")
 import pylab
-import Queue
 
 '''
 Improvements
@@ -62,7 +62,7 @@ Improvements
     - randomise proteomeID for each protein in clusters
     - plot as greys in coverage-decay plot
     (-randomise RLO membership of proteomeIDs in cluster)
-
+-
 '''
 
 def progress(iteration, steps, max_value):
@@ -106,7 +106,6 @@ class DataObj():
         self.clusterObjs_by_clusterID = {}
         self.clusterObjs_order = []
 
-        # heatmap
 
         # misc
         self.inflation_value = ''
@@ -184,6 +183,20 @@ class DataObj():
                     proteinObj = ProteinObj(header, len(sequence), proteome_RLO.levelID)
                     self.proteinObjs_by_proteinID[proteinObj.proteinID] = proteinObj
                 self.fasta_parsed = True
+
+    def parse_domains(self, domain_f):
+        domains_by_proteinID = {}
+        print "[STATUS] - Parsing domains from %s" % (domain_f)
+        with open(domain_f) as fh:
+            for line in fh:
+                temp = line.rstrip("\n").split()
+                proteinID = temp[0]
+                domain = temp[1]
+                if not proteinID in domains_by_proteinID:
+                    domains_by_proteinID[proteinID] = set()
+                domains_by_proteinID[proteinID].add(domain)
+        for proteinID, domains in domains_by_proteinID.items():
+            self.proteinObjs_by_proteinID[proteinID].domains = domains
 
     def parse_clusters(self, groups_f):
         if not isfile(groups_f) and groups_f.endswith(".txt"):
@@ -522,22 +535,6 @@ class DataObj():
 # PLOTTING
 ############################################################################################
 
-def create_rainbow(ax):
-    rainbow = [ax._get_lines.prop_cycler.next()['color']]
-    while True:
-        nextval = ax._get_lines.prop_cycler.next()['color']
-        if nextval not in rainbow:
-            rainbow.append(nextval)
-        else:
-            return rainbow
-
-def next_color(ax):
-    rainbow = create_rainbow(ax)
-    double_rainbow = collections.deque(rainbow)
-    nextval = ax._get_lines.prop_cycler.next()['color']
-    double_rainbow.rotate(-1)
-    return nextval, itertools.cycle(double_rainbow)
-
 def plot_rarefraction_data(rarefraction_by_levelID, rarefraction_plot_f):
     print "[STATUS] - Plotting rarefraction data \t%s" % (rarefraction_plot_f)
     f, ax = plt.subplots(figsize=(24, 12))
@@ -693,7 +690,24 @@ def plot_heatmap(out_clusterObj_count_plot_f, out_clusterObj_count_x, out_cluste
     colorbar.ax.tick_params(labelsize=FONTSIZE)
     fig.savefig(out_clusterObj_count_plot_f)
 
+#def create_rainbow(ax):
+#    rainbow = [ax._get_lines.prop_cycler.next()['color']]
+#    while True:
+#        nextval = ax._get_lines.prop_cycler.next()['color']
+#        if nextval not in rainbow:
+#            rainbow.append(nextval)
+#        else:
+#            return rainbow
+#
+#def next_color(ax):
+#    rainbow = create_rainbow(ax)
+#    double_rainbow = collections.deque(rainbow)
+#    nextval = ax._get_lines.prop_cycler.next()['color']
+#    double_rainbow.rotate(-1)
+#    return nextval, itertools.cycle(double_rainbow)
+
 def plot_coverage_decay(rankID, coverages_by_levelID, coverages_out_png):
+    sns.set_color_codes("pastel")
     f, ax = plt.subplots(figsize=(24, 12))
     order = {}
     for levelID, coverages in coverages_by_levelID.items():
@@ -703,13 +717,10 @@ def plot_coverage_decay(rankID, coverages_by_levelID, coverages_out_png):
     legend_handles = []
     legend_labels = []
     plot_flag = False
-    #print coverages_by_levelID
     for levelID_idx, (levelID, count_100) in enumerate(sorted(order.items(), key=operator.itemgetter(1), reverse=True)):
-        #print levelID, count_100
         colour = ''
         label = ''
         number_of_members = dataObj.count_by_levelID_by_rankID[rankID][levelID]
-        #print number_of_members
         if number_of_members > 1:
             plot_flag = True
             x_values = []
@@ -717,7 +728,6 @@ def plot_coverage_decay(rankID, coverages_by_levelID, coverages_out_png):
             last_x = None
             for coverage_idx, coverage in enumerate(coverages_by_levelID[levelID]):
                 cluster_count = coverage_idx + 1
-                #print cluster_count, coverage
                 y_values.append(coverage)
                 x_values.append(cluster_count)
                 #if not (y_values):
@@ -740,10 +750,12 @@ def plot_coverage_decay(rankID, coverages_by_levelID, coverages_out_png):
 #            x_values.append(last_x)
             #print y_values
             #print x_values
-            colour, ax._get_lines.color_cycle = next_color(ax)
-            ax.plot(x_values, y_values, '-o', linestyle = '-', linewidth = 4, color = colour, label=levelID, markeredgecolor = 'none')
+            #colour, ax._get_lines.color_cycle = next_color(ax)
+            #ax.plot(x_values, y_values, '-o', linestyle = '-', linewidth = 4, color = colour, label=levelID, markeredgecolor = 'none')
+            plot = ax.plot(x_values, y_values, '-o', linestyle = '-', linewidth = 4, label=levelID, markeredgecolor = 'none')
+            colour = plot[-1].get_color()
             label = "%s - %s proteomes" % (levelID, number_of_members)
-        if not (colour):
+        else:
             colour = '0.75'
             label = "%s - %s proteome" % (levelID, number_of_members)
         legend_handles.append(Line2D([0], [0], color=colour, linewidth = 0.5, linestyle="none", marker="o", alpha=1, markersize=10))
@@ -802,6 +814,7 @@ class ProteinObj():
         self.proteomeID = proteomeID
         self.length = length
         self.clusterID = ''
+        self.domains = set()
 
 ############################################################################################
 # RankLevelObj (PROTEOMES, etc)
@@ -864,6 +877,7 @@ if __name__ == "__main__":
         species_ids_f = args['--species_file']
         groups_f = args['--groups']
         category_f = args['--category_file']
+        domain_f = args['--functional_annotation']
         fasta_dir = args['--fasta_dir']
         MEDIAN_LENGTH_THRESHOLD = int(args['--median_prot_len'])
         REPETITIONS = int(args['--repetitions']) + 1
@@ -880,6 +894,8 @@ if __name__ == "__main__":
     dataObj.setup_dirs(out_prefix)
     if (fasta_dir):
         dataObj.parse_fasta(fasta_dir)
+    if (domain_f):
+        dataObj.parse_domains(domain_f)
     #dataObj.output("categories") # debug
     dataObj.parse_clusters(groups_f)
     #dataObj.output("ranklevelobjs")
