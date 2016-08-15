@@ -2,11 +2,12 @@
 # -*- coding: utf-8 -*-
 
 """
-usage: kb.py        -s <FILE> -g <FILE> -c <FILE>
-                    [-d <DIR>] [-f <FILE>]
-                    [-l <INT>] [-r <INT>]
-                    [-o <PREFIX>] [-p <PLOTFORMAT>]
-                    [-h|--help]
+usage: kinfin.py        -s <FILE> -g <FILE> -c <FILE>
+                        [-d <DIR>] [-f <FILE>]
+                        [-l <INT>] [-r <INT>]
+                        [--fontsize <INT>] [--plotsize INT,INT]
+                        [-o <PREFIX>] [-p <PLOTFORMAT>]
+                        [-h|--help]
 
     Options:
         -h --help                           show this
@@ -18,6 +19,8 @@ usage: kb.py        -s <FILE> -g <FILE> -c <FILE>
         -l, --median_prot_len <INT>         Median protein length threshold for clusters [default: 0]
         -r, --repetitions <INT>             Number of repetitions for rarefraction curves [default: 30]
 
+        --fontsize <INT>                    Fontsize for plots [default: 16]
+        --plotsize <INT,INT>                Size (WIDTH,HEIGHT) for plots [default: 24,12]
         -o, --outprefix <STR>               Output prefix
         -p, --plotfmt <STR>                 Plot formats [default: png]
 """
@@ -56,13 +59,19 @@ sns.set_context("talk")
 sns.set(style="whitegrid")
 import pylab
 
+
 '''
 Improvements
 - randomness
     - randomise proteomeID for each protein in clusters
     - plot as greys in coverage-decay plot
     (-randomise RLO membership of proteomeIDs in cluster)
--
+
+- HGT business
+    - candidate HGT
+    - candidate contaminant
+    - candidate Unknown (only Nematode hits)
+    - blessed (nematode and metazoan)
 '''
 
 def progress(iteration, steps, max_value):
@@ -164,8 +173,9 @@ class DataObj():
         proteome_files = []
         with open(species_ids_f) as fh:
             for l in fh:
-                number, species_fasta = l.rstrip("\n").split(": ")
-                proteome_files.append(species_fasta)
+                if not len(l.strip()) == 0:
+                    number, species_fasta = l.rstrip("\n").split(": ")
+                    proteome_files.append(species_fasta)
         if not self.proteomeIDs_count == len(proteome_files):
             sys.exit("[ERROR] - %s fasta files found in %s. Should be %s." % (len(proteome_files), species_ids_f, self.proteomeIDs_count) )
         for proteome_file, proteome_RLO in zip(proteome_files, self.yield_RLOs(ranks=['proteome'], levels=['all'])):
@@ -383,9 +393,9 @@ class DataObj():
     def setup_dirs(self, out_prefix):
         result_path = ''
         if (out_prefix):
-            result_path = join(getcwd(), "%s.cb_results" % (out_prefix))
+            result_path = join(getcwd(), "%s.kinfin_results" % (out_prefix))
         else:
-            result_path = join(getcwd(), "cb_results")
+            result_path = join(getcwd(), "kinfin_results")
         self.dirs['main'] = result_path
         print "[STATUS] - Output directories in \n\t%s" % (result_path)
         if exists(result_path):
@@ -537,7 +547,7 @@ class DataObj():
 
 def plot_rarefraction_data(rarefraction_by_levelID, rarefraction_plot_f):
     print "[STATUS] - Plotting rarefraction data \t%s" % (rarefraction_plot_f)
-    f, ax = plt.subplots(figsize=(24, 12))
+    f, ax = plt.subplots(figsize=FIGSIZE)
     sns.set_color_codes("pastel")
     max_number_of_samples = 0
     for idx, levelID in enumerate(rarefraction_by_levelID):
@@ -630,9 +640,8 @@ def plot_heatmap(out_clusterObj_count_plot_f, out_clusterObj_count_x, out_cluste
     x_values = range(0, proteome_count)
     major_x_ticks = [0.5+x for x in x_values]
     minor_x_ticks = [x for x in x_values]
-    FONTSIZE = 32
 
-    fig = pylab.figure(figsize=(48, 48))
+    fig = pylab.figure(figsize=(FIGSIZE[0]*2, FIGSIZE[0]*2))
     #def median_compare(x, y):
     #    return int(np.mean(y)) - int(np.mean(x))
     #z = np.array([x for x in sorted(out_clusterObj_count_z, cmp=median_compare)])
@@ -708,7 +717,7 @@ def plot_heatmap(out_clusterObj_count_plot_f, out_clusterObj_count_x, out_cluste
 
 def plot_coverage_decay(rankID, coverages_by_levelID, coverages_out_png):
     sns.set_color_codes("pastel")
-    f, ax = plt.subplots(figsize=(24, 12))
+    f, ax = plt.subplots(figsize=FIGSIZE)
     order = {}
     for levelID, coverages in coverages_by_levelID.items():
         counter = Counter(coverages)
@@ -869,8 +878,20 @@ class RankLevelObj():
 
 ############################################################################################
 
+def set_plot_defaults(FONTSIZE):
+    #plt.rcParams['font.family'] = 'serif'
+    #plt.rcParams['font.serif'] = 'Ubuntu'
+    #plt.rcParams['font.monospace'] = 'Ubuntu Mono'
+    plt.rcParams['font.size'] = FONTSIZE
+    plt.rcParams['axes.labelsize'] = FONTSIZE
+    plt.rcParams['axes.labelweight'] = 'bold'
+    plt.rcParams['axes.titlesize'] = FONTSIZE
+    plt.rcParams['xtick.labelsize'] = FONTSIZE-2
+    plt.rcParams['ytick.labelsize'] = FONTSIZE-2
+    plt.rcParams['legend.fontsize'] = FONTSIZE
+    plt.rcParams['figure.titlesize'] = FONTSIZE+2
+
 if __name__ == "__main__":
-    # david aanensen, github?
     __version__ = 0.1
     args = docopt(__doc__)
     try:
@@ -883,9 +904,12 @@ if __name__ == "__main__":
         REPETITIONS = int(args['--repetitions']) + 1
         out_prefix = args['--outprefix']
         PLOT_FORMAT = args['--plotfmt']
+        FONTSIZE = int(args['--fontsize'])
+        FIGSIZE = tuple(int(x) for x in args['--plotsize'].split(","))
     except docopt.DocoptExit:
         print __doc__.strip()
 
+    set_plot_defaults(FONTSIZE)
     dataObj = DataObj()
     # Get all info from category_f
     dataObj.parse_categories(category_f)
