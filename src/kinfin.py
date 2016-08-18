@@ -17,7 +17,7 @@ usage: kinfin.py        -s <FILE> -g <FILE> -c <FILE>
         -f, --functional_annotation <FILE>  Functional annotation of proteins
         -d, --fasta_dir <DIR>               Directory containing FASTAs used in Orthofinder
         -l, --median_prot_len <INT>         Median protein length threshold for clusters [default: 0]
-        -r, --repetitions <INT>             Number of repetitions for rarefraction curves [default: 30]
+        -r, --repetitions <INT>             Number of repetitions for rarefaction curves [default: 30]
 
         --fontsize <INT>                    Fontsize for plots [default: 16]
         --plotsize <INT,INT>                Size (WIDTH,HEIGHT) for plots [default: 24,12]
@@ -66,6 +66,18 @@ Improvements
     - randomise proteomeID for each protein in clusters
     - plot as greys in coverage-decay plot
     (-randomise RLO membership of proteomeIDs in cluster)
+
+- fuzzy-one2one's for RLOs (as opposed to true-one2one's) : i suspect it is not essential for clostridium but it will be for the nematodes/fungi
+    e.g.: with [x] = proteomes in cluster, (x) = proteomes in RLO
+    - allowing proportion of zero's :
+        fuzzy-one2one-multiton : [1,0,0,(0,1,1,1,1)]
+        fuzzy-one2one-monoton : [0,0,0,(0,1,1,1,1)]
+    - allowing proportion of > 1's :
+        fuzzy-one2one-monoton : [0,0,0,(1,1,2,1,1)]
+        fuzzy-one2one-monoton : [1,0,0,(1,1,2,1,1)]
+- a way of pulling out the proteins in a easy way
+- the median length threshold filter of clusters is still experimental (let's not use it until I have check that all numbers make sense)
+
 
 - HGT business
     - candidate HGT
@@ -351,26 +363,26 @@ class DataObj():
                                 #print RLO
                                 if all(count == 1 for count in proteomeID_count_of_RLO_proteomeID_in_cluster_by_proteomeID.values()):
                                     # if all count in RLO 1
-                                    RLO.clusterID_by_type['true_one2one'][cluster_type].append(clusterObj.clusterID)
-                                    RLO.clusterID_count_by_type['true_one2one'][cluster_type] += 1
+                                    RLO.clusterID_by_type['true_1to1'][cluster_type].append(clusterObj.clusterID)
+                                    RLO.clusterID_count_by_type['true_1to1'][cluster_type] += 1
                                     for proteomeID in RLO_proteomeIDs_in_cluster:
-                                        RLO.proteinID_by_type['true_one2one'][cluster_type].append(clusterObj.proteinIDs_by_proteomeID[proteomeID])
-                                        RLO.proteinID_count_by_type['true_one2one'][cluster_type] += clusterObj.proteinID_count_by_proteomeID[proteomeID]
+                                        RLO.proteinID_by_type['true_1to1'][cluster_type].append(clusterObj.proteinIDs_by_proteomeID[proteomeID])
+                                        RLO.proteinID_count_by_type['true_1to1'][cluster_type] += clusterObj.proteinID_count_by_proteomeID[proteomeID]
 
                     #print RLO
         self.clusterObjs_order.append(clusterObj.clusterID)
         self.clusterObjs_by_clusterID[clusterObj.clusterID] = clusterObj
         #dump(clusterObj)
 
-    def calculate_rarefraction_data(self, REPETITIONS):
+    def calculate_rarefaction_data(self, REPETITIONS):
         for rankID in self.proteomeIDs_by_levelID_by_rankID:
             levelIDs = self.levelIDs_by_rankID[rankID]
             for levelID in self.proteomeIDs_by_levelID_by_rankID[rankID]:
                 proteomeIDs = self.proteomeIDs_by_levelID_by_rankID[rankID][levelID]
                 if len(proteomeIDs) == 1:
-                    print "[WARN] - Omitting rarefraction calculation for rank %s at level %s (only contains %s)" % (rankID, levelID, ",".join(proteomeIDs))
+                    print "[WARN] - Omitting rarefaction calculation for rank %s at level %s (only contains %s)" % (rankID, levelID, ",".join(proteomeIDs))
                 else:
-                    print "[STATUS] - Plotting rarefraction curve for rank %s at level %s" % (rankID, levelID)
+                    print "[STATUS] - Plotting rarefaction curve for rank %s at level %s" % (rankID, levelID)
                     RLO = self.RLO_by_levelID_by_rankID[rankID][levelID]
                     proteomeIDs = self.proteomeIDs_by_levelID_by_rankID[rankID][levelID]
                     for repetition in range(1, REPETITIONS):
@@ -382,9 +394,9 @@ class DataObj():
                             seen_clusterIDs.update(proteome_RLO.clusterID_by_type['monoton'])
                             seen_clusterIDs.update(proteome_RLO.clusterID_by_type['multiton'])
                             sample_size = idx + 1
-                            if not sample_size in RLO.rarefraction_data:
-                                RLO.rarefraction_data[sample_size] = []
-                            RLO.rarefraction_data[sample_size].append(len(seen_clusterIDs))
+                            if not sample_size in RLO.rarefaction_data:
+                                RLO.rarefaction_data[sample_size] = []
+                            RLO.rarefaction_data[sample_size].append(len(seen_clusterIDs))
 
     ############################################################################################
     # Writing Output files
@@ -448,15 +460,15 @@ class DataObj():
                 if (self.fasta_parsed):
                     protein_span = sum(RLO.protein_span)
                 else:
-                    protein_span = 'N/A'
+                    protein_span = 'NA'
                 rank_out_string.append("\t".join([str(x) for x in [ \
                     RLO.rankID, RLO.levelID, \
                     RLO.clusterID_count, RLO.clusterID_count_by_type['singleton'], \
                     RLO.clusterID_count_by_type['monoton'], RLO.clusterID_count_by_type['multiton'], \
-                    RLO.clusterID_count_by_type['true_one2one']['monoton'], RLO.clusterID_count_by_type['true_one2one']['multiton'], \
+                    RLO.clusterID_count_by_type['true_1to1']['monoton'], RLO.clusterID_count_by_type['true_1to1']['multiton'], \
                     RLO.proteinID_count, RLO.proteinID_count_by_type['singleton'], \
                     RLO.proteinID_count_by_type['monoton'], RLO.proteinID_count_by_type['multiton'], \
-                    RLO.proteinID_count_by_type['true_one2one']['monoton'], RLO.proteinID_count_by_type['true_one2one']['multiton'], \
+                    RLO.proteinID_count_by_type['true_1to1']['monoton'], RLO.proteinID_count_by_type['true_1to1']['multiton'], \
                     protein_span, RLO.proteomeIDs_count, ",".join(RLO.proteomeIDs) \
                     ]]))
             with open(rank_out_f, "w") as fh:
@@ -480,16 +492,16 @@ class DataObj():
                     with open(out_cluster_multiton_f, "w") as out_cluster_multiton_fh:
                         out_cluster_multiton_fh.write("\n".join(RLO.clusterID_by_type['multiton']))
                         out_cluster_multiton_fh.write("\n")
-                out_cluster_true_one2one_multiton_f = join(self.dirs[rankID], "%s.%s.clusterIDs.multitons.true_one2one.txt" % (rankID, levelID))
-                if (RLO.clusterID_by_type['true_one2one']['multiton']):
-                    with open(out_cluster_true_one2one_multiton_f, "w") as out_cluster_true_one2one_multiton_fh:
-                        out_cluster_true_one2one_multiton_fh.write("\n".join(RLO.clusterID_by_type['true_one2one']['multiton']))
-                        out_cluster_true_one2one_multiton_fh.write("\n")
-                out_cluster_true_one2one_monoton_f = join(self.dirs[rankID], "%s.%s.clusterIDs.monotons.true_one2one.txt" % (rankID, levelID))
-                if (RLO.clusterID_by_type['true_one2one']['monoton']):
-                    with open(out_cluster_true_one2one_monoton_f, "w") as out_cluster_true_one2one_monoton_fh:
-                        out_cluster_true_one2one_monoton_fh.write("\n".join(RLO.clusterID_by_type['true_one2one']['monoton']))
-                        out_cluster_true_one2one_monoton_fh.write("\n")
+                out_cluster_true_1to1_multiton_f = join(self.dirs[rankID], "%s.%s.clusterIDs.multitons.true_1to1.txt" % (rankID, levelID))
+                if (RLO.clusterID_by_type['true_1to1']['multiton']):
+                    with open(out_cluster_true_1to1_multiton_f, "w") as out_cluster_true_1to1_multiton_fh:
+                        out_cluster_true_1to1_multiton_fh.write("\n".join(RLO.clusterID_by_type['true_1to1']['multiton']))
+                        out_cluster_true_1to1_multiton_fh.write("\n")
+                out_cluster_true_1to1_monoton_f = join(self.dirs[rankID], "%s.%s.clusterIDs.monotons.true_1to1.txt" % (rankID, levelID))
+                if (RLO.clusterID_by_type['true_1to1']['monoton']):
+                    with open(out_cluster_true_1to1_monoton_f, "w") as out_cluster_true_1to1_monoton_fh:
+                        out_cluster_true_1to1_monoton_fh.write("\n".join(RLO.clusterID_by_type['true_1to1']['monoton']))
+                        out_cluster_true_1to1_monoton_fh.write("\n")
 
 
     def output_clusters_by_proteome_count(self):
@@ -520,41 +532,41 @@ class DataObj():
             out_counts_of_cluster_count_fh.write("\n".join(out_counts_of_cluster_count_string))
 
 
-    def output_rarefraction(self):
-        rarefraction_by_levelID_by_rankID = {}
+    def output_rarefaction(self):
+        rarefaction_by_levelID_by_rankID = {}
         for RLO in self.yield_RLOs(ranks=['all'], levels=['all']):
-            if (RLO.rarefraction_data):
+            if (RLO.rarefaction_data):
                 rankID = RLO.rankID
                 levelID = RLO.levelID
-                rarefraction_data = RLO.rarefraction_data
-                out_f = join(self.dirs[rankID], "%s.%s.rarefraction.txt" % (rankID, levelID))
-                if not rankID in rarefraction_by_levelID_by_rankID:
-                    rarefraction_by_levelID_by_rankID[rankID] = {}
-                rarefraction_by_levelID_by_rankID[rankID][levelID] = rarefraction_data
-                print "[STATUS] - Output rarefraction data \t%s" % (out_f)
+                rarefaction_data = RLO.rarefaction_data
+                out_f = join(self.dirs[rankID], "%s.%s.rarefaction.txt" % (rankID, levelID))
+                if not rankID in rarefaction_by_levelID_by_rankID:
+                    rarefaction_by_levelID_by_rankID[rankID] = {}
+                rarefaction_by_levelID_by_rankID[rankID][levelID] = rarefaction_data
+                print "[STATUS] - Output rarefaction data \t%s" % (out_f)
                 with open(out_f, "w") as fh:
                     fh.write("%s\t%s\n" % ("sample_size", "\t".join(["Rep" + str(x) for x in range(1, REPETITIONS)])))
-                    for sample_size in rarefraction_data:
-                        fh.write("%s\t%s\n" % (sample_size, "\t".join([str(x) for x in rarefraction_data[sample_size]])))
-        for rankID in rarefraction_by_levelID_by_rankID:
-            rarefraction_plot_f = join(self.dirs[rankID], "%s.rarefraction.%s" % (rankID, PLOT_FORMAT))
-            rarefraction_by_levelID = rarefraction_by_levelID_by_rankID[rankID]
-            plot_rarefraction_data(rarefraction_by_levelID, rarefraction_plot_f)
+                    for sample_size in rarefaction_data:
+                        fh.write("%s\t%s\n" % (sample_size, "\t".join([str(x) for x in rarefaction_data[sample_size]])))
+        for rankID in rarefaction_by_levelID_by_rankID:
+            rarefaction_plot_f = join(self.dirs[rankID], "%s.rarefaction.%s" % (rankID, PLOT_FORMAT))
+            rarefaction_by_levelID = rarefaction_by_levelID_by_rankID[rankID]
+            plot_rarefaction_data(rarefaction_by_levelID, rarefaction_plot_f)
 
 ############################################################################################
 # PLOTTING
 ############################################################################################
 
-def plot_rarefraction_data(rarefraction_by_levelID, rarefraction_plot_f):
-    print "[STATUS] - Plotting rarefraction data \t%s" % (rarefraction_plot_f)
+def plot_rarefaction_data(rarefaction_by_levelID, rarefaction_plot_f):
+    print "[STATUS] - Plotting rarefaction data \t%s" % (rarefaction_plot_f)
     f, ax = plt.subplots(figsize=FIGSIZE)
     sns.set_color_codes("pastel")
     max_number_of_samples = 0
-    for idx, levelID in enumerate(rarefraction_by_levelID):
-        number_of_samples = len(rarefraction_by_levelID[levelID])
+    for idx, levelID in enumerate(rarefaction_by_levelID):
+        number_of_samples = len(rarefaction_by_levelID[levelID])
         if number_of_samples > max_number_of_samples:
             max_number_of_samples = number_of_samples
-        colour = plt.cm.Paired(idx/len(rarefraction_by_levelID))
+        colour = plt.cm.Paired(idx/len(rarefaction_by_levelID))
         #print levelID, colors.rgb2hex(colour)
         x_values = []
         #y_values = []
@@ -563,7 +575,7 @@ def plot_rarefraction_data(rarefraction_by_levelID, rarefraction_plot_f):
         median_y_values = []
         median_x_values = []
 
-        for x, y_reps in rarefraction_by_levelID[levelID].items():
+        for x, y_reps in rarefaction_by_levelID[levelID].items():
             #print x, len(y_reps), y_reps
             #x_values.append([x] * len(y_reps))
             #y_values.append(y_reps)
@@ -583,7 +595,7 @@ def plot_rarefraction_data(rarefraction_by_levelID, rarefraction_plot_f):
     ax.set_ylabel("Count of clusters")
     ax.set_xlabel("Sampled proteomes")
     ax.legend(ncol=1, numpoints=1, loc="lower right", frameon=True)
-    f.savefig(rarefraction_plot_f, format=PLOT_FORMAT)
+    f.savefig(rarefaction_plot_f, format=PLOT_FORMAT)
 
 def cmap_discretize(cmap, N):
     if type(cmap) == str:
@@ -839,17 +851,17 @@ class RankLevelObj():
 
         self.proteinIDs = []
         self.proteinID_count = 0
-        self.proteinID_by_type = {'singleton' : [], 'monoton' : [], 'multiton' : [], 'true_one2one': {'monoton' : [], 'multiton' : []}}
-        self.proteinID_count_by_type = {'singleton' : 0, 'monoton' : 0, 'multiton' : 0, 'true_one2one' : {'monoton' : 0, 'multiton' : 0}}
-        self.clusterID_by_type = {'singleton' : [], 'monoton' : [], 'multiton' : [], 'true_one2one': {'monoton' : [], 'multiton' : []}}
-        self.clusterID_count_by_type = {'singleton' : 0, 'monoton' : 0, 'multiton' : 0, 'true_one2one' : {'monoton' : 0, 'multiton' : 0}}
+        self.proteinID_by_type = {'singleton' : [], 'monoton' : [], 'multiton' : [], 'true_1to1': {'monoton' : [], 'multiton' : []}}
+        self.proteinID_count_by_type = {'singleton' : 0, 'monoton' : 0, 'multiton' : 0, 'true_1to1' : {'monoton' : 0, 'multiton' : 0}}
+        self.clusterID_by_type = {'singleton' : [], 'monoton' : [], 'multiton' : [], 'true_1to1': {'monoton' : [], 'multiton' : []}}
+        self.clusterID_count_by_type = {'singleton' : 0, 'monoton' : 0, 'multiton' : 0, 'true_1to1' : {'monoton' : 0, 'multiton' : 0}}
         self.protein_span = []
 
         self.clusterIDs = []
         self.clusterID_count = 0
         self.coverage_in_clusters = []
 
-        self.rarefraction_data = {} # repetition : number of clusters
+        self.rarefaction_data = {} # repetition : number of clusters
 
     def __str__(self):
         string = ''
@@ -924,8 +936,8 @@ if __name__ == "__main__":
     dataObj.parse_clusters(groups_f)
     #dataObj.output("ranklevelobjs")
     dataObj.output_coverages()
-    dataObj.calculate_rarefraction_data(REPETITIONS)
-    dataObj.output_rarefraction()
+    dataObj.calculate_rarefaction_data(REPETITIONS)
+    dataObj.output_rarefaction()
     dataObj.output_counts_by_RLO()
     dataObj.output_clusters_by_type()
     dataObj.output_clusters_by_proteome_count()
