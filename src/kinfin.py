@@ -42,8 +42,9 @@ from collections import Counter
 import collections
 
 import numpy as np
-from scipy import arange
+from scipy import arange, stats
 import scipy.cluster.hierarchy as sch
+
 
 import matplotlib as mat
 import matplotlib.cm as cm
@@ -121,7 +122,7 @@ class DataObj():
         self.RLO_by_levelID_by_rankID = {} # key1=rank, key2=level, value=RankLevelObj
 
         # ProteinObjs
-        self.proteinObjs_by_proteinID = {}
+        self.proteinObjs_by_proteinID = {} # only
 
         # clusterObj
         self.clusterObjs_by_clusterID = {}
@@ -859,6 +860,9 @@ class RankLevelObj():
 
         self.clusterIDs = []
         self.clusterID_count = 0
+
+        self.domainIDs = []
+        self.domainID_count = 0
         self.coverage_in_clusters = []
 
         self.rarefaction_data = {} # repetition : number of clusters
@@ -902,6 +906,10 @@ def set_plot_defaults(FONTSIZE):
     plt.rcParams['ytick.labelsize'] = FONTSIZE-2
     plt.rcParams['legend.fontsize'] = FONTSIZE
     plt.rcParams['figure.titlesize'] = FONTSIZE+2
+
+def calculate_fishers_exact_test(list_of_lists):
+    oddsratio, pvalue = stats.fisher_exact([[8, 2], [1, 5]])
+    pvalue
 
 if __name__ == "__main__":
     __version__ = 0.1
