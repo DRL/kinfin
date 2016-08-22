@@ -3,7 +3,7 @@
 
 """
 usage: kinfin.py        -s <FILE> -g <FILE> -c <FILE>
-                        [-d <DIR>] [-f <FILE>]
+                        [-d <DIR>] [-f <FILE>] [--nodesdb <FILE>]
                         [-l <INT>] [-r <INT>]
                         [--fontsize <INT>] [--plotsize INT,INT]
                         [-o <PREFIX>] [-p <PLOTFORMAT>]
@@ -11,14 +11,17 @@ usage: kinfin.py        -s <FILE> -g <FILE> -c <FILE>
 
     Options:
         -h --help                           show this
+
         -s, --species_file <FILE>           SpeciesIDs.txt used in OrthoFinder
         -g, --groups <FILE>                 OrthologousGroups.txt produced by OrthoFinder
         -c, --category_file <FILE>          Category file
+
         -f, --functional_annotation <FILE>  Functional annotation of proteins
         -d, --fasta_dir <DIR>               Directory containing FASTAs used in Orthofinder
         -l, --median_prot_len <INT>         Median protein length threshold for clusters [default: 0]
-        -r, --repetitions <INT>             Number of repetitions for rarefaction curves [default: 30]
+        --nodesdb <FILE>                    nodesdb file (sames as blobtools nodesDB file)
 
+        -r, --repetitions <INT>             Number of repetitions for rarefaction curves [default: 30]
         --fontsize <INT>                    Fontsize for plots [default: 16]
         --plotsize <INT,INT>                Size (WIDTH,HEIGHT) for plots [default: 24,12]
         -o, --outprefix <STR>               Output prefix
@@ -120,7 +123,7 @@ class DataObj():
         self.count_by_levelID_by_rankID = {}
         # RankLevelObjs
         self.RLO_by_levelID_by_rankID = {} # key1=rank, key2=level, value=RankLevelObj
-
+        self.lineage_by_proteomeID = {} # key=proteomeID, key2=taxrank, value=tax
         # ProteinObjs
         self.proteinObjs_by_proteinID = {} # only
 
@@ -133,6 +136,7 @@ class DataObj():
         self.inflation_value = ''
         self.dirs = {}
         self.fasta_parsed = False
+        self.taxid_parsed = False
 
     ############################################################################################
     # Parsing Input files
@@ -158,7 +162,7 @@ class DataObj():
                     self.rankIDs_count = len(self.rankIDs)
                     self.levelIDs_by_rankID = {rankID : set() for rankID in self.rankIDs}
                     self.proteomeIDs_by_levelID_by_rankID = {rankID : {} for rankID in self.rankIDs}
-                else:
+                elif l.strip():
                     line = l.rstrip("\n").split(",")
                     if not len(line) == len(self.rankIDs):
                         sys.exit("[ERROR] - number of columns in line differs from header\n\t%s\n\t%s" % (self.rankIDs, line))
@@ -178,8 +182,22 @@ class DataObj():
                         self.levelIDs_by_rankID[rankID].add(levelID)
                         self.levelIDs_by_rankID_by_proteomeID[proteomeID][rankID] = levelID
                         self.proteomeIDs_by_levelID_by_rankID[rankID][levelID].add(proteomeID)
+                else:
+                    pass
+
+        if "taxid" in self.rankIDs:
+            self.taxid_parsed = True # flag so that taxids have to be parsed from nodesDB, lineages be calculated, ...
         self.proteomeIDs_count = len(self.proteomeIDs)
         self.levelIDs_count_by_rankID = {rankID : len(levels) for rankID, levels in self.levelIDs_by_rankID.items()}
+
+    def set_lineage_by_proteomeID(self):
+        lineage_by_proteomeID = {}
+        for proteomeID in self.levelIDs_by_rankID_by_proteomeID:
+            taxid = self.levelIDs_by_rankID_by_proteomeID[proteomeID]['taxid']
+            lineage = get_lineage(taxid)
+            lineage_by_proteomeID[proteomeID] = lineage
+        self.lineage_by_proteomeID = lineage_by_proteomeID
+        print self.lineage_by_proteomeID
 
     def parse_species_ids(self, species_ids_f):
         # get files for proteomes for parsing of proteins
@@ -260,12 +278,13 @@ class DataObj():
 
     def create_RLOs(self):
         for rankID in self.rankIDs:
-            for levelID in self.levelIDs_by_rankID[rankID]:
-                proteomeIDs = self.proteomeIDs_by_levelID_by_rankID[rankID][levelID]
-                rankLevelObj = RankLevelObj(levelID, rankID, proteomeIDs)
-                if not rankID in self.RLO_by_levelID_by_rankID:
-                    self.RLO_by_levelID_by_rankID[rankID] = {}
-                self.RLO_by_levelID_by_rankID[rankID][levelID] = rankLevelObj
+            if not rankID == 'taxid':
+                for levelID in self.levelIDs_by_rankID[rankID]:
+                    proteomeIDs = self.proteomeIDs_by_levelID_by_rankID[rankID][levelID]
+                    rankLevelObj = RankLevelObj(levelID, rankID, proteomeIDs)
+                    if not rankID in self.RLO_by_levelID_by_rankID:
+                        self.RLO_by_levelID_by_rankID[rankID] = {}
+                    self.RLO_by_levelID_by_rankID[rankID][levelID] = rankLevelObj
 
     def yield_RLOs(self, **kwargs):
         rankIDs_arg = kwargs['ranks']
@@ -978,13 +997,13 @@ def parse_nodesdb(nodesdb_f):
             else:
                 nodes_count += 1
                 node, rank, name, parent = line.rstrip("\n").split("\t")
-                nodesDB[node] = {'rank' : rank, 'name' : name, 'parent' : parent}
-                if (nodesDB_count):
+                nodesdb[node] = {'rank' : rank, 'name' : name, 'parent' : parent}
+                if (nodesdb_count):
                     progress(nodes_count, 1000, nodesdb_count)
     return nodesdb
 
 def parse_blast_f(blast_f):
-
+    proteins_blessed = None
     with open(blast_f) as blast_fh:
         for line in blast_fh:
             temp = line.rstrip("\n").split()
@@ -999,18 +1018,20 @@ def parse_blast_f(blast_f):
             print lineage
 
 
-def get_lineage(staxid):
+def get_lineage(taxid): # works
     lineage = {taxrank : 'undef' for taxrank in TAXRANKS}
-    while not parent = "1":
-        taxrank = NODESDB[staxid]['rank']
-        name = NODESDB[staxid]['name']
-        parent = NODESDB[staxid]['parent']
-        if rank in TAXRANKS:
+    parent = ''
+    node = taxid
+    while not parent == "1":
+        taxrank = NODESDB[node]['rank']
+        name = NODESDB[node]['name']
+        parent = NODESDB[node]['parent']
+        if taxrank in TAXRANKS:
             lineage[taxrank] = name
+        node = parent
     return lineage
 
-def parse_nemNOG(nemNOG_f):
-    NEMNOGS = {}
+
 if __name__ == "__main__":
     __version__ = 0.1
     args = docopt(__doc__)
@@ -1030,20 +1051,26 @@ if __name__ == "__main__":
     except docopt.DocoptExit:
         print __doc__.strip()
 
+###################################
+    set_plot_defaults(FONTSIZE)
+###################################
+
+###################################
     NODESDB = None
     TAXRANKS = ['superkingdom', 'kingdom', 'phylum', 'class', 'order', 'superfamily', 'family', 'subfamily', 'genus', 'species']
+    if (nodesdb_f):
+        NODESDB = parse_nodesdb(nodesdb_f)
+###################################
 
-    set_plot_defaults(FONTSIZE)
+###################################
     dataObj = DataObj()
-    # Get all info from category_f
-
     dataObj.parse_categories(category_f)
-
+    if dataObj.taxid_parsed:
+        dataObj.set_lineage_by_proteomeID()
     dataObj.create_RLOs()
     dataObj.parse_species_ids(species_ids_f)
     dataObj.setup_dirs(out_prefix)
-    if (nodesdb_f):
-        NODESDB = parse_nodesdb(nodesdb_f)
+
     if (fasta_dir):
         dataObj.parse_fasta(fasta_dir)
     if (domain_f):

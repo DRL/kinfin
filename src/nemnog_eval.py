@@ -28,6 +28,7 @@ class NemnogObj():
         self.proteins = nemnog_proteins
         self.orthogroups = None
         self.not_found = None
+        self.not_found_fraction = None
 
     def get_orthogroups(self):
         orthogroups = {}
@@ -43,14 +44,13 @@ class NemnogObj():
                 self.protein_found -= 1
         self.orthogroups = orthogroups
         self.not_found = not_found
-
+        self.not_found_fraction = len(not_found)/self.protein_count
 
 def parse_nemnog(nemnog_f):
     '''
     nemnog v4.5
     TaxonomicLevel|GroupName|ProteinCount|SpeciesCount|COGFunctionalCategory|ProteinIDs
     '''
-    print "[+] Parse nemNOGs %s"
     nemnogs = []
     with open(nemnog_f) as nemnog_fh:
         for line in nemnog_fh:
@@ -64,7 +64,6 @@ def parse_nemnog(nemnog_f):
     return nemnogs
 
 def parse_categories(category_f):
-    print "[+] Parse categories %s" % category_f
     prefix_to_taxid = {} # lists
     rankIDs = None
     with open(category_f) as category_fh:
@@ -86,7 +85,6 @@ def parse_categories(category_f):
     return prefix_to_taxid
 
 def parse_groups(groups_f):
-    print "[+] Parse groups %s" % groups_f
     nemnogID_to_orthogroup = {}
     with open(groups_f) as group_fh:
         for line in group_fh:
@@ -161,14 +159,21 @@ def get_counts():
 def write_stats(nemnogs_complete, nemnogs_complete_merged, nemnogs_split, nemnogs_split_merged):
     out_f = "%s.nemnog_eval.txt" % basename(groups_f)
     with open(out_f, 'w') as out_fh:
-        for nemnog_id in nemnogs_complete:
-            out_fh.write("%s\tcomplete\t%s\n" % (nemnog_id, nemnogs_complete[nemnog_id]))
-        for nemnog_id in nemnogs_complete_merged:
-            out_fh.write("%s\tcomplete-merged\t%s\n" % (nemnog_id, nemnogs_complete_merged[nemnog_id]))
-        for nemnog_id in nemnogs_split:
-            out_fh.write("%s\tsplit\t%s\n" % (nemnog_id, ",".join(nemnogs_split[nemnog_id])))
-        for nemnog_id in nemnogs_split_merged:
-            out_fh.write("%s\tsplit-merged\t%s\n" % (nemnog_id, ",".join(nemnogs_split_merged[nemnog_id])))
+        for nemnog in nemnogs:
+            if not nemnog.not_found_fraction == 1.0:
+                if nemnog.cluster_id in nemnogs_complete:
+                    out_fh.write("%s\tcomplete\t%s\t%s\t%s\t%s\n" % (nemnog.cluster_id, nemnog.functional_category, nemnog.species_count, nemnog.not_found_fraction, nemnogs_complete[nemnog.cluster_id]))
+                elif nemnog.cluster_id in nemnogs_complete_merged:
+                    out_fh.write("%s\tcomplete-merged\t%s\t%s\t%s\t%s\n" % (nemnog.cluster_id, nemnog.functional_category, nemnog.species_count, nemnog.not_found_fraction, nemnogs_complete_merged[nemnog.cluster_id]))
+                elif nemnog.cluster_id in nemnogs_split_merged:
+                    out_fh.write("%s\tsplit-merged\t%s\t%s\t%s\t%s\n" % (nemnog.cluster_id, nemnog.functional_category, nemnog.species_count, nemnog.not_found_fraction, ",".join(nemnogs_split_merged[nemnog.cluster_id])))
+                elif nemnog.cluster_id in nemnogs_split:
+                    out_fh.write("%s\tsplit\t%s\t%s\t%s\t%s\n" % (nemnog.cluster_id, nemnog.functional_category, nemnog.species_count, nemnog.not_found_fraction, ",".join(nemnogs_split[nemnog.cluster_id])))
+                else:
+                    sys.exit('[-] unknown id : %s' % nemnog.cluster_id)
+
+
+    #with open(out_f, 'w') as out_fh:
 
 if __name__ == "__main__":
     __version__ = 0.1
@@ -180,9 +185,42 @@ if __name__ == "__main__":
     except docopt.DocoptExit:
         print __doc__.strip()
 
+    print "[+] Starting analysis ..."
+    print "[+] Parse categories %s ..." % category_f
     prefix_to_taxid = parse_categories(category_f)
+    print "[+] Parse groups %s ..." % groups_f
     nemnogID_to_orthogroup = parse_groups(groups_f)
+    print "[+] Parse nemNOGs %s ..." % nemnog_f
     nemnogs = parse_nemnog(nemnog_f)
+    print "[+] Calculate nemnog-fractions of orthogroups ..."
     orthogroup_fraction_of_nemnog, nemnog_fraction_of_orthogroup = get_fractions()
+    print "[+] Calculate counts ..."
     nemnogs_complete, nemnogs_complete_merged, nemnogs_split, nemnogs_split_merged = get_counts()
+    print "[+] Writing files ..."
     write_stats(nemnogs_complete, nemnogs_complete_merged, nemnogs_split, nemnogs_split_merged)
+
+'''
+for file in ../data/OrthologousGroups_I*.txt ; do ~/git/clusterbuster/src/nemnog_eval.py -g $file -c ../data/SpeciesClassification.txt -n ../resources/nemNOG.members.tsv; done
+
+14823 in resources/nemNOG.members.tsv
+- but only 14818 are included (5 are excluded because only composed of isoforms not included in the analysis)
+
+ ~/Dropbox/projects/manuscripts/nematode_proteome/nemnog_eval : for file in OrthologousGroups_I*; do echo $file; cut -f2 $file | sort | uniq -c ; done
+
+By category : Totals
+5751 S Function unknown (38.81%)
+1641 T Signal transduction mechanisms (11.07%)
+1008 O Posttranslational modification, protein turnover, chaperones
+ 862 U Intracellular trafficking, secretion, and vesicular transport
+ 826 K Transcription
+ 453 G Carbohydrate transport and metabolism
+ 440 P Inorganic ion transport and metabolism
+ 403 I Lipid transport and metabolism
+ 370 J Translation, ribosomal structure and biogenesis
+ 347 A RNA processing and modification
+ 299 Z Cytoskeleton
+ 299 C Energy production and conversion
+ 261 L Replication, recombination and repair
+ 253 W Extracellular structures
+ 223 E Amino acid transport and metabolism
+'''
