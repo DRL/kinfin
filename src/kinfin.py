@@ -214,7 +214,16 @@ class DataObj():
             for line in fh:
                 temp = line.rstrip("\n").split()
                 proteinID = temp[0]
-                domain = temp[1]
+                domain_type = temp[3] # CDD, PIRSF, Pfam, Phobius, ProSiteProfiles, SMART, SUPERFAMILY, SignalP_EUK, TIGRFAM, TMHMM
+                domain_id = temp[4]
+                evalue = temp[-3]
+                stop = temp[-4]
+                start = temp[-5]
+                if len(" ".join(temp[5:-5])):
+                    desc = "\"%s\"" % " ".join(temp[5:-5])
+                else:
+                    desc = None
+                temp = line.rstrip("\n").split()
                 if not proteinID in domains_by_proteinID:
                     domains_by_proteinID[proteinID] = set()
                 domains_by_proteinID[proteinID].add(domain)
@@ -836,7 +845,52 @@ class ProteinObj():
         self.proteomeID = proteomeID
         self.length = length
         self.clusterID = ''
-        self.domains = set()
+
+        self.taxonomy = None # dict : key=rank, val=taxid ; translateOnDemand
+        self.AI = None
+        self.HI = None
+        self.species_id = species_id
+        self.species_name = species_name_dict.get(species_id, None)
+        self.domain_list = None
+        self.domain_set = None
+        self.domain_diversity = None
+        self.domain_count = None
+        self.domain_counter = None
+        self.contig_id = None
+
+        def add_domain(self, domainObj):
+            self.domain_list.append(domainObj.id)
+            self.domain_count = len(self.domain_list)
+            self.domain_counter = domain_counter.get(domainObj.id, 0) + 1
+
+############################################################################################
+# CONTIGS
+############################################################################################
+
+class ContigObj(object):
+    """docstring for ContigObj"""
+    def __init__(self, ctg_name, ctg_length, ctg_prot_list, species_id):
+        self.name = ctg_name
+        self.length = ctg_length
+        self.protein_order = ctg_prot_list
+        self.protein_set = set(ctg_prot_list)
+        self.protein_count = len(ctg_prot_list)
+        self.species_id = species_id
+        self.species_name = species_name_dict.get(species_id, None)
+        self.source = source
+
+############################################################################################
+# DOMAINS
+############################################################################################
+
+class DomainObj(object):
+    """docstring for DomainObj"""
+    def __init__(self, domain_id, domain_prot, domain_type, domain_evalue, domain_desc):
+        self.id = domain_id
+        self.protein = domain_prot
+        self.type = domain_type
+        self.evalue = domain_evalue
+        self.desc = domain_desc
 
 ############################################################################################
 # RankLevelObj (PROTEOMES, etc)
@@ -907,10 +961,56 @@ def set_plot_defaults(FONTSIZE):
     plt.rcParams['legend.fontsize'] = FONTSIZE
     plt.rcParams['figure.titlesize'] = FONTSIZE+2
 
-def calculate_fishers_exact_test(list_of_lists):
-    oddsratio, pvalue = stats.fisher_exact([[8, 2], [1, 5]])
-    pvalue
+def chisquare(list_of_lists):
+    obs = np.array(list_of_lists)
+    g, p, dof, expctd = chi2_contingency(obs, lambda_="log-likelihood")
+    direction_of_association = (list_of_lists[0][0] * list_of_lists[1][1]) - (list_of_lists[0][1] * list_of_lists[1][0])
+    return g, p, direction_of_association
 
+def parse_nodesdb(nodesdb_f):
+    nodesdb = {}
+    nodesdb_count = 0
+    nodes_count = 0
+    with open(nodesdb_f) as nodesdb_fh:
+        for line in nodesdb_fh:
+            if line.startswith("#"):
+                nodesdb_count = int(line.lstrip("# nodes_count = ").rstrip("\n"))
+            else:
+                nodes_count += 1
+                node, rank, name, parent = line.rstrip("\n").split("\t")
+                nodesDB[node] = {'rank' : rank, 'name' : name, 'parent' : parent}
+                if (nodesDB_count):
+                    progress(nodes_count, 1000, nodesdb_count)
+    return nodesdb
+
+def parse_blast_f(blast_f):
+
+    with open(blast_f) as blast_fh:
+        for line in blast_fh:
+            temp = line.rstrip("\n").split()
+            qseqid = temp[0]
+            staxid = temp[1]
+            if ";" in temp[1]:
+                staxid = temp[1].split(";")[0]
+            bitscore = int(temp[2])
+            evalue = float(temp[12])
+            lineage = get_lineage(staxid)
+            print line
+            print lineage
+
+
+def get_lineage(staxid):
+    lineage = {taxrank : 'undef' for taxrank in TAXRANKS}
+    while not parent = "1":
+        taxrank = NODESDB[staxid]['rank']
+        name = NODESDB[staxid]['name']
+        parent = NODESDB[staxid]['parent']
+        if rank in TAXRANKS:
+            lineage[taxrank] = name
+    return lineage
+
+def parse_nemNOG(nemNOG_f):
+    NEMNOGS = {}
 if __name__ == "__main__":
     __version__ = 0.1
     args = docopt(__doc__)
@@ -925,17 +1025,25 @@ if __name__ == "__main__":
         out_prefix = args['--outprefix']
         PLOT_FORMAT = args['--plotfmt']
         FONTSIZE = int(args['--fontsize'])
+        nodesdb_f = args['--nodesdb']
         FIGSIZE = tuple(int(x) for x in args['--plotsize'].split(","))
     except docopt.DocoptExit:
         print __doc__.strip()
 
+    NODESDB = None
+    TAXRANKS = ['superkingdom', 'kingdom', 'phylum', 'class', 'order', 'superfamily', 'family', 'subfamily', 'genus', 'species']
+
     set_plot_defaults(FONTSIZE)
     dataObj = DataObj()
     # Get all info from category_f
+
     dataObj.parse_categories(category_f)
+
     dataObj.create_RLOs()
     dataObj.parse_species_ids(species_ids_f)
     dataObj.setup_dirs(out_prefix)
+    if (nodesdb_f):
+        NODESDB = parse_nodesdb(nodesdb_f)
     if (fasta_dir):
         dataObj.parse_fasta(fasta_dir)
     if (domain_f):

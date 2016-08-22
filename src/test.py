@@ -20,11 +20,32 @@ def chisquare(list_of_lists):
     print g
     print p
 
+def parse_domains(domain_f):
+    domains_by_proteinID = {}
+    print "[STATUS] - Parsing domains from %s" % (domain_f)
+    with open(domain_f) as fh:
+        for line in fh:
+            temp = line.rstrip("\n").split()
+            proteinID = temp[0]
+            domain = temp[1]
+            domain_type = temp[3]
+            domain_id = temp[4]
+            evalue = temp[-3]
+            stop = temp[-4]
+            start = temp[-5]
+            if len(" ".join(temp[5:-5])):
+                desc = "\"%s\"" % " ".join(temp[5:-5])
+            else:
+                desc = None
+            print proteinID, domain, domain_type, domain_id, evalue, start, stop, desc
+
 if __name__ == "__main__":
     contingency = [
         [100, 10000],
         [1, 10000000]
     ]
-    print contingency
-    calculate_fishers_exact_test(contingency)
-    chisquare(contingency)
+    #print contingency
+    #calculate_fishers_exact_test(contingency)
+    #chisquare(contingency)
+
+    parse_domains(sys.argv[1])
