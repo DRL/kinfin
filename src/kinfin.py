@@ -30,7 +30,7 @@ usage: kinfin.py        -s <FILE> -g <FILE> -c <FILE>
 
 from __future__ import division
 import sys
-import cpickle
+import cPickle as pickle
 sys.setrecursionlimit(10000) # needed for clustering
 from os.path import basename, isfile, abspath, splitext, join, exists
 import shutil
@@ -995,12 +995,12 @@ def parse_blast_f(blast_f):
 
 def cpickle_dump(data):
     with open('kinfin.pkl', 'wb') as fh_out:
-        pickle.cdump(data, fh_out, pickle.HIGHEST_PROTOCOL)
+        pickle.dump(data, fh_out, pickle.HIGHEST_PROTOCOL)
 
 def cpickle_load(data_pickle):
     print "[+] - open pickled data : %s" % data_pickle
     with open(data_pickle, 'rb') as fh_in:
-        data = cpickle.load(fh_in)
+        data = pickle.load(fh_in)
     return data
 
 def get_lineage(taxid): # works
