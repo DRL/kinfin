@@ -415,6 +415,17 @@ class DataObj():
                                         RLO.proteinID_by_type['true_1to1'][cluster_type].append(clusterObj.proteinIDs_by_proteomeID[proteomeID])
                                         RLO.proteinID_count_by_type['true_1to1'][cluster_type] += clusterObj.proteinID_count_by_proteomeID[proteomeID]
 
+                        if len(RLO_proteomeIDs_in_cluster) >= 3 and coverage >= conserved_fraction:
+                            '''
+                                fuzzy one2ones : fuzzy-fraction = (1 - conserved-fraction) : e.g. 0.25
+
+                                    [(1,1,1,x), x, x, x]
+
+                                - only if 3+ proteomes members of RLO
+
+                            '''
+
+
                     #print RLO
         self.clusterObjs_order.append(clusterObj.clusterID)
         self.clusterObjs_by_clusterID[clusterObj.clusterID] = clusterObj
