@@ -993,11 +993,11 @@ def parse_blast_f(blast_f):
             print line
             print lineage
 
-def cpickle_dump(data):
+def pickle_dump(data):
     with open('kinfin.pkl', 'wb') as fh_out:
         pickle.dump(data, fh_out, pickle.HIGHEST_PROTOCOL)
 
-def cpickle_load(data_pickle):
+def pickle_load(data_pickle):
     print "[+] - open pickled data : %s" % data_pickle
     with open(data_pickle, 'rb') as fh_in:
         data = pickle.load(fh_in)
