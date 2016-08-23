@@ -4,7 +4,7 @@
 """
 usage: kinfin.py        -s <FILE> -g <FILE> -c <FILE>
                         [-d <DIR>] [-f <FILE>] [--nodesdb <FILE>]
-                        [-l <INT>] [-r <INT>]
+                        [-l <INT>] [-r <INT>] [--pickle <FILE>]
                         [--fontsize <INT>] [--plotsize INT,INT]
                         [-o <PREFIX>] [-p <PLOTFORMAT>]
                         [-h|--help]
@@ -15,7 +15,7 @@ usage: kinfin.py        -s <FILE> -g <FILE> -c <FILE>
         -s, --species_file <FILE>           SpeciesIDs.txt used in OrthoFinder
         -g, --groups <FILE>                 OrthologousGroups.txt produced by OrthoFinder
         -c, --category_file <FILE>          Category file
-
+        --pickle <FILE>                     Load DataObj from pickled file
         -f, --functional_annotation <FILE>  Functional annotation of proteins
         -d, --fasta_dir <DIR>               Directory containing FASTAs used in Orthofinder
         -l, --median_prot_len <INT>         Median protein length threshold for clusters [default: 0]
@@ -30,6 +30,7 @@ usage: kinfin.py        -s <FILE> -g <FILE> -c <FILE>
 
 from __future__ import division
 import sys
+import cpickle
 sys.setrecursionlimit(10000) # needed for clustering
 from os.path import basename, isfile, abspath, splitext, join, exists
 import shutil
@@ -155,49 +156,67 @@ class DataObj():
             yield header, ''.join(seqs)
 
     def parse_categories(self, category_f):
+        rankIDs = []
+        levelIDs_by_rankID_by_proteomeID = {}
         with open(category_f) as fh:
             for l in fh:
                 if l.startswith("#"):
-                    self.rankIDs = [x.strip() for x in l.lstrip("#").rstrip("\n").split(",")]
-                    self.rankIDs_count = len(self.rankIDs)
-                    self.levelIDs_by_rankID = {rankID : set() for rankID in self.rankIDs}
-                    self.proteomeIDs_by_levelID_by_rankID = {rankID : {} for rankID in self.rankIDs}
+                    rankIDs = [x.strip() for x in l.lstrip("#").rstrip("\n").split(",")]
+                    #self.rankIDs_count = len(self.rankIDs)
+                    #self.levelIDs_by_rankID = {rankID : set() for rankID in self.rankIDs}
+                    #self.proteomeIDs_by_levelID_by_rankID = {rankID : {} for rankID in self.rankIDs}
                 elif l.strip():
                     line = l.rstrip("\n").split(",")
-                    if not len(line) == len(self.rankIDs):
+                    if not len(line) == len(rankIDs):
                         sys.exit("[ERROR] - number of columns in line differs from header\n\t%s\n\t%s" % (self.rankIDs, line))
                     proteomeID = line[0]
                     self.proteomeIDs.append(proteomeID)
-                    self.levelIDs_by_rankID_by_proteomeID[proteomeID] = {x : '' for x in self.rankIDs}
+                    levelIDs_by_rankID_by_proteomeID[proteomeID] = {x : '' for x in rankIDs}
                     for idx, levelID in enumerate(line):
-                        rankID = self.rankIDs[idx]
-                        if not levelID in self.proteomeIDs_by_levelID_by_rankID[rankID]:
-                            self.proteomeIDs_by_levelID_by_rankID[rankID][levelID] = set()
-                        if not rankID in self.count_by_levelID_by_rankID:
-                            self.count_by_levelID_by_rankID[rankID] = {}
-                        if not levelID in self.count_by_levelID_by_rankID[rankID]:
-                            self.count_by_levelID_by_rankID[rankID][levelID] = 1
-                        else:
-                            self.count_by_levelID_by_rankID[rankID][levelID] += 1
-                        self.levelIDs_by_rankID[rankID].add(levelID)
-                        self.levelIDs_by_rankID_by_proteomeID[proteomeID][rankID] = levelID
-                        self.proteomeIDs_by_levelID_by_rankID[rankID][levelID].add(proteomeID)
-                else:
+                        levelIDs_by_rankID_by_proteomeID[proteomeID]
+                        rankID = rankIDs[idx]
+                        levelIDs_by_rankID_by_proteomeID[proteomeID][rankID] = levelID
+                else: # empty line
                     pass
+        # remove taxid rank/levels and add lineage rank/levels
+        if 'taxid' in rankIDs:
+            for proteomeID in levelIDs_by_rankID_by_proteomeID:
+                taxid = levelIDs_by_rankID_by_proteomeID[proteomeID]['taxid']
+                lineage = get_lineage(taxid)
+                for taxrank in TAXRANKS:
+                    levelIDs_by_rankID_by_proteomeID[proteomeID][taxrank] = lineage[taxrank]
+                # remove taxid level
+                del levelIDs_by_rankID_by_proteomeID[proteomeID]['taxid']
+            # remove taxid rank
+            rankIDs.remove('taxid')
+            # add taxranks to rank
+            for taxrank in TAXRANKS:
+                rankIDs.append(taxrank)
+        # new ranks
+        self.rankIDs = rankIDs
+        self.rankIDs_count = len(self.rankIDs)
+        self.levelIDs_by_rankID = {rankID : set() for rankID in self.rankIDs}
+        self.proteomeIDs_by_levelID_by_rankID = {rankID : {} for rankID in self.rankIDs}
+        for proteomeID in self.proteomeIDs:
+            self.levelIDs_by_rankID_by_proteomeID[proteomeID] = {x : '' for x in self.rankIDs}
+        # new levels
 
-        if "taxid" in self.rankIDs:
-            self.taxid_parsed = True # flag so that taxids have to be parsed from nodesDB, lineages be calculated, ...
+        for proteomeID in levelIDs_by_rankID_by_proteomeID:
+            for rankID in levelIDs_by_rankID_by_proteomeID[proteomeID]:
+                levelID = levelIDs_by_rankID_by_proteomeID[proteomeID][rankID]
+                if not levelID in self.proteomeIDs_by_levelID_by_rankID[rankID]:
+                    self.proteomeIDs_by_levelID_by_rankID[rankID][levelID] = set()
+                if not rankID in self.count_by_levelID_by_rankID:
+                    self.count_by_levelID_by_rankID[rankID] = {}
+                if not levelID in self.count_by_levelID_by_rankID[rankID]:
+                    self.count_by_levelID_by_rankID[rankID][levelID] = 1
+                else:
+                    self.count_by_levelID_by_rankID[rankID][levelID] += 1
+                self.levelIDs_by_rankID[rankID].add(levelID)
+                self.levelIDs_by_rankID_by_proteomeID[proteomeID][rankID] = levelID
+                self.proteomeIDs_by_levelID_by_rankID[rankID][levelID].add(proteomeID)
         self.proteomeIDs_count = len(self.proteomeIDs)
         self.levelIDs_count_by_rankID = {rankID : len(levels) for rankID, levels in self.levelIDs_by_rankID.items()}
-
-    def set_lineage_by_proteomeID(self):
-        lineage_by_proteomeID = {}
-        for proteomeID in self.levelIDs_by_rankID_by_proteomeID:
-            taxid = self.levelIDs_by_rankID_by_proteomeID[proteomeID]['taxid']
-            lineage = get_lineage(taxid)
-            lineage_by_proteomeID[proteomeID] = lineage
-        self.lineage_by_proteomeID = lineage_by_proteomeID
-        print self.lineage_by_proteomeID
 
     def parse_species_ids(self, species_ids_f):
         # get files for proteomes for parsing of proteins
@@ -278,13 +297,12 @@ class DataObj():
 
     def create_RLOs(self):
         for rankID in self.rankIDs:
-            if not rankID == 'taxid':
-                for levelID in self.levelIDs_by_rankID[rankID]:
-                    proteomeIDs = self.proteomeIDs_by_levelID_by_rankID[rankID][levelID]
-                    rankLevelObj = RankLevelObj(levelID, rankID, proteomeIDs)
-                    if not rankID in self.RLO_by_levelID_by_rankID:
-                        self.RLO_by_levelID_by_rankID[rankID] = {}
-                    self.RLO_by_levelID_by_rankID[rankID][levelID] = rankLevelObj
+            for levelID in self.levelIDs_by_rankID[rankID]:
+                proteomeIDs = self.proteomeIDs_by_levelID_by_rankID[rankID][levelID]
+                rankLevelObj = RankLevelObj(levelID, rankID, proteomeIDs)
+                if not rankID in self.RLO_by_levelID_by_rankID:
+                    self.RLO_by_levelID_by_rankID[rankID] = {}
+                self.RLO_by_levelID_by_rankID[rankID][levelID] = rankLevelObj
 
     def yield_RLOs(self, **kwargs):
         rankIDs_arg = kwargs['ranks']
@@ -352,10 +370,6 @@ class DataObj():
                         clusterObj.cluster_type_by_rankID[rankID] = 'monoton'
 
                 for levelID in levelIDs_seen:
-                    #if not rankID in self.protein_count_by_levelID_by_rankID:
-                    #    self.protein_count_by_levelID_by_rankID[rankID] = []
-                    # this has to be done by levelID not by proteomeID
-#                    self.protein_count_by_levelID_by_rankID[rankID].append(clusterObj.proteinID_count_by_proteomeID)
                     RLO = self.RLO_by_levelID_by_rankID[rankID][levelID]
                     # CLUSTERS
                     RLO.clusterIDs.append(clusterObj.clusterID)
@@ -385,11 +399,14 @@ class DataObj():
                             # more than 1 species in RLO
                             if proteomeIDs_in_RLO.issubset(unique_proteomeIDs_in_cluster):
                                 # all proteomeIDs of RLO present in cluster
+
                                 proteomeIDs_in_cluster = clusterObj.proteomeIDs # get all proteomes in clusters
                                 proteomeID_count_of_RLO_proteomeID_in_cluster_by_proteomeID = {proteomeID : count for proteomeID, count in dict(clusterObj.proteinID_count_by_proteomeID).items() if proteomeID in proteomeIDs_in_RLO}
                                 #print proteomeID_count_of_RLO_proteomeID_in_cluster_by_proteomeID
                                 #dump(clusterObj)
                                 #print RLO
+
+                                # true_1to1
                                 if all(count == 1 for count in proteomeID_count_of_RLO_proteomeID_in_cluster_by_proteomeID.values()):
                                     # if all count in RLO 1
                                     RLO.clusterID_by_type['true_1to1'][cluster_type].append(clusterObj.clusterID)
@@ -465,12 +482,12 @@ class DataObj():
             coverages_out_png = join(self.dirs[rankID], "%s.coverage.%s" % (rankID, PLOT_FORMAT))
             coverages_by_levelID = coverages_by_levelID_by_rankID[rankID]
             plot_flag = plot_coverage_decay(rankID, coverages_by_levelID, coverages_out_png)
-            for levelID in coverages_by_levelID_by_rankID[rankID]:
-                # TXT
-                if (plot_flag):
-                    coverages_out_txt = join(self.dirs[rankID], "%s.%s.coverage.txt" % (rankID, levelID))
-                    with open(coverages_out_txt, "w") as fh:
-                        fh.write("%s\n" % (coverages_by_levelID_by_rankID[rankID][levelID]))
+            #for levelID in coverages_by_levelID_by_rankID[rankID]:
+            #    # TXT
+            #    if (plot_flag):
+            #        coverages_out_txt = join(self.dirs[rankID], "%s.%s.coverage.txt" % (rankID, levelID))
+            #        with open(coverages_out_txt, "w") as fh:
+            #            fh.write("%s\n" % (coverages_by_levelID_by_rankID[rankID][levelID]))
 
     def output_counts_by_RLO(self):
         for rankID in self.rankIDs:
@@ -625,6 +642,7 @@ def plot_rarefaction_data(rarefaction_by_levelID, rarefaction_plot_f):
     ax.set_xlabel("Sampled proteomes")
     ax.legend(ncol=1, numpoints=1, loc="lower right", frameon=True)
     f.savefig(rarefaction_plot_f, format=PLOT_FORMAT)
+    plt.close()
 
 def cmap_discretize(cmap, N):
     if type(cmap) == str:
@@ -683,9 +701,6 @@ def plot_heatmap(out_clusterObj_count_plot_f, out_clusterObj_count_x, out_cluste
     minor_x_ticks = [x for x in x_values]
 
     fig = pylab.figure(figsize=(FIGSIZE[0]*2, FIGSIZE[0]*2))
-    #def median_compare(x, y):
-    #    return int(np.mean(y)) - int(np.mean(x))
-    #z = np.array([x for x in sorted(out_clusterObj_count_z, cmp=median_compare)])
     Z = np.array(out_clusterObj_count_z)
 
     hierarchical_clustering = 0
@@ -716,16 +731,13 @@ def plot_heatmap(out_clusterObj_count_plot_f, out_clusterObj_count_x, out_cluste
 
     axmatrix = fig.add_axes(rect_heat)
     im = axmatrix.matshow(Z, cmap=cmap, aspect='auto', interpolation='nearest', origin='upper', vmin=vmin, vmax=vmax)
-    #axmatrix.xaxis.grid(True, which="major")
     axmatrix.xaxis.grid(True)
     axmatrix.set_yticks([])
-    #axmatrix.set_xticks(major_x_ticks, minor=False)
     axmatrix.set_xticks([], minor=False)
     axmatrix.set_xticks(minor_x_ticks, minor=True)
     axmatrix.xaxis.grid(False)
     for major_x_tick in major_x_ticks:
         axmatrix.axvline(major_x_tick, linewidth=1, color='1.0')
-
     axmatrix.xaxis.tick_bottom()
     axmatrix.set_xticklabels(x_labels, minor=True, rotation='vertical', ha='center', fontsize = FONTSIZE)
 
@@ -739,22 +751,7 @@ def plot_heatmap(out_clusterObj_count_plot_f, out_clusterObj_count_x, out_cluste
     colorbar.set_ticklabels(["%s" % x if not x == vmax else "%s+" % x for x in range(vmax+1)])
     colorbar.ax.tick_params(labelsize=FONTSIZE)
     fig.savefig(out_clusterObj_count_plot_f)
-
-#def create_rainbow(ax):
-#    rainbow = [ax._get_lines.prop_cycler.next()['color']]
-#    while True:
-#        nextval = ax._get_lines.prop_cycler.next()['color']
-#        if nextval not in rainbow:
-#            rainbow.append(nextval)
-#        else:
-#            return rainbow
-#
-#def next_color(ax):
-#    rainbow = create_rainbow(ax)
-#    double_rainbow = collections.deque(rainbow)
-#    nextval = ax._get_lines.prop_cycler.next()['color']
-#    double_rainbow.rotate(-1)
-#    return nextval, itertools.cycle(double_rainbow)
+    plt.close()
 
 def plot_coverage_decay(rankID, coverages_by_levelID, coverages_out_png):
     sns.set_color_codes("pastel")
@@ -780,28 +777,6 @@ def plot_coverage_decay(rankID, coverages_by_levelID, coverages_out_png):
                 cluster_count = coverage_idx + 1
                 y_values.append(coverage)
                 x_values.append(cluster_count)
-                #if not (y_values):
-                #    print "first"
-                #    y_values.append(coverage)
-                #    x_values.append(cluster_count)
-                #else:
-                #    print "not first"
-                #    if coverage == y_values[-1]:
-                #        last_x = cluster_count
-                #    else:
-                #        y_values.append(coverage)
-                #        x_values.append(cluster_count)
-                #        y_values.append(coverage)
-                #        x_values.append(cluster_count)
-                #print "y = ", y_values
-                #print "x = ", x_values
-
-#            y_values.append(y_values[-1])
-#            x_values.append(last_x)
-            #print y_values
-            #print x_values
-            #colour, ax._get_lines.color_cycle = next_color(ax)
-            #ax.plot(x_values, y_values, '-o', linestyle = '-', linewidth = 4, color = colour, label=levelID, markeredgecolor = 'none')
             plot = ax.plot(x_values, y_values, '-o', linestyle = '-', linewidth = 4, label=levelID, markeredgecolor = 'none')
             colour = plot[-1].get_color()
             label = "%s - %s proteomes" % (levelID, number_of_members)
@@ -820,6 +795,7 @@ def plot_coverage_decay(rankID, coverages_by_levelID, coverages_out_png):
         f.savefig(coverages_out_png, format=PLOT_FORMAT)
     else:
         print "[WARN] - Omitting coverage decay of rankID %s : too few members in levels " % (rankID)
+    plt.close()
     return plot_flag
 
 ############################################################################################
@@ -1017,6 +993,15 @@ def parse_blast_f(blast_f):
             print line
             print lineage
 
+def cpickle_dump(data):
+    with open('kinfin.pkl', 'wb') as fh_out:
+        pickle.cdump(data, fh_out, pickle.HIGHEST_PROTOCOL)
+
+def cpickle_load(data_pickle):
+    print "[+] - open pickled data : %s" % data_pickle
+    with open(data_pickle, 'rb') as fh_in:
+        data = cpickle.load(fh_in)
+    return data
 
 def get_lineage(taxid): # works
     lineage = {taxrank : 'undef' for taxrank in TAXRANKS}
@@ -1041,6 +1026,7 @@ if __name__ == "__main__":
         category_f = args['--category_file']
         domain_f = args['--functional_annotation']
         fasta_dir = args['--fasta_dir']
+        data_pickle = args['--pickle']
         MEDIAN_LENGTH_THRESHOLD = int(args['--median_prot_len'])
         REPETITIONS = int(args['--repetitions']) + 1
         out_prefix = args['--outprefix']
@@ -1063,26 +1049,28 @@ if __name__ == "__main__":
 ###################################
 
 ###################################
-    dataObj = DataObj()
-    dataObj.parse_categories(category_f)
-    if dataObj.taxid_parsed:
-        dataObj.set_lineage_by_proteomeID()
-    dataObj.create_RLOs()
-    dataObj.parse_species_ids(species_ids_f)
-    dataObj.setup_dirs(out_prefix)
-
-    if (fasta_dir):
-        dataObj.parse_fasta(fasta_dir)
-    if (domain_f):
-        dataObj.parse_domains(domain_f)
-    #dataObj.output("categories") # debug
-    dataObj.parse_clusters(groups_f)
-    #dataObj.output("ranklevelobjs")
-    dataObj.output_coverages()
-    dataObj.calculate_rarefaction_data(REPETITIONS)
-    dataObj.output_rarefaction()
-    dataObj.output_counts_by_RLO()
-    dataObj.output_clusters_by_type()
-    dataObj.output_clusters_by_proteome_count()
+    if data_pickle:
+        dataObj = pickle_load(data_pickle)
+        print "pickle loaded"
+    else:
+        dataObj = DataObj()
+        dataObj.parse_categories(category_f)
+        dataObj.create_RLOs()
+        dataObj.parse_species_ids(species_ids_f)
+        dataObj.setup_dirs(out_prefix)
+        if (fasta_dir):
+            dataObj.parse_fasta(fasta_dir)
+        if (domain_f):
+            dataObj.parse_domains(domain_f)
+        #dataObj.output("categories") # debug
+        dataObj.parse_clusters(groups_f)
+        #dataObj.output("ranklevelobjs")
+        dataObj.output_coverages()
+        dataObj.calculate_rarefaction_data(REPETITIONS)
+        dataObj.output_rarefaction()
+        dataObj.output_counts_by_RLO()
+        dataObj.output_clusters_by_type()
+        dataObj.output_clusters_by_proteome_count()
+        pickle_dump(dataObj)
     #for RLO in dataObj.yield_RLOs(ranks=['all'], levels=['all']):
     #    print RLO.rankID, RLO.levelID, RLO.check()
