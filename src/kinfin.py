@@ -297,7 +297,7 @@ class DataObj():
                 if line.startswith("OG"):
                     temp = line.rstrip("\n").split(" ")
                     clusterID, protein_string = temp[0], temp[1:]
-                    clusterObj = ClusterObj(clusterID, protein_string.split())
+                    clusterObj = ClusterObj(clusterID, protein_string)
                     parsed_clusterObjs.append(clusterObj)
                 else:
                     sys.exit("[ERROR] - Line does not have a cluster ID\n%s") % line
