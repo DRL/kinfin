@@ -918,7 +918,7 @@ class ClusterObj():
 ############################################################################################
 
 class ProteinObj():
-    def __init__(self, proteinID, length, proteomeID):
+    def __init__(self, proteinID, length, proteomeID, speciesID):
         self.proteinID = proteinID
         self.proteomeID = proteomeID
         self.length = length
@@ -927,8 +927,8 @@ class ProteinObj():
         self.taxonomy = None # dict : key=rank, val=taxid ; translateOnDemand
         self.AI = None
         self.HI = None
-        self.species_id = species_id
-        self.species_name = species_name_dict.get(species_id, None)
+        self.speciesID = speciesID
+        self.species_name = species_name_dict.get(speciesID, None)
         self.domain_list = None
         self.domain_set = None
         self.domain_diversity = None
@@ -947,14 +947,14 @@ class ProteinObj():
 
 class ContigObj(object):
     """docstring for ContigObj"""
-    def __init__(self, ctg_name, ctg_length, ctg_prot_list, species_id):
+    def __init__(self, ctg_name, ctg_length, ctg_prot_list, speciesID):
         self.name = ctg_name
         self.length = ctg_length
         self.protein_order = ctg_prot_list
         self.protein_set = set(ctg_prot_list)
         self.protein_count = len(ctg_prot_list)
-        self.species_id = species_id
-        self.species_name = species_name_dict.get(species_id, None)
+        self.speciesID = speciesID
+        self.species_name = species_name_dict.get(speciesID, None)
         self.source = source
 
 ############################################################################################
