@@ -239,7 +239,7 @@ class DataObj():
         with open(species_ids_f) as fh:
             for l in fh:
                 if not len(l.strip()) == 0:
-                    if not line.startswith("#"):
+                    if not l.startswith("#"):
                         number, species_fasta = l.rstrip("\n").split(": ")
                         proteome_files.append(species_fasta)
         if not self.proteomeIDs_count == len(proteome_files):
