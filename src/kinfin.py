@@ -912,7 +912,7 @@ class ClusterObj():
     def generate_proteinIDs_by_proteomeID(self):
         proteinIDs_by_proteomeID = {}
         for proteinID in self.proteinIDs:
-            proteomeID = proteinID.split(".")[0]
+            proteomeID = proteinID.split(DELIMITER)[0]
             if not proteomeID in proteinIDs_by_proteomeID:
                 proteinIDs_by_proteomeID[proteomeID] = set()
             proteinIDs_by_proteomeID[proteomeID].add(proteinID)
