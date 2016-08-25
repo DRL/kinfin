@@ -17,7 +17,7 @@ usage: kinfin.py        -s <FILE> -g <FILE> -c <FILE>
         General
             -s, --species_file <FILE>           SpeciesIDs.txt used in OrthoFinder
             -g, --groups <FILE>                 OrthologousGroups.txt produced by OrthoFinder
-            -c, --category_file <FILE>          Category file
+            -c, --classification_file <FILE>    SpeciesClassification file
             --pickle <FILE>                     Load DataObj from pickled file
             --nodesdb <FILE>                    nodesdb file (sames as blobtools nodesDB file)
             -o, --outprefix <STR>               Output prefix
@@ -85,17 +85,19 @@ Improvements
     - plot as greys in coverage-decay plot
     (-randomise RLO membership of proteomeIDs in cluster)
 
-- fuzzy-one2one's for RLOs (as opposed to true-one2one's) : i suspect it is not essential for clostridium but it will be for the nematodes/fungi
-    e.g.: with [x] = proteomes in cluster, (x) = proteomes in RLO
-    - allowing proportion of zero's :
-        fuzzy-one2one-multiton : [1,0,0,(0,1,1,1,1)]
-        fuzzy-one2one-monoton : [0,0,0,(0,1,1,1,1)]
-    - allowing proportion of > 1's :
-        fuzzy-one2one-monoton : [0,0,0,(1,1,2,1,1)]
-        fuzzy-one2one-monoton : [1,0,0,(1,1,2,1,1)]
+- SpeciesClassification file :
+    - special float columns on which bins are calculate_rarefaction_data
+
 - a way of pulling out the proteins in a easy way
 - the median length threshold filter of clusters is still experimental (let's not use it until I have check that all numbers make sense)
 
+-add sum column to counts_of_cluster_count
+    - numprot
+    -numspecies
+    all RLOs : number of proteome for each level
+
+- synapomorphic losses : notatons
+    are count for RLOs absent
 
 - HGT business
     - candidate HGT
@@ -168,10 +170,10 @@ class DataObj():
                     seqs.append(l[:-1])
             yield header, ''.join(seqs)
 
-    def parse_categories(self, category_f):
+    def parse_classification(self, classification_f):
         rankIDs = []
         levelIDs_by_rankID_by_proteomeID = {}
-        with open(category_f) as fh:
+        with open(classification_f) as fh:
             for l in fh:
                 if l.startswith("#"):
                     rankIDs = [x.strip() for x in l.lstrip("#").rstrip("\n").split(",")]
@@ -237,8 +239,9 @@ class DataObj():
         with open(species_ids_f) as fh:
             for l in fh:
                 if not len(l.strip()) == 0:
-                    number, species_fasta = l.rstrip("\n").split(": ")
-                    proteome_files.append(species_fasta)
+                    if not line.startswith("#"):
+                        number, species_fasta = l.rstrip("\n").split(": ")
+                        proteome_files.append(species_fasta)
         if not self.proteomeIDs_count == len(proteome_files):
             sys.exit("[ERROR] - %s fasta files found in %s. Should be %s." % (len(proteome_files), species_ids_f, self.proteomeIDs_count) )
         for proteome_file, proteome_RLO in zip(proteome_files, self.yield_RLOs(ranks=['proteome'], levels=['all'])):
@@ -291,9 +294,13 @@ class DataObj():
         parsed_clusterObjs = []
         with open(groups_f) as fh:
             for idx, line in enumerate(fh):
-                clusterID, protein_string = line.rstrip("\n").split(": ")
-                clusterObj = ClusterObj(clusterID, protein_string.split())
-                parsed_clusterObjs.append(clusterObj)
+                if line.startswith("OG"):
+                    temp = line.rstrip("\n").split(" ")
+                    clusterID, protein_string = temp[0], temp[1:]
+                    clusterObj = ClusterObj(clusterID, protein_string.split())
+                    parsed_clusterObjs.append(clusterObj)
+                else:
+                    sys.exit("[ERROR] - Line does not have a cluster ID\n%s") % line
 
         number_of_clusters = len(parsed_clusterObjs)
         steps = number_of_clusters/100
@@ -1111,7 +1118,7 @@ if __name__ == "__main__":
     try:
         species_ids_f = args['--species_file']
         groups_f = args['--groups']
-        category_f = args['--category_file']
+        classification_f = args['--classification_file']
         domain_f = args['--functional_annotation']
         delimiter = args['--delimiter']
         FUZZY_FRACTION = float(args['-f'])
@@ -1151,7 +1158,7 @@ if __name__ == "__main__":
         print "pickle loaded"
     else:
         dataObj = DataObj()
-        dataObj.parse_categories(category_f)
+        dataObj.parse_classification(classification_f)
         dataObj.create_RLOs()
         dataObj.parse_species_ids(species_ids_f)
         dataObj.setup_dirs(outprefix)
