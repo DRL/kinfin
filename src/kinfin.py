@@ -403,12 +403,12 @@ class DataObj():
                     if not cluster_type == 'singleton':
                         unique_proteomeIDs_in_cluster = clusterObj.proteomeIDs_unique
                         proteomeIDs_in_RLO_all = RLO.proteomeIDs
-                        print "-"
-                        print rankID
-                        print levelID
-                        print "All proteomeIDs : %s" % proteomeIDs_in_RLO_all
+                        #print "-"
+                        #print rankID
+                        #print levelID
+                        #print "All proteomeIDs : %s" % proteomeIDs_in_RLO_all
                         proteomeIDs_in_RLO_in_cluster = unique_proteomeIDs_in_cluster.intersection(RLO.proteomeIDs)
-                        print "In cluster proteomeIDs : %s" % proteomeIDs_in_RLO_in_cluster
+                        #print "In cluster proteomeIDs : %s" % proteomeIDs_in_RLO_in_cluster
                         # COVERAGE
                         '''
                         this has to be rewritten at one point...
@@ -424,7 +424,7 @@ class DataObj():
                             #if proteomeIDs_in_RLO_all.issubset(unique_proteomeIDs_in_cluster):
                             if all(count == 1 for count in proteomeID_count_of_RLO_proteomeID_in_cluster_by_proteomeID.values()):
 
-                                print "TRUE 1to1 : %s" % proteomeID_count_of_RLO_proteomeID_in_cluster_by_proteomeID
+                                #print "TRUE 1to1 : %s" % proteomeID_count_of_RLO_proteomeID_in_cluster_by_proteomeID
                                 RLO.clusterID_by_type['true_1to1'][cluster_type].append(clusterObj.clusterID)
                                 RLO.clusterID_count_by_type['true_1to1'][cluster_type] += 1
                                 for proteomeID in proteomeIDs_in_RLO_in_cluster:
