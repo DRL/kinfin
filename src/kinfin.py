@@ -4,7 +4,7 @@
 """
 usage: kinfin.py        -s <FILE> -g <FILE> -c <FILE>
                         [-f <FLOAT>] [-n <INT>] [--min <INT>] [--max <INT>]
-                        [--nodesdb <FILE>]
+                        [--nodesdb <FILE>] [--delimiter <STRING>]
                         [-l <INT>] [-r <INT>] [--pickle <FILE>]
                         [-d <DIR>] [--functional_annotation <FILE>]
                         [--fontsize <INT>] [--plotsize INT,INT]
@@ -21,6 +21,7 @@ usage: kinfin.py        -s <FILE> -g <FILE> -c <FILE>
             --pickle <FILE>                     Load DataObj from pickled file
             --nodesdb <FILE>                    nodesdb file (sames as blobtools nodesDB file)
             -o, --outprefix <STR>               Output prefix
+            --delimiter <STRING>                Delimiter between proteome prefix and protein name [default: "."]
 
         "Fuzzy"-Orthology-groups
             -f <FLOAT>                          "Fuzzyness"-factor F [default: 0.9]
@@ -35,7 +36,7 @@ usage: kinfin.py        -s <FILE> -g <FILE> -c <FILE>
             -p, --plotfmt <STR>                 Plot formats [default: png]
 
         Experimental
-            --functional_annotation <FILE>  Functional annotation of proteins
+            --functional_annotation <FILE>      Functional annotation of proteins
             -d, --fasta_dir <DIR>               Directory containing FASTAs used in Orthofinder
             -l, --median_prot_len <INT>         Median protein length threshold for clusters [default: 0]
 """
@@ -888,7 +889,7 @@ class ClusterObj():
     def __init__(self, clusterID, proteinIDs):
         self.clusterID = clusterID
         self.proteinIDs = proteinIDs
-        self.proteomeIDs = [x.split(".")[0] for x in proteinIDs]
+        self.proteomeIDs = [x.split(DELIMITER)[0] for x in proteinIDs]
         self.proteinIDs_by_proteomeID = self.generate_proteinIDs_by_proteomeID()
         self.proteomeIDs_unique = set(self.proteomeIDs)
         self.proteinID_count = len(proteinIDs)
@@ -1108,6 +1109,7 @@ if __name__ == "__main__":
         groups_f = args['--groups']
         category_f = args['--category_file']
         domain_f = args['--functional_annotation']
+        delimiter = args['--delimiter']
         FUZZY_FRACTION = float(args['-f'])
         FUZZY_COUNT = int(args['-n'])
         fuzzy_min = int(args['--min'])
@@ -1129,6 +1131,8 @@ if __name__ == "__main__":
 ###################################
     FUZZY_RANGE = set([x for x in range(fuzzy_min, fuzzy_max+1) if not x == FUZZY_COUNT])
 
+###################################
+    DELIMITER = delimiter.replace("\"", "")
 ###################################
     NODESDB = None
     TAXRANKS = ['superkingdom', 'kingdom', 'phylum', 'class', 'order', 'superfamily', 'family', 'subfamily', 'genus', 'species']
