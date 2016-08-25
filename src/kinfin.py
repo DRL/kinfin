@@ -3,8 +3,10 @@
 
 """
 usage: kinfin.py        -s <FILE> -g <FILE> -c <FILE>
-                        [-d <DIR>] [-f <FILE>] [--nodesdb <FILE>]
+                        [-f <FLOAT>] [-n <INT>] [--min <INT>] [--max <INT>]
+                        [--nodesdb <FILE>]
                         [-l <INT>] [-r <INT>] [--pickle <FILE>]
+                        [-d <DIR>] [--functional_annotation <FILE>]
                         [--fontsize <INT>] [--plotsize INT,INT]
                         [-o <PREFIX>] [-p <PLOTFORMAT>]
                         [-h|--help]
@@ -12,20 +14,30 @@ usage: kinfin.py        -s <FILE> -g <FILE> -c <FILE>
     Options:
         -h --help                           show this
 
-        -s, --species_file <FILE>           SpeciesIDs.txt used in OrthoFinder
-        -g, --groups <FILE>                 OrthologousGroups.txt produced by OrthoFinder
-        -c, --category_file <FILE>          Category file
-        --pickle <FILE>                     Load DataObj from pickled file
-        -f, --functional_annotation <FILE>  Functional annotation of proteins
-        -d, --fasta_dir <DIR>               Directory containing FASTAs used in Orthofinder
-        -l, --median_prot_len <INT>         Median protein length threshold for clusters [default: 0]
-        --nodesdb <FILE>                    nodesdb file (sames as blobtools nodesDB file)
+        General
+            -s, --species_file <FILE>           SpeciesIDs.txt used in OrthoFinder
+            -g, --groups <FILE>                 OrthologousGroups.txt produced by OrthoFinder
+            -c, --category_file <FILE>          Category file
+            --pickle <FILE>                     Load DataObj from pickled file
+            --nodesdb <FILE>                    nodesdb file (sames as blobtools nodesDB file)
+            -o, --outprefix <STR>               Output prefix
 
-        -r, --repetitions <INT>             Number of repetitions for rarefaction curves [default: 30]
-        --fontsize <INT>                    Fontsize for plots [default: 16]
-        --plotsize <INT,INT>                Size (WIDTH,HEIGHT) for plots [default: 24,12]
-        -o, --outprefix <STR>               Output prefix
-        -p, --plotfmt <STR>                 Plot formats [default: png]
+        "Fuzzy"-Orthology-groups
+            -f <FLOAT>                          "Fuzzyness"-factor F [default: 0.9]
+            -n <INT>                            Count of proteins in (F) of cluster [default: 1]
+            --min <INT>                         Minimum count of proteins in (1-F) of cluster [default: 0]
+            --max <INT>                         Maximum count of proteins in (1-F) of cluster[default: 100]
+
+        Plotting
+            -r, --repetitions <INT>             Number of repetitions for rarefaction curves [default: 30]
+            --fontsize <INT>                    Fontsize for plots [default: 16]
+            --plotsize <INT,INT>                Size (WIDTH,HEIGHT) for plots [default: 24,12]
+            -p, --plotfmt <STR>                 Plot formats [default: png]
+
+        Experimental
+            --functional_annotation <FILE>  Functional annotation of proteins
+            -d, --fasta_dir <DIR>               Directory containing FASTAs used in Orthofinder
+            -l, --median_prot_len <INT>         Median protein length threshold for clusters [default: 0]
 """
 
 from __future__ import division
@@ -360,7 +372,6 @@ class DataObj():
                 levelIDs_seen = set() # levelIDs that are in this clusterObj
                 for proteomeID in clusterObj.proteomeIDs: # based on proteomeIDs in clusterObj ...
                     levelIDs_seen.add(self.levelIDs_by_rankID_by_proteomeID[proteomeID][rankID]) # add levelIDs to which proteomeID belongs
-
                 if clusterObj.proteinID_count == 1:
                     clusterObj.cluster_type_by_rankID[rankID] = 'singleton'
                 else:
@@ -390,40 +401,56 @@ class DataObj():
 
                     if not cluster_type == 'singleton':
                         unique_proteomeIDs_in_cluster = clusterObj.proteomeIDs_unique
-                        proteomeIDs_in_RLO = RLO.proteomeIDs
-                        RLO_proteomeIDs_in_cluster = unique_proteomeIDs_in_cluster.intersection(proteomeIDs_in_RLO)
+                        proteomeIDs_in_RLO_all = RLO.proteomeIDs
+                        proteomeIDs_in_RLO_in_cluster = unique_proteomeIDs_in_cluster.intersection(RLO.proteomeIDs)
                         # COVERAGE
-                        coverage = float(len(RLO_proteomeIDs_in_cluster)/len(proteomeIDs_in_RLO))
+                        '''
+                        this has to be rewritten at one point...
+                        - now : the calculations are done based on RLO members that are "present"
+                        - future : the calculation are done based on RLO members that have non-zero counts
+                        '''
+                        coverage = float(len(proteomeIDs_in_RLO_in_cluster)/RLO.proteomeIDs_count)
                         RLO.coverage_in_clusters.append(coverage)
-                        if len(RLO_proteomeIDs_in_cluster) > 1:
-                            # more than 1 species in RLO
-                            if proteomeIDs_in_RLO.issubset(unique_proteomeIDs_in_cluster):
-                                # all proteomeIDs of RLO present in cluster
+                        if len(proteomeIDs_in_RLO_in_cluster) > 1:
 
-                                proteomeIDs_in_cluster = clusterObj.proteomeIDs # get all proteomes in clusters
-                                proteomeID_count_of_RLO_proteomeID_in_cluster_by_proteomeID = {proteomeID : count for proteomeID, count in dict(clusterObj.proteinID_count_by_proteomeID).items() if proteomeID in proteomeIDs_in_RLO}
-                                #print proteomeID_count_of_RLO_proteomeID_in_cluster_by_proteomeID
-                                #dump(clusterObj)
-                                #print RLO
+                            # proteomeID_count_of_RLO_proteomeID_in_cluster_by_proteomeID = {proteomeID : count for proteomeID, count in dict(clusterObj.proteinID_count_by_proteomeID).items() if proteomeID in proteomeIDs_in_RLO_all}
+                            proteomeID_count_of_RLO_proteomeID_in_cluster_by_proteomeID = {proteomeID : clusterObj.proteinID_count_by_proteomeID.get(proteomeID, 0) for proteomeID in RLO.proteomeIDs}
+                            #if proteomeIDs_in_RLO_all.issubset(unique_proteomeIDs_in_cluster):
+                            if all(count == 1 for count in proteomeID_count_of_RLO_proteomeID_in_cluster_by_proteomeID.values()):
+                                #print rankID
+                                #print levelID
+                                #print "TRUE 1to1 : %s" % proteomeID_count_of_RLO_proteomeID_in_cluster_by_proteomeID
+                                RLO.clusterID_by_type['true_1to1'][cluster_type].append(clusterObj.clusterID)
+                                RLO.clusterID_count_by_type['true_1to1'][cluster_type] += 1
+                                for proteomeID in proteomeIDs_in_RLO_in_cluster:
+                                    RLO.proteinID_by_type['true_1to1'][cluster_type].append(clusterObj.proteinIDs_by_proteomeID[proteomeID])
+                                    RLO.proteinID_count_by_type['true_1to1'][cluster_type] += clusterObj.proteinID_count_by_proteomeID[proteomeID]
+                            elif len(proteomeIDs_in_RLO_in_cluster) >= 3:
+                                # fuzzy n-to-n's
+                                proteomeIDs_at_fuzzycount = {k : v for k, v in proteomeID_count_of_RLO_proteomeID_in_cluster_by_proteomeID.items() if v == FUZZY_COUNT}
+                                proteomeIDs_in_fuzzyrange = {k : v for k, v in proteomeID_count_of_RLO_proteomeID_in_cluster_by_proteomeID.items() if v in FUZZY_RANGE}
+                                proteomeIDs_at_fuzzycount_count = len(proteomeIDs_at_fuzzycount)
+                                proteomeIDs_in_fuzzyrange_count = len(proteomeIDs_in_fuzzyrange)
+                                fuzzy_fraction = proteomeIDs_at_fuzzycount_count/len(RLO.proteomeIDs)
+                                #print rankID
+                                #print levelID
+                                #print "AT FUZZY_COUNT : %s" % proteomeIDs_at_fuzzycount_count
+                                #print "IN FUZZY_RANGE : %s" % proteomeIDs_in_fuzzyrange_count
+                                #print "FUZZY_FRACTION : %s" % fuzzy_fraction
+                                if fuzzy_fraction >= FUZZY_FRACTION:
+                                    if proteomeIDs_at_fuzzycount_count + proteomeIDs_in_fuzzyrange_count == len(RLO.proteomeIDs):
+                                        #if cluster_type == 'monoton':
+                                        #    print "%s:%s fuzzy 1to1 of type %s" % (rankID, levelID, cluster_type)
+                                        #    print "cluster : %s" % (proteomeID_count_of_RLO_proteomeID_in_cluster_by_proteomeID)
+                                        RLO.clusterID_by_type['fuzzy_1to1'][cluster_type].append(clusterObj.clusterID)
+                                        RLO.clusterID_count_by_type['fuzzy_1to1'][cluster_type] += 1
+                                        for proteomeID in proteomeIDs_in_RLO_in_cluster:
+                                            RLO.proteinID_by_type['fuzzy_1to1'][cluster_type].append(clusterObj.proteinIDs_by_proteomeID[proteomeID])
+                                            RLO.proteinID_count_by_type['fuzzy_1to1'][cluster_type] += clusterObj.proteinID_count_by_proteomeID[proteomeID]
+                                else:
+                                    pass
 
-                                # true_1to1
-                                if all(count == 1 for count in proteomeID_count_of_RLO_proteomeID_in_cluster_by_proteomeID.values()):
-                                    # if all count in RLO 1
-                                    RLO.clusterID_by_type['true_1to1'][cluster_type].append(clusterObj.clusterID)
-                                    RLO.clusterID_count_by_type['true_1to1'][cluster_type] += 1
-                                    for proteomeID in RLO_proteomeIDs_in_cluster:
-                                        RLO.proteinID_by_type['true_1to1'][cluster_type].append(clusterObj.proteinIDs_by_proteomeID[proteomeID])
-                                        RLO.proteinID_count_by_type['true_1to1'][cluster_type] += clusterObj.proteinID_count_by_proteomeID[proteomeID]
 
-                        if len(RLO_proteomeIDs_in_cluster) >= 3 and coverage >= conserved_fraction:
-                            '''
-                                fuzzy one2ones : fuzzy-fraction = (1 - conserved-fraction) : e.g. 0.25
-
-                                    [(1,1,1,x), x, x, x]
-
-                                - only if 3+ proteomes members of RLO
-
-                            '''
 
 
                     #print RLO
@@ -503,14 +530,28 @@ class DataObj():
     def output_counts_by_RLO(self):
         for rankID in self.rankIDs:
             rank_out_f = join(self.dirs[rankID], "%s.counts.txt" % (rankID))
-            rank_out_string = ["\t".join(["rankID", "levelID", \
-                "cluster_count", "cluster_singleton_count", \
-                "cluster_monoton_count", "cluster_multiton_count", \
-                "cluster_monoton_o2o_count", "cluster_multiton_o2o_count", \
-                "protein_count", "protein_singleton_count", \
-                "protein_monoton_count", "protein_multiton_count", \
-                "protein_monoton_o2o_count", "protein_multiton_o2o_count", \
-                "protein_span",  "members_count", "members" \
+            rank_out_string = ["\t".join([\
+                "rankID", \
+                "levelID", \
+                "cluster_count", \
+                "cluster_singleton_count", \
+                "cluster_monoton_count", \
+                "cluster_multiton_count", \
+                "cluster_monoton_true_1to1_count", \
+                "cluster_monoton_fuzzy_1to1_count", \
+                "cluster_multiton_true_1to1_count", \
+                "cluster_multiton_fuzzy_1to1_count", \
+                "protein_count", \
+                "protein_singleton_count", \
+                "protein_monoton_count", \
+                "protein_multiton_count", \
+                "protein_monoton_true_1to1_count", \
+                "protein_monoton_fuzzy_1to1_count", \
+                "protein_multiton_true_1to1_count", \
+                "protein_multiton_fuzzy_1to1_count", \
+                "protein_span", \
+                "members_count", \
+                "members" \
                 ])]
             for levelID, RLO in self.RLO_by_levelID_by_rankID[rankID].items():
                 protein_span = 0
@@ -519,14 +560,27 @@ class DataObj():
                 else:
                     protein_span = 'NA'
                 rank_out_string.append("\t".join([str(x) for x in [ \
-                    RLO.rankID, RLO.levelID, \
-                    RLO.clusterID_count, RLO.clusterID_count_by_type['singleton'], \
-                    RLO.clusterID_count_by_type['monoton'], RLO.clusterID_count_by_type['multiton'], \
-                    RLO.clusterID_count_by_type['true_1to1']['monoton'], RLO.clusterID_count_by_type['true_1to1']['multiton'], \
-                    RLO.proteinID_count, RLO.proteinID_count_by_type['singleton'], \
-                    RLO.proteinID_count_by_type['monoton'], RLO.proteinID_count_by_type['multiton'], \
-                    RLO.proteinID_count_by_type['true_1to1']['monoton'], RLO.proteinID_count_by_type['true_1to1']['multiton'], \
-                    protein_span, RLO.proteomeIDs_count, ",".join(RLO.proteomeIDs) \
+                    RLO.rankID, \
+                    RLO.levelID, \
+                    RLO.clusterID_count, \
+                    RLO.clusterID_count_by_type['singleton'], \
+                    RLO.clusterID_count_by_type['monoton'], \
+                    RLO.clusterID_count_by_type['multiton'], \
+                    RLO.clusterID_count_by_type['true_1to1']['monoton'], \
+                    RLO.clusterID_count_by_type['fuzzy_1to1']['monoton'], \
+                    RLO.clusterID_count_by_type['true_1to1']['multiton'], \
+                    RLO.clusterID_count_by_type['fuzzy_1to1']['multiton'], \
+                    RLO.proteinID_count, \
+                    RLO.proteinID_count_by_type['singleton'], \
+                    RLO.proteinID_count_by_type['monoton'], \
+                    RLO.proteinID_count_by_type['multiton'], \
+                    RLO.proteinID_count_by_type['true_1to1']['monoton'], \
+                    RLO.proteinID_count_by_type['fuzzy_1to1']['monoton'], \
+                    RLO.proteinID_count_by_type['true_1to1']['multiton'], \
+                    RLO.proteinID_count_by_type['fuzzy_1to1']['multiton'], \
+                    protein_span, \
+                    RLO.proteomeIDs_count, \
+                    ",".join(RLO.proteomeIDs) \
                     ]]))
             with open(rank_out_f, "w") as fh:
                 fh.write("\n".join(rank_out_string) + "\n")
@@ -534,31 +588,48 @@ class DataObj():
     def output_clusters_by_type(self):
         for rankID in self.rankIDs:
             for levelID, RLO in self.RLO_by_levelID_by_rankID[rankID].items():
+
                 out_cluster_singleton_f = join(self.dirs[rankID], "%s.%s.clusterIDs.singletons.txt" % (rankID, levelID))
                 if (RLO.clusterID_by_type['singleton']):
                     with open(out_cluster_singleton_f, "w") as out_cluster_singleton_fh:
                         out_cluster_singleton_fh.write("\n".join(RLO.clusterID_by_type['singleton']))
                         out_cluster_singleton_fh.write("\n")
+
                 out_cluster_monoton_f = join(self.dirs[rankID], "%s.%s.clusterIDs.monotons.txt" % (rankID, levelID))
                 if (RLO.clusterID_by_type['monoton']):
                     with open(out_cluster_monoton_f, "w") as out_cluster_monoton_fh:
                         out_cluster_monoton_fh.write("\n".join(RLO.clusterID_by_type['monoton']))
                         out_cluster_monoton_fh.write("\n")
+
                 out_cluster_multiton_f = join(self.dirs[rankID], "%s.%s.clusterIDs.multitons.txt" % (rankID, levelID))
                 if (RLO.clusterID_by_type['multiton']):
                     with open(out_cluster_multiton_f, "w") as out_cluster_multiton_fh:
                         out_cluster_multiton_fh.write("\n".join(RLO.clusterID_by_type['multiton']))
                         out_cluster_multiton_fh.write("\n")
+
                 out_cluster_true_1to1_multiton_f = join(self.dirs[rankID], "%s.%s.clusterIDs.multitons.true_1to1.txt" % (rankID, levelID))
                 if (RLO.clusterID_by_type['true_1to1']['multiton']):
                     with open(out_cluster_true_1to1_multiton_f, "w") as out_cluster_true_1to1_multiton_fh:
                         out_cluster_true_1to1_multiton_fh.write("\n".join(RLO.clusterID_by_type['true_1to1']['multiton']))
                         out_cluster_true_1to1_multiton_fh.write("\n")
+
                 out_cluster_true_1to1_monoton_f = join(self.dirs[rankID], "%s.%s.clusterIDs.monotons.true_1to1.txt" % (rankID, levelID))
                 if (RLO.clusterID_by_type['true_1to1']['monoton']):
                     with open(out_cluster_true_1to1_monoton_f, "w") as out_cluster_true_1to1_monoton_fh:
                         out_cluster_true_1to1_monoton_fh.write("\n".join(RLO.clusterID_by_type['true_1to1']['monoton']))
                         out_cluster_true_1to1_monoton_fh.write("\n")
+
+                out_cluster_fuzzy_1to1_multiton_f = join(self.dirs[rankID], "%s.%s.clusterIDs.multitons.fuzzy_1to1.txt" % (rankID, levelID))
+                if (RLO.clusterID_by_type['fuzzy_1to1']['multiton']):
+                    with open(out_cluster_fuzzy_1to1_multiton_f, "w") as out_cluster_fuzzy_1to1_multiton_fh:
+                        out_cluster_fuzzy_1to1_multiton_fh.write("\n".join(RLO.clusterID_by_type['fuzzy_1to1']['multiton']))
+                        out_cluster_fuzzy_1to1_multiton_fh.write("\n")
+
+                out_cluster_fuzzy_1to1_monoton_f = join(self.dirs[rankID], "%s.%s.clusterIDs.monotons.fuzzy_1to1.txt" % (rankID, levelID))
+                if (RLO.clusterID_by_type['fuzzy_1to1']['monoton']):
+                    with open(out_cluster_fuzzy_1to1_monoton_f, "w") as out_cluster_fuzzy_1to1_monoton_fh:
+                        out_cluster_fuzzy_1to1_monoton_fh.write("\n".join(RLO.clusterID_by_type['fuzzy_1to1']['monoton']))
+                        out_cluster_fuzzy_1to1_monoton_fh.write("\n")
 
 
     def output_clusters_by_proteome_count(self):
@@ -577,7 +648,7 @@ class DataObj():
                 ))
         with open(out_clusterObj_count_f, 'w') as out_clusterObj_count_fh:
             out_clusterObj_count_fh.write("\n".join(out_clusterObj_count_string))
-        plot_heatmap(out_clusterObj_count_plot_f, out_clusterObj_count_x, out_clusterObj_count_y, out_clusterObj_count_z)
+        #plot_heatmap(out_clusterObj_count_plot_f, out_clusterObj_count_x, out_clusterObj_count_y, out_clusterObj_count_z)
 
         out_counts_of_cluster_count_f = join(self.dirs['main'], "counts_of_cluster_count.txt")
         out_counts_of_cluster_count_string = ["#count\t%s" % "\t".join(self.proteomeIDs)]
@@ -600,11 +671,11 @@ class DataObj():
                 if not rankID in rarefaction_by_levelID_by_rankID:
                     rarefaction_by_levelID_by_rankID[rankID] = {}
                 rarefaction_by_levelID_by_rankID[rankID][levelID] = rarefaction_data
-                print "[STATUS] - Output rarefaction data \t%s" % (out_f)
-                with open(out_f, "w") as fh:
-                    fh.write("%s\t%s\n" % ("sample_size", "\t".join(["Rep" + str(x) for x in range(1, REPETITIONS)])))
-                    for sample_size in rarefaction_data:
-                        fh.write("%s\t%s\n" % (sample_size, "\t".join([str(x) for x in rarefaction_data[sample_size]])))
+                #print "[STATUS] - Output rarefaction data \t%s" % (out_f)
+                #with open(out_f, "w") as fh:
+                #    fh.write("%s\t%s\n" % ("sample_size", "\t".join(["Rep" + str(x) for x in range(1, REPETITIONS)])))
+                #    for sample_size in rarefaction_data:
+                #        fh.write("%s\t%s\n" % (sample_size, "\t".join([str(x) for x in rarefaction_data[sample_size]])))
         for rankID in rarefaction_by_levelID_by_rankID:
             rarefaction_plot_f = join(self.dirs[rankID], "%s.rarefaction.%s" % (rankID, PLOT_FORMAT))
             rarefaction_by_levelID = rarefaction_by_levelID_by_rankID[rankID]
@@ -912,10 +983,10 @@ class RankLevelObj():
 
         self.proteinIDs = []
         self.proteinID_count = 0
-        self.proteinID_by_type = {'singleton' : [], 'monoton' : [], 'multiton' : [], 'true_1to1': {'monoton' : [], 'multiton' : []}}
-        self.proteinID_count_by_type = {'singleton' : 0, 'monoton' : 0, 'multiton' : 0, 'true_1to1' : {'monoton' : 0, 'multiton' : 0}}
-        self.clusterID_by_type = {'singleton' : [], 'monoton' : [], 'multiton' : [], 'true_1to1': {'monoton' : [], 'multiton' : []}}
-        self.clusterID_count_by_type = {'singleton' : 0, 'monoton' : 0, 'multiton' : 0, 'true_1to1' : {'monoton' : 0, 'multiton' : 0}}
+        self.proteinID_by_type = {'singleton' : [], 'monoton' : [], 'multiton' : [], 'true_1to1': {'monoton' : [], 'multiton' : []}, 'fuzzy_1to1': {'monoton' : [], 'multiton' : []}}
+        self.proteinID_count_by_type = {'singleton' : 0, 'monoton' : 0, 'multiton' : 0, 'true_1to1' : {'monoton' : 0, 'multiton' : 0}, 'fuzzy_1to1': {'monoton' : 0, 'multiton' : 0}}
+        self.clusterID_by_type = {'singleton' : [], 'monoton' : [], 'multiton' : [], 'true_1to1': {'monoton' : [], 'multiton' : []}, 'fuzzy_1to1': {'monoton' : [], 'multiton' : []}}
+        self.clusterID_count_by_type = {'singleton' : 0, 'monoton' : 0, 'multiton' : 0, 'true_1to1' : {'monoton' : 0, 'multiton' : 0}, 'fuzzy_1to1': {'monoton' : 0, 'multiton' : 0}}
         self.protein_span = []
 
         self.clusterIDs = []
@@ -1005,6 +1076,7 @@ def parse_blast_f(blast_f):
             print lineage
 
 def pickle_dump(data):
+    out_pickle_f = "%s.kinfin.pkl" % outprefix
     with open('kinfin.pkl', 'wb') as fh_out:
         pickle.dump(data, fh_out, pickle.HIGHEST_PROTOCOL)
 
@@ -1036,11 +1108,15 @@ if __name__ == "__main__":
         groups_f = args['--groups']
         category_f = args['--category_file']
         domain_f = args['--functional_annotation']
+        FUZZY_FRACTION = float(args['-f'])
+        FUZZY_COUNT = int(args['-n'])
+        fuzzy_min = int(args['--min'])
+        fuzzy_max = int(args['--max'])
         fasta_dir = args['--fasta_dir']
         data_pickle = args['--pickle']
         MEDIAN_LENGTH_THRESHOLD = int(args['--median_prot_len'])
         REPETITIONS = int(args['--repetitions']) + 1
-        out_prefix = args['--outprefix']
+        outprefix = args['--outprefix']
         PLOT_FORMAT = args['--plotfmt']
         FONTSIZE = int(args['--fontsize'])
         nodesdb_f = args['--nodesdb']
@@ -1051,6 +1127,7 @@ if __name__ == "__main__":
 ###################################
     set_plot_defaults(FONTSIZE)
 ###################################
+    FUZZY_RANGE = set([x for x in range(fuzzy_min, fuzzy_max+1) if not x == FUZZY_COUNT])
 
 ###################################
     NODESDB = None
@@ -1068,7 +1145,7 @@ if __name__ == "__main__":
         dataObj.parse_categories(category_f)
         dataObj.create_RLOs()
         dataObj.parse_species_ids(species_ids_f)
-        dataObj.setup_dirs(out_prefix)
+        dataObj.setup_dirs(outprefix)
         if (fasta_dir):
             dataObj.parse_fasta(fasta_dir)
         if (domain_f):
@@ -1082,6 +1159,7 @@ if __name__ == "__main__":
         dataObj.output_counts_by_RLO()
         dataObj.output_clusters_by_type()
         dataObj.output_clusters_by_proteome_count()
+    if data_pickle:
         pickle_dump(dataObj)
     #for RLO in dataObj.yield_RLOs(ranks=['all'], levels=['all']):
     #    print RLO.rankID, RLO.levelID, RLO.check()
