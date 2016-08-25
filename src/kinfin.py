@@ -1132,6 +1132,7 @@ if __name__ == "__main__":
     FUZZY_RANGE = set([x for x in range(fuzzy_min, fuzzy_max+1) if not x == FUZZY_COUNT])
 
 ###################################
+    print "Delimiter : %s" % delimiter
     DELIMITER = delimiter.replace("\"", "")
 ###################################
     NODESDB = None
