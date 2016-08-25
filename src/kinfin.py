@@ -253,7 +253,7 @@ class DataObj():
                 print "[STATUS] - parsing FASTA %s" % (proteome_RLO.file)
                 proteome_RLO.file = proteome_file
                 for header, sequence in self.readFasta(proteome_RLO.file):
-                    proteinObj = ProteinObj(header, len(sequence), proteome_RLO.levelID)
+                    proteinObj = ProteinObj(header, len(sequence), proteome_RLO.levelID, proteome)
                     self.proteinObjs_by_proteinID[proteinObj.proteinID] = proteinObj
                 self.fasta_parsed = True
 
