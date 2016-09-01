@@ -5,8 +5,8 @@
 usage: kinfin.py        -s <FILE> -g <FILE> -c <FILE>
                         [-f <FLOAT>] [-n <INT>] [--min <INT>] [--max <INT>]
                         [--nodesdb <FILE>] [--delimiter <STRING>]
-                        [-l <INT>] [-r <INT>] [--pickle <FILE>]
-                        [-d <DIR>] [--functional_annotation <FILE>]
+                        [-l <INT>] [-r <INT>]
+                        [-d <DIR>]
                         [--fontsize <INT>] [--plotsize INT,INT]
                         [-o <PREFIX>] [-p <PLOTFORMAT>]
                         [-h|--help]
@@ -18,7 +18,6 @@ usage: kinfin.py        -s <FILE> -g <FILE> -c <FILE>
             -s, --species_file <FILE>           SpeciesIDs.txt used in OrthoFinder
             -g, --groups <FILE>                 OrthologousGroups.txt produced by OrthoFinder
             -c, --classification_file <FILE>    SpeciesClassification file
-            --pickle <FILE>                     Load DataObj from pickled file
             --nodesdb <FILE>                    nodesdb file (sames as blobtools nodesDB file)
             -o, --outprefix <STR>               Output prefix
             --delimiter <STRING>                Delimiter between proteome prefix and protein name [default: "."]
@@ -34,12 +33,12 @@ usage: kinfin.py        -s <FILE> -g <FILE> -c <FILE>
             --fontsize <INT>                    Fontsize for plots [default: 16]
             --plotsize <INT,INT>                Size (WIDTH,HEIGHT) for plots [default: 24,12]
             -p, --plotfmt <STR>                 Plot formats [default: png]
-
-        Experimental
-            --functional_annotation <FILE>      Functional annotation of proteins
-            -d, --fasta_dir <DIR>               Directory containing FASTAs used in Orthofinder
-            -l, --median_prot_len <INT>         Median protein length threshold for clusters [default: 0]
+       Experimental
+             -d, --fasta_dir <DIR>               Directory containing FASTAs used in Orthofinder
 """
+#            --functional_annotation <FILE>      Functional annotation of proteins
+#            -l, --median_prot_len <INT>         Median protein length threshold for clusters [default: 0]
+
 
 from __future__ import division
 import sys
@@ -900,7 +899,10 @@ class ClusterObj():
     def __init__(self, clusterID, proteinIDs):
         self.clusterID = clusterID
         self.proteinIDs = proteinIDs
-        self.proteomeIDs = [x.split(DELIMITER)[0] for x in proteinIDs]
+        try:
+            self.proteomeIDs = [x.split(DELIMITER)[0] for x in proteinIDs]
+        except:
+            sys.exit('[ERROR] - Bad delimiter "%s"' % DELIMITER)
         self.proteinIDs_by_proteomeID = self.generate_proteinIDs_by_proteomeID()
         self.proteomeIDs_unique = set(self.proteomeIDs)
         self.proteinID_count = len(proteinIDs)
@@ -1119,15 +1121,15 @@ if __name__ == "__main__":
         species_ids_f = args['--species_file']
         groups_f = args['--groups']
         classification_f = args['--classification_file']
-        domain_f = args['--functional_annotation']
+        #domain_f = args['--functional_annotation']
         delimiter = args['--delimiter']
         FUZZY_FRACTION = float(args['-f'])
         FUZZY_COUNT = int(args['-n'])
         fuzzy_min = int(args['--min'])
         fuzzy_max = int(args['--max'])
         fasta_dir = args['--fasta_dir']
-        data_pickle = args['--pickle']
-        MEDIAN_LENGTH_THRESHOLD = int(args['--median_prot_len'])
+        #data_pickle = args['--pickle']
+        #MEDIAN_LENGTH_THRESHOLD = int(args['--median_prot_len'])
         REPETITIONS = int(args['--repetitions']) + 1
         outprefix = args['--outprefix']
         PLOT_FORMAT = args['--plotfmt']
@@ -1143,39 +1145,38 @@ if __name__ == "__main__":
     FUZZY_RANGE = set([x for x in range(fuzzy_min, fuzzy_max+1) if not x == FUZZY_COUNT])
 
 ###################################
-    print "Delimiter : %s" % delimiter
     DELIMITER = delimiter.replace("\"", "")
 ###################################
     NODESDB = None
     TAXRANKS = ['superkingdom', 'kingdom', 'phylum', 'class', 'order', 'superfamily', 'family', 'subfamily', 'genus', 'species']
     if (nodesdb_f):
+        print "[STATUS] - Parsing nodesDB %s" % (nodesdb_f)
         NODESDB = parse_nodesdb(nodesdb_f)
 ###################################
 
 ###################################
-    if data_pickle:
-        dataObj = pickle_load(data_pickle)
-        print "pickle loaded"
-    else:
-        dataObj = DataObj()
-        dataObj.parse_classification(classification_f)
-        dataObj.create_RLOs()
-        dataObj.parse_species_ids(species_ids_f)
-        dataObj.setup_dirs(outprefix)
-        if (fasta_dir):
-            dataObj.parse_fasta(fasta_dir)
-        if (domain_f):
-            dataObj.parse_domains(domain_f)
-        #dataObj.output("categories") # debug
-        dataObj.parse_clusters(groups_f)
-        #dataObj.output("ranklevelobjs")
-        dataObj.output_coverages()
-        dataObj.calculate_rarefaction_data(REPETITIONS)
-        dataObj.output_rarefaction()
-        dataObj.output_counts_by_RLO()
-        dataObj.output_clusters_by_type()
-        dataObj.output_clusters_by_proteome_count()
-    if data_pickle:
-        pickle_dump(dataObj)
-    #for RLO in dataObj.yield_RLOs(ranks=['all'], levels=['all']):
-    #    print RLO.rankID, RLO.levelID, RLO.check()
+    #if data_pickle:
+    #    dataObj = pickle_load(data_pickle)
+    #    print "pickle loaded"
+    #else:
+    dataObj = DataObj()
+    dataObj.parse_classification(classification_f)
+    dataObj.create_RLOs()
+    dataObj.parse_species_ids(species_ids_f)
+    dataObj.setup_dirs(outprefix)
+    if (fasta_dir):
+        dataObj.parse_fasta(fasta_dir)
+    #if (domain_f):
+    #    dataObj.parse_domains(domain_f)
+    #dataObj.output("categories") # debug
+    dataObj.parse_clusters(groups_f)
+    #dataObj.output("ranklevelobjs")
+    dataObj.output_coverages()
+    dataObj.calculate_rarefaction_data(REPETITIONS)
+    dataObj.output_rarefaction()
+    dataObj.output_counts_by_RLO()
+    dataObj.output_clusters_by_type()
+    dataObj.output_clusters_by_proteome_count()
+    #if data_pickle:
+    #    pickle_dump(dataObj)
+

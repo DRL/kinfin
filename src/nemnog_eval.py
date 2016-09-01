@@ -202,11 +202,6 @@ if __name__ == "__main__":
 '''
 for file in ../data/OrthologousGroups_I*.txt ; do ~/git/clusterbuster/src/nemnog_eval.py -g $file -c ../data/SpeciesClassification.txt -n ../resources/nemNOG.members.tsv; done
 
-14823 in resources/nemNOG.members.tsv
-- but only 14818 are included (5 are excluded because only composed of isoforms not included in the analysis)
-
- ~/Dropbox/projects/manuscripts/nematode_proteome/nemnog_eval : for file in OrthologousGroups_I*; do echo $file; cut -f2 $file | sort | uniq -c ; done
-
 By category : Totals
 5751 S Function unknown (38.81%)
 1641 T Signal transduction mechanisms (11.07%)
