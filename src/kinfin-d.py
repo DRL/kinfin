@@ -4,6 +4,7 @@
 """
 usage: kinfin-d.py      [-s <FILE>] [-g <FILE>] [-c <FILE>]
                         [-d <FILE>] [-b <FILE>] [--fasta_dir <DIR>]
+                        [--sequence_file <FILE>]
                         [--nodesdb <FILE>] [--delimiter <STRING>]
                         [-f <FLOAT>] [-n <INT>] [--min <INT>] [--max <INT>]
                         [-l <INT>] [-r <INT>]
@@ -16,11 +17,12 @@ usage: kinfin-d.py      [-s <FILE>] [-g <FILE>] [-c <FILE>]
 
         Input files
             -s, --species_file <FILE>           SpeciesIDs.txt used in OrthoFinder
+            --sequence_file <FILE>              SequenceIDs.txt used in OrthoFinder
             -g, --groups <FILE>                 OrthologousGroups.txt produced by OrthoFinder
             -c, --classification_file <FILE>    SpeciesClassification file
-            -d, --domain_file <FILE>            InterProScan TSV file
+            -d, --interproscan_file <FILE>      InterProScan TSV file
             -b, --blast_file <FILE>             BLAST results of similarity search against NR/Uniref90
-            --fasta_dir <DIR>               Directory of FASTA files
+            --fasta_dir <DIR>                   Directory of FASTA files
             --nodesdb <FILE>                    nodesdb file (sames as blobtools nodesDB file)
 
         General options
@@ -104,11 +106,86 @@ def parse_nodesdb(nodesdb_f):
 # Classes
 ########################################################################
 
+class ClusterObj():
+    def __init__(self, cluster_id, protein_id):
+        self.cluster_id = cluster_id
+        self.proteins = proteins
+        try:
+            self.proteomeIDs = [x.split(DELIMITER)[0] for x in proteinIDs]
+        except:
+            sys.exit('[ERROR] - Bad delimiter "%s"' % DELIMITER)
+
+        self.singleton = False if len(self.proteins) > 1 else True
+
+        self.proteinIDs_by_proteomeID = self.generate_proteinIDs_by_proteomeID()
+        self.proteomeIDs_unique = set(self.proteomeIDs)
+        self.proteinID_count = len(proteinIDs)
+        self.proteinID_count_by_proteomeID = Counter(self.proteomeIDs)
+
+        self.levelIDs_by_rank = {}
+        self.coverage_by_levelID_by_rankID = {} # at least
+        self.cluster_type_by_rankID = {}
+
+        self.protein_length = []
+        self.protein_length_median = 0
+        self.filter_pass = False
+        # interproscan results
+        self.domain_composition_count = {}
+
+    def generate_proteinIDs_by_proteomeID(self):
+        proteinIDs_by_proteomeID = {}
+        for proteinID in self.proteinIDs:
+            proteomeID = proteinID.split(DELIMITER)[0]
+            if not proteomeID in proteinIDs_by_proteomeID:
+                proteinIDs_by_proteomeID[proteomeID] = set()
+            proteinIDs_by_proteomeID[proteomeID].add(proteinID)
+        return proteinIDs_by_proteomeID
+
+class AttributeLevelObj():
+    '''
+    ALOs are build from config file
+        - clusters can be ALO-specific or not, if they are not, they will belong to several ALOs
+        - singleton clusters are always ALO-specific
+        - does not save clusters but keys of clusters
+    '''
+    def __init__(self, attribute, level, proteomes):
+        self.attribute = attribute
+        self.level = level
+        self.proteomes = proteomes
+        self.proteome_count = len(proteomes)
+
+        self.proteins = [] # proteins of proteomes within this ALO
+        self.protein_count = 0
+        self.clusters = [] # clusters containing a protein of at least one member of this ALO
+        self.cluster_count = 0
+
+        self.clusters_by_type = { 'specific' : [], 'shared' : []}
+
+        self.clusters = {'true_1to1' : [], 'fuzzy_1to1' : []}
+
+        self.protein_by_type = {'singleton' : [], 'monoton' : [], 'multiton' : [], 'true_1to1': {'monoton' : [], 'multiton' : []}, 'fuzzy_1to1': {'monoton' : [], 'multiton' : []}}
+        self.protein_count_by_type = {'singleton' : 0, 'monoton' : 0, 'multiton' : 0, 'true_1to1' : {'monoton' : 0, 'multiton' : 0}, 'fuzzy_1to1': {'monoton' : 0, 'multiton' : 0}}
+        self.cluster_by_type = {'singleton' : [], 'monoton' : [], 'multiton' : [], 'true_1to1': {'monoton' : [], 'multiton' : []}, 'fuzzy_1to1': {'monoton' : [], 'multiton' : []}}
+        self.cluster_count_by_type = {'singleton' : 0, 'monoton' : 0, 'multiton' : 0, 'true_1to1' : {'monoton' : 0, 'multiton' : 0}, 'fuzzy_1to1': {'monoton' : 0, 'multiton' : 0}}
+        self.protein_span = []
+
+        self.domainIDs = []
+        self.domainID_count = 0
+        self.coverage_in_clusters = []
+
+        self.rarefaction_data = {} # repetition : number of clusters
+
 class AloCollection():
     def __init__(self):
-        self.proteomes = set() # set of proteome_idxs for orthofinder
+        self.proteomes = set() # set of proteomes for orthofinder
+        self.proteome_count = 0
         self.attributes = [] # list of attribute
         self.levels_by_attributes_by_proteome = {}
+
+        self.levels_by_attribute = {}
+        self.level_count_by_attribute = {}
+        self.proteomes_by_level_by_attribute = {}
+        self.proteome_count_by_level_by_attribute = {}
 
     def parse_classification(self, species_classification_f):
         '''
@@ -147,32 +224,26 @@ class AloCollection():
             print "[+] - Attribute 'taxid' found, inferring taxonomic ranks from nodesDB..."
             self.update_classification()
 
+        # set of levels by attribute
         self.levels_by_attribute = {attribute : set() for attribute in self.attributes}
-        self.proteome_by_level_by_attribute = {attribute : {} for attribute in self.attribute}
+        # set of proteomes by level by attribute
+        self.proteomes_by_level_by_attribute = {attribute : {} for attribute in self.attribute}
+        # count of proteomes by level by attribute
+        self.proteome_count_by_level_by_attribute = {attribute : {} for attribute in self.attribute}
 
         for proteome in self.levels_by_attributes_by_proteome:
             for attribute in self.levels_by_attributes_by_proteome[proteome]:
-                level = self.levels_by_attributes_by_proteome[proteome][attribute]
-                if not level in self.proteome_by_level_by_attribute[attribute]:
-                    self.proteome_by_level_by_attribute[attribute][level] = set()
+                for level in self.levels_by_attributes_by_proteome[proteome][attribute]:
+                    self.levels_by_attribute[attribute].add(level)
+                    if not level in self.proteomes_by_level_by_attribute[attribute]:
+                        self.proteomes_by_level_by_attribute[attribute][level] = set()
+                        self.proteome_count_by_level_by_attribute[attribute][level] = 0
+                    self.proteomes_by_level_by_attribute[attribute][level].add(proteome)
+                    self.proteome_count_by_level_by_attribute[attribute][level] += 1
+                    self.proteome_count_by_level_by_attribute
 
-        # new levels
-        for proteomeID in levelIDs_by_rankID_by_proteomeID:
-            for rankID in levelIDs_by_rankID_by_proteomeID[proteomeID]:
-                levelID = levelIDs_by_rankID_by_proteomeID[proteomeID][rankID]
-                if not levelID in self.proteomeIDs_by_levelID_by_rankID[rankID]:
-                    self.proteomeIDs_by_levelID_by_rankID[rankID][levelID] = set()
-                if not rankID in self.count_by_levelID_by_rankID:
-                    self.count_by_levelID_by_rankID[rankID] = {}
-                if not levelID in self.count_by_levelID_by_rankID[rankID]:
-                    self.count_by_levelID_by_rankID[rankID][levelID] = 1
-                else:
-                    self.count_by_levelID_by_rankID[rankID][levelID] += 1
-                self.levelIDs_by_rankID[rankID].add(levelID)
-                self.levelIDs_by_rankID_by_proteomeID[proteomeID][rankID] = levelID
-                self.proteomeIDs_by_levelID_by_rankID[rankID][levelID].add(proteomeID)
-        self.proteomeIDs_count = len(self.proteomeIDs)
-        self.levelIDs_count_by_rankID = {rankID : len(levels) for rankID, levels in self.levelIDs_by_rankID.items()}
+        self.proteome_count = len(self.proteomes)
+        self.level_count_by_attribute = {attribute : len(levels) for attribute, level in self.levels_by_attribute.items()}
 
     def update_classification(self):
         if not nodesdb_f:
@@ -192,6 +263,7 @@ class AloCollection():
         # add taxranks to rank
         for taxrank in TAXRANKS:
             self.attributes.append(taxrank)
+
 class ProteinObj():
     def __init__(self, protein_id, length, proteome_id):
         self.protein_id = protein_id
@@ -224,6 +296,7 @@ class ProteinObj():
             self.domain_counter = domain_counter.get(domainObj.id, 0) + 1
 
 class ProteinCollection():
+    pass
 
 class DomainRecordObj(object):
     """docstring for DomainObj"""
@@ -269,8 +342,19 @@ class DomainCollection():
         self.by_source_by_protein[domain.source][domain.protein_id].append(domain)
         self.counts[domain.source][domain.id] = self.counts.get(domain.id, 0) + 1
 
-
-
+def generate_domain_combos(domain_list):
+    w = 1
+    l = len(domain_list) + 1
+    domain_combos = {}
+    while w < l + 1:
+        for i in range(l-w):
+            domain_combo = tuple(domain_list[i:i+w])
+            print "".join(list(domain_combo))
+            domain_combos[domain_combo].add(set()
+        w += 1
+    print domain_list
+    for d, c in domain_combos.items():
+        print c, d
 
 
 
@@ -281,24 +365,27 @@ if __name__ == "__main__":
     PROTEOME_IDS = {} # OrthofinderID to ProteomeID
     SEQUENCE_IDS = {} # ProteinID to ProteomeID
 
-    try:
-        species_classification_f = args['--species_classification_file']
-        nodesdb_f = args['--nodesdb']
-        species_ids_f = args['--species_file']
-        sequence_ids_f = args['--sequence_file']
-        domain_f = args['--domain_file']
-    except docopt.DocoptExit:
-        print __doc__.strip()
 
-    aloCollection = AloCollection()
-    aloCollection.parse_classification(species_classification_f)
+    species_classification_f = args['--classification_file']
+    nodesdb_f = args['--nodesdb']
+    species_ids_f = args['--species_file'] # only needed if one wants to parse the FASTAs
+    sequence_ids_f = args['--sequence_file'] # only needed if there is no prefix
+    interproscan_f = args['--interproscan_file']
 
-    PROTEOME_IDS = parse_species_ids(species_ids_f)
+    #except docopt.DocoptExit:
+    #    print __doc__.strip()
 
+    generate_domain_combos(['a','a','b','c','d'])
+    generate_domain_combos(['a','a'])
+    generate_domain_combos(['a','a','a','a','a','a','a'])
+    generate_domain_combos(['0'])
 
+    #aloCollection = AloCollection()
+    #aloCollection.parse_classification(species_classification_f)
 
+    #PROTEOME_IDS = parse_species_ids(species_ids_f)
 
-    domainCollection = DomainCollection()
-    print "[STATUS] - Parsing domains from %s" % (domain_f)
-    domainCollection.parse_domains(domain_f)
-    domainCollection.count_combinations()
+    #domainCollection = DomainCollection()
+    #print "[STATUS] - Parsing domains from %s" % (interproscan_f)
+    #domainCollection.parse_domains(interproscan_f)
+    #domainCollection.count_combinations()

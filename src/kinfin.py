@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-usage: kinfin.py        -s <FILE> -g <FILE> -c <FILE>
+usage: kinfin.py         -g <FILE> -c <FILE> [-s <FILE>]
                         [-f <FLOAT>] [-n <INT>] [--min <INT>] [--max <INT>]
                         [--nodesdb <FILE>] [--delimiter <STRING>]
                         [-l <INT>] [-r <INT>]
@@ -15,9 +15,9 @@ usage: kinfin.py        -s <FILE> -g <FILE> -c <FILE>
         -h --help                           show this
 
         General
-            -s, --species_file <FILE>           SpeciesIDs.txt used in OrthoFinder
             -g, --groups <FILE>                 OrthologousGroups.txt produced by OrthoFinder
             -c, --classification_file <FILE>    SpeciesClassification file
+            -s, --species_file <FILE>           SpeciesIDs.txt used in OrthoFinder
             --nodesdb <FILE>                    nodesdb file (sames as blobtools nodesDB file)
             -o, --outprefix <STR>               Output prefix
             --delimiter <STRING>                Delimiter between proteome prefix and protein name [default: "."]
@@ -293,13 +293,13 @@ class DataObj():
         parsed_clusterObjs = []
         with open(groups_f) as fh:
             for idx, line in enumerate(fh):
-                if line.startswith("OG"):
+                try:
                     temp = line.rstrip("\n").split(" ")
                     clusterID, protein_string = temp[0], temp[1:]
                     clusterObj = ClusterObj(clusterID, protein_string)
                     parsed_clusterObjs.append(clusterObj)
-                else:
-                    sys.exit("[ERROR] - Line does not have a cluster ID\n%s") % line
+                except:
+                    sys.exit("[ERROR] - Line does not seem to contain clustered proteins\n%s") % line
 
         number_of_clusters = len(parsed_clusterObjs)
         steps = number_of_clusters/100
@@ -1162,7 +1162,8 @@ if __name__ == "__main__":
     dataObj = DataObj()
     dataObj.parse_classification(classification_f)
     dataObj.create_RLOs()
-    dataObj.parse_species_ids(species_ids_f)
+    if species_ids_f:
+        dataObj.parse_species_ids(species_ids_f)
     dataObj.setup_dirs(outprefix)
     if (fasta_dir):
         dataObj.parse_fasta(fasta_dir)
