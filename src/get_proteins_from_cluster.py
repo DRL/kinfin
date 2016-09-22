@@ -37,7 +37,7 @@ def parse_clusters(cluster_f):
             if cluster in clusters:
                 sys.exit("[-] cluster %s repeated" % (cluster))
             else:
-                cluster[cluster] = None
+                clusters[cluster] = None
     return clusters
 
 def parse_groups(group_f):
@@ -46,13 +46,15 @@ def parse_groups(group_f):
         for line in group_fh:
             clusterID, protein_string = line.rstrip("\n").split(": ")
             proteins = protein_string.split(" ")
-            for protein in proteins:
-                if protein in headers:
-                    if headers[protein] == None:
-                        headers[protein] = clusterID
-                        output[clusterID] = proteins
-                    else:
-                        sys.exit("[-] protein %s found more than once" % protein)
+            if headers:
+                for protein in proteins:
+                    if protein in headers:
+                        if headers[protein] == None:
+                            headers[protein] = clusterID
+                            output[clusterID] = proteins
+                        else:
+                            sys.exit("[-] protein %s found more than once" % protein)
+            else:
                 if clusterID in clusters:
                     if clusters[clusterID] == None:
                         clusters[clusterID] = clusterID
@@ -82,7 +84,7 @@ def write_output(output):
             for clusterID, proteins in output.items():
                 out_f = "%s.%s.txt" % (splitext(basename(groups_f))[0], clusterID)
                 with open(out_f, 'w') as out_fh:
-                    out_fh.write("\n".join(proteins))
+                    out_fh.write("%s\n" % "\n".join(proteins))
                 proteins_total = len(proteins)
                 proteins_target = len([x for x in proteins if x in headers_found])
                 proteins_non_target = proteins_total - proteins_target
@@ -110,7 +112,7 @@ if __name__ == "__main__":
     elif cluster_f:
         print "[+] Parsing clusters in %s ..." % cluster_f
         parse_type = 'cluster'
-        clusters = parse_clusters(custer_f)
+        clusters = parse_clusters(cluster_f)
     else:
         sys.exit(__doc__.strip())
     print "[+] Parse groups %s ..." % groups_f

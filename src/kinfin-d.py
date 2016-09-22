@@ -342,13 +342,16 @@ class DomainCollection():
         self.by_source_by_protein[domain.source][domain.protein_id].append(domain)
         self.counts[domain.source][domain.id] = self.counts.get(domain.id, 0) + 1
 
-def generate_domain_combos(domain_list):
+def add_domain_combos(domain_list):
     w = 1
     l = len(domain_list) + 1
-    domain_combos = {}
     while w < l + 1:
         for i in range(l-w):
             domain_combo = tuple(domain_list[i:i+w])
+            if not domain_combo in domain_combos:
+                domain_combos[domain_combo] = set()
+
+
             print "".join(list(domain_combo))
             domain_combos[domain_combo].add(set()
         w += 1
