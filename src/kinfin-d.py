@@ -47,6 +47,7 @@ from __future__ import division
 import sys
 from os.path import basename, isfile, abspath, splitext, join, exists
 from os import getcwd, mkdir
+from statistics import mean, mode
 from docopt import docopt, DocoptExit
 from collections import defaultdict
 from collections import Counter
@@ -106,6 +107,17 @@ def parse_nodesdb(nodesdb_f):
 # Classes
 ########################################################################
 
+class ClusterCollection():
+    def __init__(self, cluster_id, protein_id):
+        self.cluster_order = []
+        self.clusters = {}
+
+        self.cluster_count = 0
+        self.singleton_count = 0
+
+        self.protein_metrics = {'mean' : 0.0, 'mode' : 0.0, 'median' : 0.0, 'sd' = 0.0} # only non-singletons
+        self.proteome_metrics = {'mean' : 0.0, 'mode' : 0.0, 'median' : 0.0, 'sd' = 0.0} # only non-singletons
+
 class ClusterObj():
     def __init__(self, cluster_id, protein_id):
         self.cluster_id = cluster_id
@@ -149,31 +161,38 @@ class AttributeLevelObj():
         - does not save clusters but keys of clusters
     '''
     def __init__(self, attribute, level, proteomes):
-        self.attribute = attribute
-        self.level = level
-        self.proteomes = proteomes
-        self.proteome_count = len(proteomes)
+        self.attribute = attribute # string
+        self.level = level # string
+        self.proteomes = proteomes # set()
+        self.proteome_count = len(proteomes) # int
 
-        self.proteins = [] # proteins of proteomes within this ALO
-        self.protein_count = 0
-        self.clusters = [] # clusters containing a protein of at least one member of this ALO
-        self.cluster_count = 0
+        self.clusters_by_cluster_type = {'singleton' : [], 'specific' : [], 'shared' : [], 'lost' : []}  # sums up to cluster_count
+        self.proteins_by_cluster_type = {'singleton' : [], 'specific' : [], 'shared' : [], 'lost' : []}
+        self.protein_count_by_cluster_type = {'singleton' : 0, 'specific' : 0, 'shared' : 0, 'lost' : 0}
+        self.cluster_count_by_cluster_type = {'singleton' : 0, 'specific' : 0, 'shared' : 0, 'lost' : 0}
 
-        self.clusters_by_type = { 'specific' : [], 'shared' : []}
+        self.clusters_by_cluster_cardinality = {'shared' : {'true_1_to_1' : [], 'fuzzy_n_to_n' : [], 'expanded' : [], 'contracted' : []}, 'specific' : {'true_1_to_1' : [], 'fuzzy_n_to_n' : []} # expanded/contracted only applies to shared
 
-        self.clusters = {'true_1to1' : [], 'fuzzy_1to1' : []}
-
-        self.protein_by_type = {'singleton' : [], 'monoton' : [], 'multiton' : [], 'true_1to1': {'monoton' : [], 'multiton' : []}, 'fuzzy_1to1': {'monoton' : [], 'multiton' : []}}
-        self.protein_count_by_type = {'singleton' : 0, 'monoton' : 0, 'multiton' : 0, 'true_1to1' : {'monoton' : 0, 'multiton' : 0}, 'fuzzy_1to1': {'monoton' : 0, 'multiton' : 0}}
-        self.cluster_by_type = {'singleton' : [], 'monoton' : [], 'multiton' : [], 'true_1to1': {'monoton' : [], 'multiton' : []}, 'fuzzy_1to1': {'monoton' : [], 'multiton' : []}}
-        self.cluster_count_by_type = {'singleton' : 0, 'monoton' : 0, 'multiton' : 0, 'true_1to1' : {'monoton' : 0, 'multiton' : 0}, 'fuzzy_1to1': {'monoton' : 0, 'multiton' : 0}}
         self.protein_span = []
 
         self.domainIDs = []
         self.domainID_count = 0
+
         self.coverage_in_clusters = []
 
         self.rarefaction_data = {} # repetition : number of clusters
+
+    def add_cluster(self, clusterObj):
+        '''
+            - cluster gets added to each ALO depending whether members are shared : pool of ALOs
+            - this gets checked one clustertype is determined.
+
+            if not cluster is singleton:
+
+            else
+                ALO
+        '''
+
 
 class AloCollection():
     def __init__(self):
