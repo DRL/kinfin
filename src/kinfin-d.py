@@ -214,7 +214,9 @@ class AloCollection():
 
         self.ALO_by_level_by_attribute = self.create_ALOs()
 
-    ### Setup ###
+    ###############################
+    ### Setup                   ###
+    ###############################
 
     def compute_levels_by_attribute(self):
         levels_by_attribute = {attribute : set() for attribute in self.attributes}
@@ -255,6 +257,20 @@ class AloCollection():
                     ALO_by_level_by_attribute[attribute][level] = {}
                 ALO_by_level_by_attribute[attribute][level] = ALO
         return ALO_by_level_by_attribute
+
+    ###############################
+    ### Functionality           ###
+    ###############################
+
+    def analyse_clusters(self):
+        if self.clusterObj_count:
+            clusterObj_count = clusterCollection.clusterObj_count
+            print "\t Clusters found = %s" % (clusterObj_count)
+            parse_steps = clusterObj_count/100
+            print "[STATUS] - Analysing clusters ..."
+            for idx, clusterObj in enumerate(clusterCollection.clusterObjs):
+                self.add_clusterObj(clusterObj)
+                progress(idx+1, parse_steps, clusterObj_count)
 
 class DataFactory():
     def __init__(self):
@@ -368,30 +384,21 @@ class DataFactory():
                     sys.exit("[ERROR] - Line does not seem to contain clustered proteins\n%s") % line
         return ClusterCollection(clusterObjs)
 
-    def analyse_clusters(self):
-        if self.clusterObj_count:
-            clusterObj_count = clusterCollection.clusterObj_count
-            print "\t Clusters found = %s" % (clusterObj_count)
-            parse_steps = clusterObj_count/100
-            print "[STATUS] - Analysing clusters ..."
-            for idx, clusterObj in enumerate(clusterCollection.clusterObjs):
-                self.add_clusterObj(clusterObj)
-                progress(idx+1, parse_steps, clusterObj_count)
-
 class ClusterObj():
-    def __init__(self, cluster_id, protein_id):
+    def __init__(self, cluster_id, proteins):
         self.cluster_id = cluster_id
         self.proteins = proteins
+        self.protein_count = len(proteins)
+        self.singleton = False if len(self.protein_count) > 1 else True
         try:
-            self.proteomeIDs = [x.split(DELIMITER)[0] for x in proteinIDs]
+            self.proteomes_list = [x.split(DELIMITER)[0] for x in proteins]
         except:
             sys.exit('[ERROR] - Bad delimiter "%s"' % DELIMITER)
+        self.proteomes_unique = set(self.proteomes_list)
+        self.proteinID_count_by_proteomeID = Counter(self.proteomeIDs)
 
-        self.singleton = False if len(self.proteins) > 1 else True
+        self.proteins_by_proteome = self.generate_proteinIDs_by_proteomeID()
 
-        self.proteinIDs_by_proteomeID = self.generate_proteinIDs_by_proteomeID()
-        self.proteomeIDs_unique = set(self.proteomeIDs)
-        self.proteinID_count = len(proteinIDs)
         self.proteinID_count_by_proteomeID = Counter(self.proteomeIDs)
 
         self.levelIDs_by_rank = {}
@@ -548,6 +555,7 @@ if __name__ == "__main__":
     dataFactory.setup_dirs(outprefix)
     aloCollection = dataFactory.build_AloCollection(species_classification_f)
     clusterCollection = dataFactory.parse_clusters(groups_f)
+    aloCollection.analyse_clusters()
     #aloCollection = AloCollection()
     #aloCollection.parse_classification(species_classification_f)
 
