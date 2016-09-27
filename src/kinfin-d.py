@@ -184,7 +184,7 @@ class AttributeLevelObj():
     def add_cluster(self, clusterObj):
         '''
             - cluster gets added to each ALO depending whether members are shared : pool of ALOs
-            - this gets checked one clustertype is determined.
+            - this gets checked once clustertype is determined.
 
             if not cluster is singleton:
 
@@ -200,12 +200,12 @@ class AttributeLevelObj():
             pass
 
 class AloCollection():
-    def __init__(self, proteomes, attributes, levels_by_attributes_by_proteome):
+    def __init__(self, proteomes, attributes, level_by_attribute_by_proteome):
         self.proteomes = proteomes # set of proteomes for orthofinder
         self.proteome_count = len(proteomes)
-        self.levels_by_attributes_by_proteome = levels_by_attributes_by_proteome
+        self.level_by_attribute_by_proteome = level_by_attribute_by_proteome
         self.attributes = attributes # list of attributes
-        self.levels = list(set(levels_by_attributes_by_proteome.values()))
+        self.levels = list(set(level_by_attribute_by_proteome.values()))
 
         self.levels_by_attribute = self.compute_levels_by_attribute()
         self.level_count_by_attribute = self.compute_level_count_by_attribute()
@@ -220,9 +220,9 @@ class AloCollection():
 
     def compute_levels_by_attribute(self):
         levels_by_attribute = {attribute : set() for attribute in self.attributes}
-        for proteome in self.levels_by_attributes_by_proteome:
-            for attribute in self.levels_by_attributes_by_proteome[proteome]:
-                for level in levels_by_attributes_by_proteome[proteome][attribute]:
+        for proteome in self.level_by_attribute_by_proteome:
+            for attribute in self.level_by_attribute_by_proteome[proteome]:
+                for level in level_by_attribute_by_proteome[proteome][attribute]:
                     levels_by_attribute[attribute].add(level)
         return levels_by_attribute
 
@@ -231,9 +231,9 @@ class AloCollection():
 
     def compute_proteomes_by_level_by_attribute(self):
         proteomes_by_level_by_attribute = {attribute : {} for attribute in self.attributes}
-        for proteome in self.levels_by_attributes_by_proteome:
-            for attribute in self.levels_by_attributes_by_proteome[proteome]:
-                for level in self.levels_by_attributes_by_proteome[proteome][attribute]:
+        for proteome in self.level_by_attribute_by_proteome:
+            for attribute in self.level_by_attribute_by_proteome[proteome]:
+                for level in self.level_by_attribute_by_proteome[proteome][attribute]:
                     if not level in proteomes_by_level_by_attribute[attribute]:
                         proteomes_by_level_by_attribute[attribute][level] = set()
                     proteomes_by_level_by_attribute[attribute][level].add(proteome)
@@ -262,15 +262,18 @@ class AloCollection():
     ### Functionality           ###
     ###############################
 
-    def analyse_clusters(self):
+    def analyse_clusters(self, clusterCol):
         if self.clusterObj_count:
-            clusterObj_count = clusterCollection.clusterObj_count
+            clusterObj_count = clusterCol.clusterObj_count
             print "\t Clusters found = %s" % (clusterObj_count)
             parse_steps = clusterObj_count/100
             print "[STATUS] - Analysing clusters ..."
-            for idx, clusterObj in enumerate(clusterCollection.clusterObjs):
+            for idx, clusterObj in enumerate(clusterCol.clusterObjs):
                 self.add_clusterObj(clusterObj)
                 progress(idx+1, parse_steps, clusterObj_count)
+
+    def add_clusterObj(self, clusterObj):
+        if clusterObj.
 
 class DataFactory():
     def __init__(self):
@@ -289,12 +292,19 @@ class DataFactory():
 
     def parse_classification(self):
         '''
-        species_classification_f : user defined CSV config file used for creating ALOs (Attribute-Level-Objects)
-            - header: starts with '#', required fields: 'proteome_idx' (used for linking Orthofinder-Proteome/ProteinIDs)
+        Input:
+            species_classification_f : user defined CSV config file used for creating ALOs (Attribute-Level-Objects)
+                - header: starts with '#'
+
+        Output:
+            attributes : list of attributes (headers of species_classification_f)
+            proteomes : set of proteomes
+            level_by_attribute_by_proteome : dict of proteome => attribute => level
+                - 1-to-1 relationship between proteome -> attribute -> level (each proteome has only one level for each attribute)
         '''
         print "[STATUS] - Parsing SpeciesClassification file %s" % (species_classification_f)
         attributes = []
-        levels_by_attributes_by_proteome = {}
+        level_by_attribute_by_proteome = {}
         proteomes = set()
         for line in read_file(species_classification_f):
             if line.startswith("#"):
@@ -309,43 +319,43 @@ class DataFactory():
                     sys.exit("[ERROR] - 'proteome_idx' should be unique. %s was encountered multiple times" % (temp[0]))
                 proteome_idx = temp[0]
                 proteomes.add(proteome)
-                levels_by_attributes_by_proteome[proteome] = {x : '' for x in attributes}
+                level_by_attribute_by_proteome[proteome] = {x : '' for x in attributes}
                 for idx, level in enumerate(temp):
                     attribute = attributes[idx]
-                    levels_by_attributes_by_proteome[proteome][attribute] = level
+                    level_by_attribute_by_proteome[proteome][attribute] = level
             else:
                 pass
         self.classification_file = species_classification_f
-        return proteomes, attributes, levels_by_attributes_by_proteome
+        return proteomes, attributes, level_by_attribute_by_proteome
 
-    def update_classification(self, attributes, levels_by_attributes_by_proteome):
+    def update_classification(self, attributes, level_by_attribute_by_proteome):
         if not nodesdb_f:
             sys.exit("[ERROR] - Please specify a nodesDB file, so that taxonomic ranks can be inferred based on taxIDs\n")
         print "[+] - Parsing nodesDB %s" % (nodesdb_f)
         NODESDB = parse_nodesdb(nodesdb_f)
-        for proteome in levels_by_attributes_by_proteome:
-            taxid = levels_by_attributes_by_proteome[proteome]['taxid']
+        for proteome in level_by_attribute_by_proteome:
+            taxid = level_by_attribute_by_proteome[proteome]['taxid']
             lineage = get_lineage(taxid)
             # add lineage attribute/levels
             for taxrank in TAXRANKS:
-                levels_by_attributes_by_proteome[proteome][taxrank] = lineage[taxrank]
+                level_by_attribute_by_proteome[proteome][taxrank] = lineage[taxrank]
             # remove taxid-levels
-            del levels_by_attributes_by_proteome[proteome]['taxid']
+            del level_by_attribute_by_proteome[proteome]['taxid']
         # remove taxid-attribute
         attributes.remove('taxid')
         # add taxranks to rank
         for taxrank in TAXRANKS:
             attributes.append(taxrank)
         self.nodesdb_file = nodesdb_f
-        return attributes, levels_by_attributes_by_proteome
+        return attributes, level_by_attribute_by_proteome
 
     def build_AloCollection(self, species_classification_f):
-        proteomes, attributes, levels_by_attributes_by_proteome = self.parse_classification(species_classification_f)
+        proteomes, attributes, level_by_attribute_by_proteome = self.parse_classification(species_classification_f)
         # Add taxonomy if needed
         if 'taxid' in set(attributes):
             print "[+] - Attribute 'taxid' found, inferring taxonomic ranks from nodesDB..."
-            attributes, levels_by_attributes_by_proteome = self.update_classification()
-        return AloCollection(proteomes, attributes, levels_by_attributes_by_proteome)
+            attributes, level_by_attribute_by_proteome = self.update_classification()
+        return AloCollection(proteomes, attributes, level_by_attribute_by_proteome)
 
     def setup_dirs(self, out_prefix):
         self.dirs = {}
@@ -395,10 +405,10 @@ class ClusterObj():
         except:
             sys.exit('[ERROR] - Bad delimiter "%s"' % DELIMITER)
         self.proteomes_unique = set(self.proteomes_list)
-        self.proteinID_count_by_proteomeID = Counter(self.proteomeIDs)
+        self.proteins_by_proteome = self.generate_proteins_by_proteome()
+        self.protein_count_by_proteome = Counter(self.proteomes_list)
 
-        self.proteins_by_proteome = self.generate_proteinIDs_by_proteomeID()
-
+        self.proteins_by_proteome = self.generate_proteins_by_proteome()
         self.proteinID_count_by_proteomeID = Counter(self.proteomeIDs)
 
         self.levelIDs_by_rank = {}
@@ -411,7 +421,7 @@ class ClusterObj():
         # interproscan results
         self.domain_composition_count = {}
 
-    def generate_proteinIDs_by_proteomeID(self):
+    def generate_proteins_by_proteome(self):
         proteinIDs_by_proteomeID = {}
         for proteinID in self.proteinIDs:
             proteomeID = proteinID.split(DELIMITER)[0]
@@ -555,7 +565,7 @@ if __name__ == "__main__":
     dataFactory.setup_dirs(outprefix)
     aloCollection = dataFactory.build_AloCollection(species_classification_f)
     clusterCollection = dataFactory.parse_clusters(groups_f)
-    aloCollection.analyse_clusters()
+    aloCollection.analyse_clusters(clusterCollection)
     #aloCollection = AloCollection()
     #aloCollection.parse_classification(species_classification_f)
 
@@ -565,3 +575,17 @@ if __name__ == "__main__":
     #print "[STATUS] - Parsing domains from %s" % (interproscan_f)
     #domainCollection.parse_domains(interproscan_f)
     #domainCollection.count_combinations()
+
+
+'''
+PLOT:
+
+Loss of 1:1s :
+
+    for sp in species
+        - get shared clusters where it's count is 1
+        -
+
+
+
+'''
