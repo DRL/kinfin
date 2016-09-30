@@ -1,5 +1,0 @@
-#proteome,species,taxid
-A,speciesA,232323
-B,speciesB,947166
-C,speciesC,6239
-D,speciesD,6305
