@@ -1,5 +1,5 @@
-0: A.protein.faa
-1: B.protein.faa
-2: C.protein.faa
-3: D.protein.faa
-4: E.protein.faa
+0: A.proteins.faa
+1: B.proteins.faa
+2: C.proteins.faa
+3: D.proteins.faa
+4: E.proteins.faa
