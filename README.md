@@ -14,5 +14,4 @@ src/kinfin.py \
     --functional_annotation test_data/test.functional_annotation.txt \
     -a test_data/ \
     -t test_data/test.tree.nwk
-
 ```
