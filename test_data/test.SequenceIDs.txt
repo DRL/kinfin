@@ -48,3 +48,13 @@
 4_7: E.seq8
 4_8: E.seq9
 4_9: E.seq10
+5_0: F.seq1
+5_1: F.seq2
+5_2: F.seq3
+5_3: F.seq4
+5_4: F.seq5
+5_5: F.seq6
+5_6: F.seq7
+5_7: F.seq8
+5_8: F.seq9
+5_9: F.seq10

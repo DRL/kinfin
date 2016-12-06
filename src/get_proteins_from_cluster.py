@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-usage: get_proteins_from_cluster.py     -g <FILE> [--header <FILE>] [--cluster <FILE>]
+usage: get_proteins_from_cluster.py     -g <FILE> [--header <FILE>] [--cluster <FILE>] [-s]
                                         [-h|--help]
 
     Options:
@@ -10,6 +10,7 @@ usage: get_proteins_from_cluster.py     -g <FILE> [--header <FILE>] [--cluster <
         -g, --groups <FILE>                 OrthologousGroups.txt produced by OrthoFinder
         --header <FILE>                     Filter based on sequence IDs in file
         --cluster <FILE>                    Filter based on cluster IDs in file
+        -s, --single_out_file               Write all proteins to a single files
 
 """
 
@@ -64,13 +65,7 @@ def parse_groups(group_f):
     return output
 
 def write_output(output):
-    '''
-    print proteins found out of total
-    print clusters found out of total
-    if headers:
-        print cluster_id : x target, y non-target, z total
-    print
-    '''
+
     headers_found = set([k for k, v in headers.iteritems() if v])
     clusters_found = set([k for k, v in clusters.iteritems() if v])
     if headers:
@@ -80,15 +75,27 @@ def write_output(output):
     stats_f = "%s.parse_stats.txt" % (splitext(basename(groups_f))[0])
     if headers_found or clusters_found:
         print "[+] Writing files ..."
-        with open(stats_f, 'w') as stats_fh:
+        if not single_out_file:
+            stats_lines = []
             for clusterID, proteins in output.items():
-                out_f = "%s.%s.txt" % (splitext(basename(groups_f))[0], clusterID)
-                with open(out_f, 'w') as out_fh:
-                    out_fh.write("%s\n" % "\n".join(proteins))
+                protein_lines = []
+                protein_lines += proteins
                 proteins_total = len(proteins)
                 proteins_target = len([x for x in proteins if x in headers_found])
                 proteins_non_target = proteins_total - proteins_target
-                stats_fh.write("%s total=%s target=%s non-target=%s\n" % (clusterID, proteins_total, proteins_target, proteins_non_target))
+                out_f = "%s.%s.txt" % (splitext(basename(groups_f))[0], clusterID)
+                with open(out_f, 'w') as out_fh:
+                    out_fh.write("\n".join(protein_lines))
+                stats_lines.append("%s total=%s target=%s non-target=%s\n" % (clusterID, proteins_total, proteins_target, proteins_non_target))
+            with open(stats_f, 'w') as stats_fh:
+                stats_fh.write("\n".join(stats_lines))
+        else:
+            protein_lines = []
+            out_f = "%s.protein_ids.txt" % (splitext(basename(cluster_f))[0])
+            for clusterID, proteins in output.items():
+                protein_lines += proteins
+            with open(out_f, 'w') as out_fh:
+                out_fh.write("\n".join(protein_lines))
 
 
 if __name__ == "__main__":
@@ -98,6 +105,7 @@ if __name__ == "__main__":
         groups_f = args['--groups']
         header_f = args['--header']
         cluster_f = args['--cluster']
+        single_out_file = args['--single_out_file']
     except docopt.DocoptExit:
         print __doc__.strip()
 

@@ -1,20 +1,13 @@
-OG0000000: A.seq1 B.seq1 C.seq1 D.seq1 E.seq1 A.seq2 B.seq2 C.seq2 D.seq2 E.seq2
-OG0000001: A.seq3 B.seq3 A.seq4 B.seq4 D.seq3 D.seq4
-OG0000002: C.seq3 E.seq3 C.seq4 E.seq4
-OG0000003: B.seq5 C.seq5
-OG0000004: B.seq6 C.seq6
-OG0000005: A.seq5 D.seq5 E.seq5
-OG0000006: A.seq7 D.seq7 E.seq7
-OG0000007: C.seq8 D.seq8 E.seq8
-OG0000008: B.seq9 C.seq9 D.seq9
-OG0000009: C.seq10 D.seq10
-OG0000010: C.seq7
-OG0000011: A.seq6 D.seq6 E.seq6
-OG0000012: A.seq8
-OG0000013: A.seq9
-OG0000014: A.seq10
+OG0000000: A.seq1 B.seq1 C.seq1 D.seq1 E.seq1 F.seq8 A.seq2 B.seq2 C.seq2 D.seq2 E.seq2
+OG0000001: A.seq3 B.seq3 B.seq4 D.seq3 D.seq4
+OG0000002: E.seq3 C.seq4 E.seq4 F.seq8 F.seq9 F.seq10
+OG0000003: B.seq5 D.seq7 D.seq5 F.seq5 F.seq6 F.seq7
+OG0000004: C.seq6 A.seq10 E.seq10 F.seq2 F.seq4
+OG0000005: A.seq5 A.seq7 A.seq8 B.seq6 B.seq9 C.seq10 C.seq7 D.seq8 F.seq1
+OG0000006: A.seq9 C.seq5 B.seq7
+OG0000007: C.seq8 E.seq8
+OG0000008: C.seq9 D.seq9 E.seq7
+OG0000009: D.seq10 D.seq6
+OG0000010: A.seq6 B.seq8 C.seq3 E.seq6
 OG0000015: B.seq10
-OG0000016: B.seq8
-OG0000017: B.seq7
-OG0000018: E.seq10
-OG0000019: E.seq9
+OG0000019: E.seq9 E.seq5

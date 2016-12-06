@@ -1,6 +1,0 @@
-#PREFIX,proteome,label1,label2,label3
-0,A,blue,hard,moist
-1,B,blue,soft,dry
-2,C,blue,hard,dry
-3,D,green,hard,dry
-4,E,yellow,hard,dry
