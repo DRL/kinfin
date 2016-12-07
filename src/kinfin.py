@@ -45,33 +45,21 @@ usage: kinfin-d.py      -g <FILE> -c <FILE> -s <FILE> [-t <FILE>] [-o <PREFIX>]
 
 """
 
+
+########################################################################
+# Imports
+########################################################################
+
 from __future__ import division
 import sys
 from os.path import isfile, join, exists
 from os import getcwd, mkdir
 import shutil
 import random
-
 import time
 
 from collections import Counter, defaultdict
 from math import sqrt, log
-import scipy
-import numpy as np
-import matplotlib as mat
-from matplotlib.ticker import FormatStrFormatter
-
-mat.use('agg')
-import matplotlib.pyplot as plt
-plt.style.use('ggplot')
-import seaborn as sns
-sns.set_context("talk")
-sns.set(style="whitegrid")
-sns.set_color_codes("pastel")
-mat.rc('ytick', labelsize=20)
-mat.rc('xtick', labelsize=20)
-axis_font = {'size':'20'}
-mat.rcParams.update({'font.size': 22})
 
 import_errors = []
 try:
@@ -79,15 +67,36 @@ try:
 except ImportError:
     import_errors.append("[ERROR] : Module \'Docopt\' was not found. Please install \'Docopt\' using \'pip install docopt\'")
 try:
-    import ete3
+    import matplotlib as mat
+    mat.use("agg")
 except ImportError:
-    import_errors.append("[ERROR] : Module \'ete3\'' was not found. Please install \'ete3\' using \'pip install ete3\'")
+    import_errors.append("[ERROR] : Module \'Matplotlib\' was not found. Please install \'Matplotlob\' using \'pip install matplotlib\'")
+try:
+    import scipy
+except ImportError:
+    import_errors.append("[ERROR] : Module \'SciPy\' was not found. Please install \'SciPy\' using \'pip install scipy\'")
+#try:
+#    import seaborn as sns
+#except ImportError:
+#    import_errors.append("[ERROR] : Module \'Seaborn\' was not found. Please install \'Seaborn\' using \'pip install seaborn\'")
 #try:
 #    import powerlaw
 #except ImportError:
 #    import_errors.append("[ERROR] : Module \'powerlaw\'' was not found. Please install \'powerlaw\' using \'pip install powerlaw\'")
 if import_errors:
     sys.exit("\n".join(import_errors))
+
+import numpy as np
+from matplotlib.ticker import FormatStrFormatter
+import matplotlib.pyplot as plt
+plt.style.use('ggplot')
+#sns.set_context("talk")
+#sns.set(style="whitegrid")
+#sns.set_color_codes("pastel")
+mat.rc('ytick', labelsize=20)
+mat.rc('xtick', labelsize=20)
+axis_font = {'size':'20'}
+mat.rcParams.update({'font.size': 22})
 
 ########################################################################
 # General functions
@@ -1221,7 +1230,8 @@ class AloCollection():
             node_stats_by_node_id = self.generate_counts(counts_by_cluster_type_by_node_name, counts_by_proteome_subset_by_node_name, node_label_by_proteome_subset)
             header_f_by_node_name = self.generate_header_for_node(node_stats_by_node_id)
             charts_f_by_node_name = self.generate_chart_for_node(node_stats_by_node_id)
-            self.plot_tree(header_f_by_node_name, charts_f_by_node_name)
+            if inputObj.render_tree:
+                self.plot_tree(header_f_by_node_name, charts_f_by_node_name)
 
     def plot_tree(self, header_f_by_node_name, charts_f_by_node_name):
         tree_f = join(dataFactory.dirs['tree'], "tree.%s" % ('pdf')) # must be PDF! (otherwise it breaks)
@@ -1339,7 +1349,8 @@ class AloCollection():
             'nodeID', \
             'synapomorphy', \
             "fraction", \
-            "children" \
+            "children", \
+            "proteomes_present" \
             ]))
 
         print self.tree_ete.get_ascii(attributes=["name"], show_internal=True)
@@ -1869,9 +1880,11 @@ class InputObj():
         self.sequence_ids_f = args['--sequence_ids_file']
         self.species_ids_f = args['--species_ids_file']
         self.tree_f = args['--tree_file']
+        self.render_tree = True
         self.nodesdb_f = args['--nodesdb']
         self.functional_annotation_f = args['--functional_annotation']
         self.check_input_files()
+        #self.check_that_ete_can_plot()
         # FASTA files
         self.fasta_dir = args['--fasta_dir']
         self.check_if_fasta_dir_and_species_ids_f()
@@ -1938,6 +1951,25 @@ class InputObj():
         check_file(self.tree_f)
         check_file(self.nodesdb_f)
 
+    def check_that_ete_can_plot(self):
+        if self.tree_f:
+            try:
+                import ete3
+            except ImportError:
+                sys.exit("[ERROR] : Module \'ete3\' was not found. Please install \'ete3\' using \'pip install ete3\'\n/tPlotting of trees requires additional dependencies:\n\t- PyQt4\n\t")
+            try:
+                import PyQt4
+            except ImportError:
+                sys.exit("[ERROR] : PyQt4 is not installed. Please install PyQt4")
+            from ete3 import Tree
+            t = Tree( "((a,b),c);" )
+            try:
+                test_tree_f = join(getcwd(), "%s.this_is_a_test_tree.pdf" % (outprefix))
+                t.render("test_tree_f.pdf", w=40, units="mm")
+            except:
+                print "[WARN] : ETE cannot connect to X server (X11). No tree will be rendered."
+                self.render_tree = False
+
     def check_fuzzy_count(self, target_count):
         if int(target_count) > 0:
             self.fuzzy_count = int(target_count)
@@ -1962,6 +1994,8 @@ if __name__ == "__main__":
     args = docopt(__doc__)
     # Sanitise input
     inputObj = InputObj(args)
+    if inputObj.tree_f:
+        import ete3
     # Input sane ... now we start
     print "[STATUS] - Starting analysis ..."
     overall_start = time.time()
@@ -1978,7 +2012,7 @@ if __name__ == "__main__":
     clusterCollection = dataFactory.build_ClusterCollection(inputObj)
     dataFactory.setup_dirs(inputObj)
     aloCollection.analyse_clusters()
-    #aloCollection.analyse_domains()
+    # aloCollection.analyse_domains() # takes prohibitely long, implement faster!
     aloCollection.analyse_tree()
     aloCollection.compute_rarefaction_data()
     dataFactory.write_output()
