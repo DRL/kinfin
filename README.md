@@ -3,6 +3,10 @@ Taxon-aware analysis of clustered proteomes
 
 ----------
 
+### Installation
+
+brew test pyqt
+
 #### Analyse clusters
 ```
 src/kinfin.py \
@@ -15,3 +19,4 @@ src/kinfin.py \
     -a test_data/ \
     -t test_data/test.tree.nwk
 ```
+
