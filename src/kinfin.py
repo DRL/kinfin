@@ -89,10 +89,11 @@ if import_errors:
 import numpy as np
 from matplotlib.ticker import FormatStrFormatter
 import matplotlib.pyplot as plt
+import seaborn as sns
 plt.style.use('ggplot')
-#sns.set_context("talk")
-#sns.set(style="whitegrid")
-#sns.set_color_codes("pastel")
+sns.set_context("talk")
+sns.set(style="whitegrid")
+sns.set_color_codes("pastel")
 mat.rc('ytick', labelsize=20)
 mat.rc('xtick', labelsize=20)
 axis_font = {'size':'20'}
@@ -1398,7 +1399,8 @@ class AloCollection():
                                 label, \
                                 'synapomorphy-all', \
                                 '{0:.3}'.format(child_node_proteome_fraction), \
-                                ";".join(child_node_proteome_count_string) \
+                                ";".join(child_node_proteome_count_string), \
+                                ",".join(list(sorted(proteome_subset))) \
                                 ]))
                     else:
                         # synapomorphy-stochastic
@@ -1409,7 +1411,8 @@ class AloCollection():
                                 label, \
                                 'synapomorphy-stochastic-absent', \
                                 '{0:.3}'.format(child_node_proteome_fraction), \
-                                ";".join(child_node_proteome_count_string) \
+                                ";".join(child_node_proteome_count_string), \
+                                ",".join(list(sorted(proteome_subset))) \
                                 ]))
             node_stats_by_node_id[node_name] = {}
             node_stats_by_node_id[node_name]['apomorphies_singletons'] = apomorphies_singletons
@@ -1448,12 +1451,13 @@ class AloCollection():
                 #results, edges = np.histogram(x_values, bins=50, density=True)
                 #binwidth = edges[2] - edges[1]
                 #ax.bar(edges[:-1], results*binwidth, width=binwidth, align='center', label='Synapomorphies')
-                ax.hist(x_values, bins=10, label='Synapomorphies')
+                ax.hist(x_values, histtype='stepfilled', align='mid', bins=np.arange(0.0, 1 + 0.1, 0.1))
                 box = ax.get_position()
-                ax.set_position([box.x0, box.y0 + box.height * 0.1, box.width, box.height * 0.9])
+                #ax.set_position([box.x0, box.y0 + box.height * 0.1, box.width, box.height * 0.9])
                 ax.set_xlim(-0.1, 1.1)
                 #ax.set_ylim(0, 1)
-                ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.2),fancybox=False, shadow=False, ncol=1)
+                #ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.2),fancybox=False, shadow=False, ncol=1)
+                #ax.legend(loc='', fancybox=False, shadow=False, ncol=1)
                 for tick in ax.xaxis.get_major_ticks():
                     tick.label.set_fontsize(inputObj.plot_font_size-2)
                     tick.label.set_rotation('vertical')
@@ -1462,6 +1466,7 @@ class AloCollection():
                 ax.set_frame_on(False)
                 ax.xaxis.grid(True, linewidth=1, which="major", color="lightgrey")
                 ax.yaxis.grid(True, linewidth=1, which="major", color="lightgrey")
+                f.suptitle("Synapomorphies", y=1.1)
                 ax.set_ylabel("Count", fontsize=inputObj.plot_font_size)
                 ax.set_xlabel("Proteome coverage", fontsize=inputObj.plot_font_size)
                 print "[STATUS]\t- Plotting %s" % (chart_f)
@@ -1995,7 +2000,11 @@ if __name__ == "__main__":
     # Sanitise input
     inputObj = InputObj(args)
     if inputObj.tree_f:
-        import ete3
+        try:
+            import ete3
+        except:
+            sys.exit("[ERROR] : Module \'ete3\' was not found. Please install \'ete3\' using \'pip install ete3\'")
+
     # Input sane ... now we start
     print "[STATUS] - Starting analysis ..."
     overall_start = time.time()
@@ -2028,7 +2037,6 @@ if __name__ == "__main__":
     ###
     '''
     Pending
-        0. Add Leaf column to tree.node_clusters.txt (so that one can grep by key-species)
         1. generate output for some overall metrics:
             - singletons with domains
             - specific clusters with domains
