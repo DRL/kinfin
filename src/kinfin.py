@@ -1242,7 +1242,7 @@ class AloCollection():
                         counts_by_proteome_subset_by_node_name[node.name][subset_of_proteome_ids] = self.counts_of_all_proteome_subsets.get(subset_of_proteome_ids, 0)
                 #counts_by_cluster_type_by_node_name[node.name] = node.counts
             node_label_by_proteome_subset = self.generate_node_labels(counts_by_proteome_subset_by_node_name)
-            sys.exit("STOP")
+            #sys.exit("STOP")
             #node_stats_by_node_id = self.generate_counts(counts_by_cluster_type_by_node_name, counts_by_proteome_subset_by_node_name, node_label_by_proteome_subset)
             node_stats_by_node_id = self.generate_counts(counts_by_proteome_subset_by_node_name, node_label_by_proteome_subset)
             header_f_by_node_name = self.generate_header_for_node(node_stats_by_node_id)
@@ -1282,11 +1282,11 @@ class AloCollection():
     def generate_node_labels(self, counts_by_proteome_subset_by_node_name):
         node_label_by_proteome_subset = {}
         for node_name in counts_by_proteome_subset_by_node_name:
-            print node_name
+            #print node_name
             for proteome_subset in counts_by_proteome_subset_by_node_name[node_name]:
-                print "\t", proteome_subset
+                #print "\t", proteome_subset
                 for proteome_ids, node_label in sorted(self.node_idx_by_proteome_ids.items(), key=lambda x: x[1]):
-                    print "\t", proteome_ids, node_label
+                    #print "\t", proteome_ids, node_label
                     if proteome_ids.issubset(proteome_subset):
                         if len(proteome_ids) >= 2:
                             if not proteome_subset in node_label_by_proteome_subset:
