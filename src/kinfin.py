@@ -1712,7 +1712,7 @@ class ProteinCollection():
         self.proteinObjs = proteinObjs
         self.proteinObjs_by_protein_id = {proteinObj.protein_id : proteinObj for proteinObj in proteinObjs}
         self.protein_count = len(proteinObjs)
-        self.domain_sources = None
+        self.domain_sources = []
         self.fastas_parsed = False
         self.functional_annotation_parsed = False
 
