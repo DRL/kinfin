@@ -1037,11 +1037,13 @@ class AloCollection():
         self.attributes = [attribute for attribute in attributes if attribute not in inputObj.ATTRIBUTE_RESERVED] # list of attributes
         self.proteome_id_by_species_id = proteome_id_by_species_id
         self.tree_ete = tree_ete
-        self.counts_of_all_proteome_subsets = {}
-        self.cluster_ids_of_all_proteome_subsets = {}
+
         self.node_idx_by_proteome_ids = node_idx_by_proteome_ids
         self.level_by_attribute_by_proteome_id = level_by_attribute_by_proteome_id
         self.proteome_ids_by_level_by_attribute = self.compute_proteomes_by_level_by_attribute()
+
+        self.counts_of_all_proteome_subsets = {}
+        self.cluster_ids_of_all_proteome_subsets = {}
 
         self.ALO_by_level_by_attribute = self.create_ALOs()
 
@@ -1150,9 +1152,9 @@ class AloCollection():
                         sys.exit("[ERROR] Something unexpected happened...")
 
         if not clusterObj.singleton:
-            if not clusterObj.proteome_ids in self.counts_of_all_proteome_subsets:
-                self.counts_of_all_proteome_subsets[clusterObj.proteome_ids] = 0
-            self.counts_of_all_proteome_subsets[clusterObj.proteome_ids] += 1
+            #if not clusterObj.proteome_ids in self.counts_of_all_proteome_subsets:
+            #    self.counts_of_all_proteome_subsets[clusterObj.proteome_ids] = 0
+            #self.counts_of_all_proteome_subsets[clusterObj.proteome_ids] += 1
             if not clusterObj.proteome_ids in self.cluster_ids_of_all_proteome_subsets:
                 self.cluster_ids_of_all_proteome_subsets[clusterObj.proteome_ids] = []
             self.cluster_ids_of_all_proteome_subsets[clusterObj.proteome_ids].append(clusterObj.cluster_id)
@@ -1225,30 +1227,90 @@ class AloCollection():
         clusterObj.cluster_type_by_attribute = cluster_type_by_attribute
 
     def analyse_tree(self):
-        ### FIX THIS ...
+
         if self.tree_ete:
             print "[STATUS] - Preparing data for tree ... "
-            proteomes_to_index = {node.proteome_ids : node.idx for node in self.tree_ete.traverse("levelorder")}
-            counts_by_proteome_subset_by_node_name = {}
-            #counts_by_cluster_type_by_node_name = {}
+            proteome_ids_by_node_id = {node.proteome_ids : node.idx for node in self.tree_ete.traverse("levelorder")}
+            cluster_ids_by_proteome_ids_by_node_name = {}
+            synapomorphic_clusters_by_node_id = {}
             for node in self.tree_ete.traverse("levelorder"):
-                if not node.name in counts_by_proteome_subset_by_node_name:
-                    counts_by_proteome_subset_by_node_name[node.name] = {}
+                print "# ",node.name
                 proteome_ids = node.proteome_ids
+                print "\tcontains :", proteome_ids
                 if not node.is_leaf():
-                    children_nodes = node.get_children()
-                    subsets_of_proteome_ids = self.generate_subsets_to_query_for_node(proteome_ids, children_nodes)
-                    for subset_of_proteome_ids in subsets_of_proteome_ids:
-                        counts_by_proteome_subset_by_node_name[node.name][subset_of_proteome_ids] = self.counts_of_all_proteome_subsets.get(subset_of_proteome_ids, 0)
+                    children_proteome_ids = [child_node.proteome_ids for child_node in node.get_children()]
+                    child_nodes_covered = []
+                    print "\tchildren : ", children_proteome_ids
+                    for proteome_set, cluster_ids in self.cluster_ids_of_all_proteome_subsets.items():
+                        print proteome_set, len(cluster_ids)
+                        if len(proteome_set) > 1:
+                            if not proteome_ids.isdisjoint(proteome_set):
+                                for child_proteome_ids in children_proteome_ids:
+                                    if child_proteome_ids.isdisjoint(proteome_set):
+                                        child_nodes_covered.append(False)
+                                    else:
+                                        child_nodes_covered.append(True)
+                                print child_nodes_covered
+                                if all(child_nodes_covered):
+                                    print "### COVERED ###"
+
+
+
+
+                           #    for child_proteome_ids in children_proteome_ids:
+
+                           #if not proteome_subset.difference(proteome_ids):
+                           #    overlapping_children = 0
+                           #    for child_proteome_ids in children_proteome_ids:
+                           #        if child_proteome_ids.intersection(proteome_subset):
+                           #            overlapping_children += 1
+                           #    if overlapping_children >1:
+                           #        subsets_of_proteome_ids.append(proteome_subset)
+
+
+                    #subsets_of_proteome_ids = self.generate_subsets_to_query_for_node(proteome_ids, children_nodes)
+                    #print "\t SUBSETS : ", subsets_of_proteome_ids
+                    #for subset_of_proteome_ids in subsets_of_proteome_ids:
+                    #    counts_by_proteome_subset_by_node_name[node.name][subset_of_proteome_ids] = self.counts_of_all_proteome_subsets.get(subset_of_proteome_ids, 0)
                 #counts_by_cluster_type_by_node_name[node.name] = node.counts
-            node_label_by_proteome_subset = self.generate_node_labels(counts_by_proteome_subset_by_node_name)
-            #sys.exit("STOP")
+            #node_label_by_proteome_subset = self.generate_node_labels(counts_by_proteome_subset_by_node_name)
+            sys.exit("STOP")
             #node_stats_by_node_id = self.generate_counts(counts_by_cluster_type_by_node_name, counts_by_proteome_subset_by_node_name, node_label_by_proteome_subset)
             node_stats_by_node_id = self.generate_counts(counts_by_proteome_subset_by_node_name, node_label_by_proteome_subset)
             header_f_by_node_name = self.generate_header_for_node(node_stats_by_node_id)
             charts_f_by_node_name = self.generate_chart_for_node(node_stats_by_node_id)
             if inputObj.render_tree:
                 self.plot_tree(header_f_by_node_name, charts_f_by_node_name)
+        #if self.tree_ete:
+        #    print "[STATUS] - Preparing data for tree ... "
+        #    #proteomes_to_index = {node.proteome_ids : node.idx for node in self.tree_ete.traverse("levelorder")}
+        #    proteome_ids_by_node_id = {node.proteome_ids : node.idx for node in self.tree_ete.traverse("levelorder")}
+        #    counts_by_proteome_subset_by_node_name = {}
+        #    #counts_by_cluster_type_by_node_name = {}
+        #    for node in self.tree_ete.traverse("levelorder"):
+        #        print "# ",node.name
+        #        if not node.name in counts_by_proteome_subset_by_node_name:
+        #            "[seen first time]"
+        #            counts_by_proteome_subset_by_node_name[node.name] = {}
+        #        proteome_ids = node.proteome_ids
+        #        print "\tcontains :", proteome_ids
+        #        if not node.is_leaf():
+        #            print "\t [not a leaf]"
+        #            children_nodes = node.get_children()
+        #            print "\t CHILDREN : ", children_nodes
+        #            subsets_of_proteome_ids = self.generate_subsets_to_query_for_node(proteome_ids, children_nodes)
+        #            print "\t SUBSETS : ", subsets_of_proteome_ids
+        #            for subset_of_proteome_ids in subsets_of_proteome_ids:
+        #                counts_by_proteome_subset_by_node_name[node.name][subset_of_proteome_ids] = self.counts_of_all_proteome_subsets.get(subset_of_proteome_ids, 0)
+        #        #counts_by_cluster_type_by_node_name[node.name] = node.counts
+        #    node_label_by_proteome_subset = self.generate_node_labels(counts_by_proteome_subset_by_node_name)
+        #    sys.exit("STOP")
+        #    #node_stats_by_node_id = self.generate_counts(counts_by_cluster_type_by_node_name, counts_by_proteome_subset_by_node_name, node_label_by_proteome_subset)
+        #    node_stats_by_node_id = self.generate_counts(counts_by_proteome_subset_by_node_name, node_label_by_proteome_subset)
+        #    header_f_by_node_name = self.generate_header_for_node(node_stats_by_node_id)
+        #    charts_f_by_node_name = self.generate_chart_for_node(node_stats_by_node_id)
+        #    if inputObj.render_tree:
+        #        self.plot_tree(header_f_by_node_name, charts_f_by_node_name)
 
     def plot_tree(self, header_f_by_node_name, charts_f_by_node_name):
         tree_f = join(dataFactory.dirs['tree'], "tree.%s" % ('pdf')) # must be PDF! (otherwise it breaks)
@@ -1487,20 +1549,20 @@ class AloCollection():
                 node_chart_f_by_node_name[node_name] = chart_f
         return node_chart_f_by_node_name
 
-    def generate_subsets_to_query_for_node(self, proteome_ids, children_nodes):
-        subsets_of_proteome_ids = []
-        subsets_of_proteome_ids.append(proteome_ids)
-        children_proteome_ids = [child_node.proteome_ids for child_node in children_nodes]
-        for proteome_subset, count in sorted(self.counts_of_all_proteome_subsets.items(), key=lambda x: x[1], reverse=True):
-            if len(proteome_subset) > 1:
-                if not proteome_subset.difference(proteome_ids):
-                    overlapping_children = 0
-                    for child_proteome_ids in children_proteome_ids:
-                        if child_proteome_ids.intersection(proteome_subset):
-                            overlapping_children += 1
-                    if overlapping_children >1:
-                        subsets_of_proteome_ids.append(proteome_subset)
-        return subsets_of_proteome_ids
+    #def generate_subsets_to_query_for_node(self, proteome_ids, children_nodes):
+    #    subsets_of_proteome_ids = []
+    #    subsets_of_proteome_ids.append(proteome_ids)
+    #    children_proteome_ids = [child_node.proteome_ids for child_node in children_nodes]
+    #    for proteome_subset, count in sorted(self.counts_of_all_proteome_subsets.items(), key=lambda x: x[1], reverse=True):
+    #        if len(proteome_subset) > 1:
+    #            if not proteome_subset.difference(proteome_ids):
+    #                overlapping_children = 0
+    #                for child_proteome_ids in children_proteome_ids:
+    #                    if child_proteome_ids.intersection(proteome_subset):
+    #                        overlapping_children += 1
+    #                if overlapping_children >1:
+    #                    subsets_of_proteome_ids.append(proteome_subset)
+    #    return subsets_of_proteome_ids
 
     def compute_rarefaction_data(self):
         rarefaction_by_samplesize_by_level_by_attribute = {}
@@ -2036,6 +2098,7 @@ if __name__ == "__main__":
     aloCollection.analyse_clusters()
     # aloCollection.analyse_domains() # takes prohibitely long, implement faster!
     aloCollection.analyse_tree()
+    sys.exit("STOP.")
     aloCollection.compute_rarefaction_data()
     dataFactory.write_output()
 
