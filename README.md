@@ -5,7 +5,14 @@ Taxon-aware analysis of clustered proteomes
 
 ### Installation
 
-brew test pyqt
+#### Requirements
+- Python 2.7+
+- Python libraries:
+    - Docopt (pip install docopt)
+    - Matplotlib (pip install matplotlib)
+    - Seaborn (pip install seaborn)
+    - SciPy (pip install scipy)
+    - ETE3 ToolKit (pip install ete3)
 
 #### Analyse clusters
 ```
