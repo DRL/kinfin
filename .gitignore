@@ -2,3 +2,5 @@ features*
 kinfin.md
 *.pyc
 *kinfin_results
+*big_test_data/
+data/nodesDB.txt
