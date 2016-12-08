@@ -2056,4 +2056,11 @@ if __name__ == "__main__":
         2. annotate legend with boniferroni corrected p-values
         3. Make Vulcanos's after attribute-output is completed
         4. Make separate output file for 1-to-1's
+
+        for each set of proteomes theit cluster ids
+        for each subnode
+            intersectiom
+            if true append to list
+        if all in list true synapomorphy
+
     '''
