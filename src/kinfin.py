@@ -57,6 +57,7 @@ from os import getcwd, mkdir
 import shutil
 import random
 import time
+from decimal import Decimal
 
 from collections import Counter, defaultdict
 from math import sqrt, log
@@ -399,9 +400,10 @@ class DataFactory():
             sequence_id = temp[0]
             protein_id = temp[1].split(" ")[0]
             species_id = sequence_id.split("_")[0]
-            proteome_id = aloCollection.proteome_id_by_species_id[species_id]
-            proteinObj = ProteinObj(protein_id, proteome_id, species_id, sequence_id)
-            proteinObjs.append(proteinObj)
+            proteome_id = aloCollection.proteome_id_by_species_id.get(species_id, None)
+            if proteome_id:
+                proteinObj = ProteinObj(protein_id, proteome_id, species_id, sequence_id)
+                proteinObjs.append(proteinObj)
         proteinCollection = ProteinCollection(proteinObjs)
         print "[STATUS]\t - Proteins found = %s" % (proteinCollection.protein_count)
 
@@ -970,13 +972,24 @@ class DataFactory():
                     log2fc_array = np.array(log2fc_values)
                     ax.scatter(log2fc_array, p_array, alpha=0.8, edgecolors='none',s=25 , c='grey')
 
-                    ax.axhline(y=0.05, linewidth=2, color='orange', linestyle="--")
-                    ax.axhline(y=0.01, linewidth=2, color='red', linestyle="--")
-                    corrected_oofive = 0.05/pair_data_count
-                    corrected_ooone = 0.01/pair_data_count
-                    ax.axhline(y=corrected_oofive, linewidth=2, color='grey', linestyle="--")
-                    ax.axhline(y=corrected_ooone, linewidth=2, color='black', linestyle="--")
+                    ooFive = 0.05
+                    ooOne = 0.01
+                    ooFive_corrected = 0.05/pair_data_count
+                    ooOne_corrected = 0.01/pair_data_count
 
+                    ax.axhline(y=ooFive, linewidth=2, color='orange', linestyle="--")
+                    ooFive_artist = plt.Line2D((0,1),(0,0), color='orange', linestyle='--')
+                    ax.axhline(y=ooOne, linewidth=2, color='red', linestyle="--")
+                    ooOne_artist = plt.Line2D((0,1),(0,0), color='red', linestyle='--')
+                    ax.axhline(y=ooFive_corrected, linewidth=2, color='grey', linestyle="--")
+                    ooFive_corrected_artist = plt.Line2D((0,1),(0,0), color='grey', linestyle='--')
+                    ax.axhline(y=ooOne_corrected, linewidth=2, color='black', linestyle="--")
+                    ooOne_corrected_artist = plt.Line2D((0,1),(0,0), color='black', linestyle='--')
+
+                    #Create legend from custom artist/label lists
+                    ax.legend([ooFive_artist, ooOne_artist, ooFive_corrected_artist, ooOne_corrected_artist], \
+                        [ooFive, ooOne, "%s (0.05 corrected)" % '%.2E' % Decimal(ooFive_corrected), "%s (0.01 corrected)" % '%.2E' % Decimal(ooOne_corrected)], \
+                        fontsize=inputObj.plot_font_size, frameon=True)
                     if abs(np.min(log2fc_array)) < abs(np.max(log2fc_array)):
                         x_min = 0.0-abs(np.max(log2fc_array))
                         x_max = 0.0+abs(np.max(log2fc_array))
@@ -1212,11 +1225,12 @@ class AloCollection():
         clusterObj.cluster_type_by_attribute = cluster_type_by_attribute
 
     def analyse_tree(self):
+        ### FIX THIS ...
         if self.tree_ete:
             print "[STATUS] - Preparing data for tree ... "
             proteomes_to_index = {node.proteome_ids : node.idx for node in self.tree_ete.traverse("levelorder")}
             counts_by_proteome_subset_by_node_name = {}
-            counts_by_cluster_type_by_node_name = {}
+            #counts_by_cluster_type_by_node_name = {}
             for node in self.tree_ete.traverse("levelorder"):
                 if not node.name in counts_by_proteome_subset_by_node_name:
                     counts_by_proteome_subset_by_node_name[node.name] = {}
@@ -1226,9 +1240,11 @@ class AloCollection():
                     subsets_of_proteome_ids = self.generate_subsets_to_query_for_node(proteome_ids, children_nodes)
                     for subset_of_proteome_ids in subsets_of_proteome_ids:
                         counts_by_proteome_subset_by_node_name[node.name][subset_of_proteome_ids] = self.counts_of_all_proteome_subsets.get(subset_of_proteome_ids, 0)
-                counts_by_cluster_type_by_node_name[node.name] = node.counts
+                #counts_by_cluster_type_by_node_name[node.name] = node.counts
             node_label_by_proteome_subset = self.generate_node_labels(counts_by_proteome_subset_by_node_name)
-            node_stats_by_node_id = self.generate_counts(counts_by_cluster_type_by_node_name, counts_by_proteome_subset_by_node_name, node_label_by_proteome_subset)
+            sys.exit("STOP")
+            #node_stats_by_node_id = self.generate_counts(counts_by_cluster_type_by_node_name, counts_by_proteome_subset_by_node_name, node_label_by_proteome_subset)
+            node_stats_by_node_id = self.generate_counts(counts_by_proteome_subset_by_node_name, node_label_by_proteome_subset)
             header_f_by_node_name = self.generate_header_for_node(node_stats_by_node_id)
             charts_f_by_node_name = self.generate_chart_for_node(node_stats_by_node_id)
             if inputObj.render_tree:
@@ -1266,8 +1282,11 @@ class AloCollection():
     def generate_node_labels(self, counts_by_proteome_subset_by_node_name):
         node_label_by_proteome_subset = {}
         for node_name in counts_by_proteome_subset_by_node_name:
+            print node_name
             for proteome_subset in counts_by_proteome_subset_by_node_name[node_name]:
+                print "\t", proteome_subset
                 for proteome_ids, node_label in sorted(self.node_idx_by_proteome_ids.items(), key=lambda x: x[1]):
+                    print "\t", proteome_ids, node_label
                     if proteome_ids.issubset(proteome_subset):
                         if len(proteome_ids) >= 2:
                             if not proteome_subset in node_label_by_proteome_subset:
@@ -1329,7 +1348,8 @@ class AloCollection():
             node_header_f_by_node_name[node_name] = node_header_f
         return node_header_f_by_node_name
 
-    def generate_counts(self, counts_by_cluster_type_by_node_name, counts_by_proteome_subset_by_node_name, node_label_by_proteome_subset):
+    #def generate_counts(self, counts_by_cluster_type_by_node_name, counts_by_proteome_subset_by_node_name, node_label_by_proteome_subset):
+    def generate_counts(self, counts_by_proteome_subset_by_node_name, node_label_by_proteome_subset):
         node_stats_by_node_id = {}
         node_stats_f = join(dataFactory.dirs['tree'], "tree.node_stats.txt")
         node_stats = []
@@ -1448,16 +1468,8 @@ class AloCollection():
                 chart_f = join(dataFactory.dirs['tree_charts'], "node_%s.barchart.pdf" % (node_name))
                 f, ax = plt.subplots(figsize=(3.0, 3.0))
                 x_values = np.array(values)
-                #results, edges = np.histogram(x_values, bins=50, density=True)
-                #binwidth = edges[2] - edges[1]
-                #ax.bar(edges[:-1], results*binwidth, width=binwidth, align='center', label='Synapomorphies')
-                ax.hist(x_values, histtype='stepfilled', align='mid', bins=np.arange(0.0, 1 + 0.1, 0.1))
-                box = ax.get_position()
-                #ax.set_position([box.x0, box.y0 + box.height * 0.1, box.width, box.height * 0.9])
+                ax.hist(x_values, histtype='stepfilled', align='mid', bins=np.arange(0.0, 1.0 + 0.1, 0.1))
                 ax.set_xlim(-0.1, 1.1)
-                #ax.set_ylim(0, 1)
-                #ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.2),fancybox=False, shadow=False, ncol=1)
-                #ax.legend(loc='', fancybox=False, shadow=False, ncol=1)
                 for tick in ax.xaxis.get_major_ticks():
                     tick.label.set_fontsize(inputObj.plot_font_size-2)
                     tick.label.set_rotation('vertical')
@@ -1971,6 +1983,7 @@ class InputObj():
             try:
                 test_tree_f = join(getcwd(), "%s.this_is_a_test_tree.pdf" % (outprefix))
                 t.render("test_tree_f.pdf", w=40, units="mm")
+                print "[STATUS] : ETE can connect to X server (X11). Tree will be rendered."
             except:
                 print "[WARN] : ETE cannot connect to X server (X11). No tree will be rendered."
                 self.render_tree = False
