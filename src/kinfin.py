@@ -190,9 +190,24 @@ def parse_tree(tree_f, outgroups):
     for idx, node in enumerate(tree_ete.traverse("levelorder")):
         proteome_ids = frozenset([leaf.name for leaf in node])
         if not node.name:
-            node.add_features(name=idx, nodetype="node", idx="node%s" % (idx), proteome_ids=proteome_ids, counts={'specific' : 0, 'shared' : 0, "absent" : 0, "singleton" : 0})
+            node.add_features(\
+                name=idx, \
+                nodetype="node", \
+                idx="node%s" % (idx), \
+                proteome_ids=proteome_ids, \
+                apomorphic_cluster_counts={'singletons' : 0, 'non_singletons' : 0}, \
+                synapomorphic_cluster_counts={'complete_presence' : 0, 'stochastic_absence' : 0}, \
+                synapomorphic_cluster_strings=[], \
+                counts={'specific' : 0, 'shared' : 0, "absent" : 0, "singleton" : 0})
         else:
-            node.add_features(nodetype="tip", idx="node%s" % (idx), proteome_ids=proteome_ids, counts={'specific' : 0, 'shared' : 0, "absent" : 0, "singleton" : 0})
+            node.add_features(\
+                nodetype="tip", \
+                idx="node%s" % (idx), \
+                proteome_ids=proteome_ids, \
+                apomorphic_clusters={'singletons' : 0, 'non_singletons' : 0}, \
+                synapomorphic_cluster_counts={'complete_presence' : 0, 'stochastic_absence' : 0}, \
+                synapomorphic_cluster_strings=[] \
+                counts={'specific' : 0, 'shared' : 0, "absent" : 0, "singleton" : 0})
         node_idx_by_proteome_ids[proteome_ids] = node.name
     return tree_ete, node_idx_by_proteome_ids
 
@@ -1132,22 +1147,64 @@ class AloCollection():
             proteomes_to_index = {node.proteome_ids : node.idx for node in self.tree_ete.traverse("levelorder")}
             counts_by_proteome_subset_by_node_name = {}
             for node in self.tree_ete.traverse("levelorder"):
-                proteome_ids = node.proteome_ids
-                intersection = clusterObj.proteome_ids.intersection(proteome_ids)
-                difference = clusterObj.proteome_ids.difference(proteome_ids)
+                intersection = clusterObj.proteome_ids.intersection(node.proteome_ids)
+                difference = clusterObj.proteome_ids.difference(node.proteome_ids)
                 if len(intersection) == 0:
                     node.counts['absent'] +=1
                     #print clusterObj.cluster_id, ":", clusterObj.proteome_ids, "absent", proteome_ids
                 else:
                     if clusterObj.singleton == True:
                         node.counts['singleton'] +=1
+                        node.apomorphic_cluster_counts['singletons'] + 1
                         #print clusterObj.cluster_id, ":", clusterObj.proteome_ids, "singleton", proteome_ids
                     elif len(difference) > 0:
                         node.counts['shared'] +=1
                         #print clusterObj.cluster_id, ":", clusterObj.proteome_ids, "shared", proteome_ids
                     elif len(difference) == 0:
                         node.counts['specific'] +=1
-                        #print clusterObj.cluster_id, ":", clusterObj.proteome_ids, "specific", proteome_ids
+                        if clusterObj.proteome_count == 1:
+                            node.apomorphic_cluster_counts['non_singletons'] + 1
+                        else:
+                            # are child nodes covered ?
+                            child_nodes_covered = []
+                            child_node_proteome_coverage_strings = []
+                            child_node_proteome_ids_covered_count = 0
+                            for child_node in node.get_children():
+                                if child_node.proteome_ids.isdisjoint(clusterObj.proteome_ids):
+                                    child_nodes_covered.append(False)
+                                else:
+                                    child_nodes_covered.append(True)
+                                    child_node_proteome_ids_covered_count = len(clusterObj.proteome_ids.intersection(child_node.proteome_ids))
+                                    if str(child_node.name).isdigit():
+
+                                        child_node_proteome_coverage_strings.append(\
+                                            "n%s=(%s/%s)" % (child_node.name, child_node_proteome_ids_covered_count, len(child_node.proteome_ids)))
+                                    else:
+                                        child_node_proteome_coverage_strings.append(\
+                                            "%s=(%s/%s)" % (child_node.name, child_node_proteome_ids_covered_count, len(child_node.proteome_ids)))
+                            if all(child_nodes_covered):
+                                # synapomorphy
+                                node_proteome_coverage = len(intersection)/len(node.proteome_ids)
+                                node_label = ''
+                                if str(node.name).isdigit():
+                                    node_label = "n%s" % (node.name)
+                                else:
+                                    node_label = "%s" % (node.name)
+                                node_cluster_type = ''
+                                if node_proteome_coverage == 1.0:
+                                    node_cluster_type = 'complete_presence'
+                                else:
+                                    node_cluster_type = 'stochastic_absence'
+                                node.synapomorphic_cluster_counts[node_cluster_type] + 1
+                                node.synapomorphic_cluster_strings.append(\
+                                        (clusterObj.cluster_id, \
+                                            node_label, \
+                                            node_cluster_type, \
+                                            '{0:.3}'.format(node_proteome_coverage), \
+                                            ";".join(child_node_proteome_coverage_strings), \
+
+                                        )
+                                child_node_proteome_coverage_strings
                     else:
                         sys.exit("[ERROR] Something unexpected happened...")
 
@@ -1226,35 +1283,170 @@ class AloCollection():
         clusterObj.implicit_protein_ids_by_proteome_id_by_level_by_attribute = implicit_protein_ids_by_proteome_id_by_level_by_attribute
         clusterObj.cluster_type_by_attribute = cluster_type_by_attribute
 
-    def analyse_tree(self):
+    #def generate_counts(self, counts_by_cluster_type_by_node_name, counts_by_proteome_subset_by_node_name, node_label_by_proteome_subset):
+    def generate_counts(self, counts_by_proteome_subset_by_node_name, node_label_by_proteome_subset):
+        node_stats_by_node_id = {}
+        node_stats_f = join(dataFactory.dirs['tree'], "tree.node_stats.txt")
+        node_stats = []
+        node_stats.append("\t".join([\
+            'nodeID', \
+            'taxon_specific_apomorphies (singletons)', \
+            'taxon_specific_apomorphies (non-singletons)', \
+            'node_specific_synapomorphies', \
+            'node_specific_synapomorphies (all taxa)', \
+            'node_specific_synapomorphies (stochastic absence)', \
+            'proteome_count' \
+            ]))
 
+        node_clusters_f = join(dataFactory.dirs['tree'], "tree.node_clusters.txt")
+        node_clusters = []
+        node_clusters.append("\t".join([ \
+            'clusterID', \
+            'nodeID', \
+            'synapomorphy', \
+            "fraction", \
+            "children", \
+            "proteomes_present" \
+            ]))
+
+        print self.tree_ete.get_ascii(attributes=["name"], show_internal=True)
+        for node_name in counts_by_proteome_subset_by_node_name:
+            proteome_ids_by_label = {}
+            label = ''
+            if str(node_name).isdigit():
+                label = "n%s" % (node_name)
+            else:
+                label = "%s" % (node_name)
+
+            apomorphies_non_singletons = sum([leaf.counts['specific'] for leaf in self.tree_ete.search_nodes(name=node_name)[0]])
+            apomorphies_singletons = sum([leaf.counts['singleton'] for leaf in self.tree_ete.search_nodes(name=node_name)[0]])
+            node_proteome_count = len(self.tree_ete.search_nodes(name=node_name)[0].get_leaves())
+            node_proteomes_by_child_node = {}
+            for child_node in self.tree_ete.search_nodes(name=node_name)[0].children:
+                node_proteomes_by_child_node[child_node] = set([leaf.name for leaf in child_node])
+            synapomorphies_present_in_all = 0
+            synapomorphies_with_stochastic_absence = 0
+            synapomorphies_coverage = []
+            for proteome_subset, count in sorted(counts_by_proteome_subset_by_node_name[node_name].items(), key=lambda x: x[1], reverse=True):
+                if count:
+                    proteome_ids_by_label[label] = "+".join(sorted(list(node_label_by_proteome_subset[proteome_subset])))
+                    child_node_proteome_count_present = []
+                    child_node_proteome_count_total = []
+                    child_node_proteome_count_string = []
+                    for child_node in node_proteomes_by_child_node:
+                        count_present = len(proteome_subset.intersection(node_proteomes_by_child_node[child_node]))
+                        count_total = len(node_proteomes_by_child_node[child_node])
+                        child_node_proteome_count_present.append(count_present)
+                        child_node_proteome_count_total.append(count_total)
+                        if str(child_node.name).isdigit():
+                            child_node_proteome_count_string.append("n%s=(%s/%s)" % (child_node.name, count_present, count_total))
+                        else:
+                            child_node_proteome_count_string.append("%s=(%s/%s)" % (child_node.name, count_present, count_total))
+                    child_node_proteome_fraction = sum(child_node_proteome_count_present)/sum(child_node_proteome_count_total)
+                    synapomorphies_coverage.append(child_node_proteome_fraction)
+
+                    if label == proteome_ids_by_label[label]:
+                        # synapomorphy-all
+                        synapomorphies_present_in_all = count
+                        for cluster_id in self.cluster_ids_of_all_proteome_subsets.get(proteome_subset, []):
+                            node_clusters.append("\t".join([ \
+                                cluster_id, \
+                                label, \
+                                'synapomorphy-all', \
+                                '{0:.3}'.format(child_node_proteome_fraction), \
+                                ";".join(child_node_proteome_count_string), \
+                                ",".join(list(sorted(proteome_subset))) \
+                                ]))
+                    else:
+                        # synapomorphy-stochastic
+                        synapomorphies_with_stochastic_absence += count
+                        for cluster_id in self.cluster_ids_of_all_proteome_subsets.get(proteome_subset, []):
+                            node_clusters.append("\t".join([ \
+                                cluster_id, \
+                                label, \
+                                'synapomorphy-stochastic-absent', \
+                                '{0:.3}'.format(child_node_proteome_fraction), \
+                                ";".join(child_node_proteome_count_string), \
+                                ",".join(list(sorted(proteome_subset))) \
+                                ]))
+            node_stats_by_node_id[node_name] = {}
+            node_stats_by_node_id[node_name]['apomorphies_singletons'] = apomorphies_singletons
+            node_stats_by_node_id[node_name]['apomorphies_non_singletons'] = apomorphies_non_singletons
+            node_stats_by_node_id[node_name]['synapomorphies_all'] = synapomorphies_present_in_all + synapomorphies_with_stochastic_absence
+            node_stats_by_node_id[node_name]['synapomorphies_present_in_all'] = synapomorphies_present_in_all
+            node_stats_by_node_id[node_name]['synapomorphies_with_stochastic_absence'] = synapomorphies_with_stochastic_absence
+            node_stats_by_node_id[node_name]['synapomorphies_coverage'] = synapomorphies_coverage
+
+            node_stats_line = []
+            node_stats_line.append(label)
+            node_stats_line.append(str(apomorphies_singletons))
+            node_stats_line.append(str(apomorphies_non_singletons))
+            node_stats_line.append(str(synapomorphies_present_in_all + synapomorphies_with_stochastic_absence))
+            node_stats_line.append(str(synapomorphies_present_in_all))
+            node_stats_line.append(str(synapomorphies_with_stochastic_absence))
+            node_stats_line.append(str(node_proteome_count))
+            node_stats.append("\t".join(node_stats_line))
+        print "[STATUS] - Writing %s ... " % node_stats_f
+        with open(node_stats_f, 'w') as node_stats_fh:
+            node_stats_fh.write("\n".join(node_stats) + "\n")
+        print "[STATUS] - Writing %s ... " % node_clusters_f
+        with open(node_clusters_f, 'w') as node_clusters_fh:
+            node_clusters_fh.write("\n".join(node_clusters) + "\n")
+        return node_stats_by_node_id
+
+    def analyse_tree(self):
         if self.tree_ete:
             print "[STATUS] - Preparing data for tree ... "
             proteome_ids_by_node_id = {node.proteome_ids : node.idx for node in self.tree_ete.traverse("levelorder")}
             cluster_ids_by_proteome_ids_by_node_name = {}
-            synapomorphic_clusters_by_node_id = {}
+            synapomorphy_clusters_by_node_id = {}
+            synapomorphy_coverage_by_node_id = {}
             for node in self.tree_ete.traverse("levelorder"):
-                print "# ",node.name
-                proteome_ids = node.proteome_ids
-                print "\tcontains :", proteome_ids
+                print "#", node.name
                 if not node.is_leaf():
                     children_proteome_ids = [child_node.proteome_ids for child_node in node.get_children()]
-                    child_nodes_covered = []
-                    print "\tchildren : ", children_proteome_ids
+                    # has to know about child ids for string
+                    children_node_names = [child_node.name for child_node in node.get_children()]
                     for proteome_set, cluster_ids in self.cluster_ids_of_all_proteome_subsets.items():
-                        print proteome_set, len(cluster_ids)
+                        child_nodes_covered = []
                         if len(proteome_set) > 1:
-                            if not proteome_ids.isdisjoint(proteome_set):
+                            if not node.proteome_ids.isdisjoint(proteome_set):
                                 for child_proteome_ids in children_proteome_ids:
                                     if child_proteome_ids.isdisjoint(proteome_set):
                                         child_nodes_covered.append(False)
                                     else:
                                         child_nodes_covered.append(True)
-                                print child_nodes_covered
                                 if all(child_nodes_covered):
-                                    print "### COVERED ###"
-
-
+                                    # all subnodes are covered
+                                    if proteome_set.issubset(node.proteome_ids):
+                                        # is specific
+                                        child_node_proteome_count_present = []
+                                        child_node_proteome_count_total = []
+                                        child_node_proteome_count_string = []
+                                        for child_proteome_ids in children_proteome_ids:
+                                            count_present = len(proteome_set.intersection(child_proteome_ids))
+                                            count_total = len(child_proteome_ids)
+                                            child_node_proteome_count_present.append(count_present)
+                                            child_node_proteome_count_total.append(count_total)
+                                            child_node_proteome_count_string.append("%s")
+                                            if str(child_node.name).isdigit():
+                                                child_node_proteome_count_string.append("n%s=(%s/%s)" % (child_node.name, count_present, count_total))
+                                            else:
+                                                child_node_proteome_count_string.append("%s=(%s/%s)" % (child_node.name, count_present, count_total))
+                                        print len(proteome_set), "proteomes", len(cluster_ids), "times", child_node_proteome_count_string
+                                        for cluster_id in cluster_ids:
+                                            print clusterCollection.clusterObjs_by_cluster_id[cluster_id].proteome_ids
+                                        child_node_proteome_fraction = sum(child_node_proteome_count_present)/sum(child_node_proteome_count_total)
+                                        if not node.name in synapomorphy_clusters_by_node_id:
+                                            synapomorphy_clusters_by_node_id[node.name] = []
+                                        synapomorphy_clusters_by_node_id[node.name].append(cluster_ids)
+                                        if not node.name in synapomorphy_coverage_by_node_id:
+                                            synapomorphy_coverage_by_node_id[node.name] = []
+                                        synapomorphy_coverage_by_node_id[node.name].append(child_node_proteome_fraction)
+                if node.name in synapomorphy_clusters_by_node_id:
+                    print len(synapomorphy_clusters_by_node_id[node.name]), synapomorphy_clusters_by_node_id[node.name]
+                if node.name in synapomorphy_coverage_by_node_id:
+                    print len(synapomorphy_coverage_by_node_id[node.name]), synapomorphy_coverage_by_node_id[node.name]
 
 
                            #    for child_proteome_ids in children_proteome_ids:
@@ -1409,117 +1601,6 @@ class AloCollection():
             plt.close()
             node_header_f_by_node_name[node_name] = node_header_f
         return node_header_f_by_node_name
-
-    #def generate_counts(self, counts_by_cluster_type_by_node_name, counts_by_proteome_subset_by_node_name, node_label_by_proteome_subset):
-    def generate_counts(self, counts_by_proteome_subset_by_node_name, node_label_by_proteome_subset):
-        node_stats_by_node_id = {}
-        node_stats_f = join(dataFactory.dirs['tree'], "tree.node_stats.txt")
-        node_stats = []
-        node_stats.append("\t".join([\
-            'nodeID', \
-            'taxon_specific_apomorphies (singletons)', \
-            'taxon_specific_apomorphies (non-singletons)', \
-            'node_specific_synapomorphies', \
-            'node_specific_synapomorphies (all taxa)', \
-            'node_specific_synapomorphies (stochastic absence)', \
-            'proteome_count' \
-            ]))
-
-        node_clusters_f = join(dataFactory.dirs['tree'], "tree.node_clusters.txt")
-        node_clusters = []
-        node_clusters.append("\t".join([ \
-            'clusterID', \
-            'nodeID', \
-            'synapomorphy', \
-            "fraction", \
-            "children", \
-            "proteomes_present" \
-            ]))
-
-        print self.tree_ete.get_ascii(attributes=["name"], show_internal=True)
-        for node_name in counts_by_proteome_subset_by_node_name:
-            proteome_ids_by_label = {}
-            label = ''
-            if str(node_name).isdigit():
-                label = "n%s" % (node_name)
-            else:
-                label = "%s" % (node_name)
-
-            apomorphies_non_singletons = sum([leaf.counts['specific'] for leaf in self.tree_ete.search_nodes(name=node_name)[0]])
-            apomorphies_singletons = sum([leaf.counts['singleton'] for leaf in self.tree_ete.search_nodes(name=node_name)[0]])
-            node_proteome_count = len(self.tree_ete.search_nodes(name=node_name)[0].get_leaves())
-            node_proteomes_by_child_node = {}
-            for child_node in self.tree_ete.search_nodes(name=node_name)[0].children:
-                node_proteomes_by_child_node[child_node] = set([leaf.name for leaf in child_node])
-            synapomorphies_present_in_all = 0
-            synapomorphies_with_stochastic_absence = 0
-            synapomorphies_coverage = []
-            for proteome_subset, count in sorted(counts_by_proteome_subset_by_node_name[node_name].items(), key=lambda x: x[1], reverse=True):
-                if count:
-                    proteome_ids_by_label[label] = "+".join(sorted(list(node_label_by_proteome_subset[proteome_subset])))
-                    child_node_proteome_count_present = []
-                    child_node_proteome_count_total = []
-                    child_node_proteome_count_string = []
-                    for child_node in node_proteomes_by_child_node:
-                        count_present = len(proteome_subset.intersection(node_proteomes_by_child_node[child_node]))
-                        count_total = len(node_proteomes_by_child_node[child_node])
-                        child_node_proteome_count_present.append(count_present)
-                        child_node_proteome_count_total.append(count_total)
-                        if str(child_node.name).isdigit():
-                            child_node_proteome_count_string.append("n%s=(%s/%s)" % (child_node.name, count_present, count_total))
-                        else:
-                            child_node_proteome_count_string.append("%s=(%s/%s)" % (child_node.name, count_present, count_total))
-                    child_node_proteome_fraction = sum(child_node_proteome_count_present)/sum(child_node_proteome_count_total)
-                    synapomorphies_coverage.append(child_node_proteome_fraction)
-
-                    if label == proteome_ids_by_label[label]:
-                        # synapomorphy-all
-                        synapomorphies_present_in_all = count
-                        for cluster_id in self.cluster_ids_of_all_proteome_subsets.get(proteome_subset, []):
-                            node_clusters.append("\t".join([ \
-                                cluster_id, \
-                                label, \
-                                'synapomorphy-all', \
-                                '{0:.3}'.format(child_node_proteome_fraction), \
-                                ";".join(child_node_proteome_count_string), \
-                                ",".join(list(sorted(proteome_subset))) \
-                                ]))
-                    else:
-                        # synapomorphy-stochastic
-                        synapomorphies_with_stochastic_absence += count
-                        for cluster_id in self.cluster_ids_of_all_proteome_subsets.get(proteome_subset, []):
-                            node_clusters.append("\t".join([ \
-                                cluster_id, \
-                                label, \
-                                'synapomorphy-stochastic-absent', \
-                                '{0:.3}'.format(child_node_proteome_fraction), \
-                                ";".join(child_node_proteome_count_string), \
-                                ",".join(list(sorted(proteome_subset))) \
-                                ]))
-            node_stats_by_node_id[node_name] = {}
-            node_stats_by_node_id[node_name]['apomorphies_singletons'] = apomorphies_singletons
-            node_stats_by_node_id[node_name]['apomorphies_non_singletons'] = apomorphies_non_singletons
-            node_stats_by_node_id[node_name]['synapomorphies_all'] = synapomorphies_present_in_all + synapomorphies_with_stochastic_absence
-            node_stats_by_node_id[node_name]['synapomorphies_present_in_all'] = synapomorphies_present_in_all
-            node_stats_by_node_id[node_name]['synapomorphies_with_stochastic_absence'] = synapomorphies_with_stochastic_absence
-            node_stats_by_node_id[node_name]['synapomorphies_coverage'] = synapomorphies_coverage
-
-            node_stats_line = []
-            node_stats_line.append(label)
-            node_stats_line.append(str(apomorphies_singletons))
-            node_stats_line.append(str(apomorphies_non_singletons))
-            node_stats_line.append(str(synapomorphies_present_in_all + synapomorphies_with_stochastic_absence))
-            node_stats_line.append(str(synapomorphies_present_in_all))
-            node_stats_line.append(str(synapomorphies_with_stochastic_absence))
-            node_stats_line.append(str(node_proteome_count))
-            node_stats.append("\t".join(node_stats_line))
-        print "[STATUS] - Writing %s ... " % node_stats_f
-        with open(node_stats_f, 'w') as node_stats_fh:
-            node_stats_fh.write("\n".join(node_stats) + "\n")
-        print "[STATUS] - Writing %s ... " % node_clusters_f
-        with open(node_clusters_f, 'w') as node_clusters_fh:
-            node_clusters_fh.write("\n".join(node_clusters) + "\n")
-        return node_stats_by_node_id
 
     def generate_chart_for_node(self, node_stats_by_node_id):
         node_chart_f_by_node_name = {}
@@ -1855,6 +1936,7 @@ class ProteinObj():
 class ClusterCollection():
     def __init__(self, clusterObjs, inferred_singletons_count, functional_annotation_parsed, fastas_parsed, domain_sources):
         self.clusterObjs = clusterObjs
+        self.clusterObjs_by_cluster_id = {clusterObj.cluster_id: clusterObj for clusterObj in clusterObjs} # only for testing
         self.cluster_count = len(clusterObjs)
         self.inferred_singletons_count = inferred_singletons_count
         self.functional_annotation_parsed = functional_annotation_parsed
