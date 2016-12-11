@@ -1142,8 +1142,6 @@ class AloCollection():
         protein_counts_of_proteomes_by_level_by_attribute = {}
         proteome_coverage_by_level_by_attribute = {}
         if self.tree_ete:
-            proteomes_to_index = {node.proteome_ids : node.idx for node in self.tree_ete.traverse("levelorder")}
-            counts_by_proteome_subset_by_node_name = {}
             for node in self.tree_ete.traverse("levelorder"):
                 intersection = clusterObj.proteome_ids.intersection(node.proteome_ids)
                 difference = clusterObj.proteome_ids.difference(node.proteome_ids)
@@ -1285,6 +1283,7 @@ class AloCollection():
             node_stats.append("\t".join(node_stats_header))
             ### Cluster node stats
             node_clusters_f = join(dataFactory.dirs['tree'], "tree.cluster_metrics.txt")
+            node_clusters_header = []
             node_clusters_header.append('clusterID')
             node_clusters_header.append('nodeID')
             node_clusters_header.append('synapomorphy_type')
@@ -1293,9 +1292,12 @@ class AloCollection():
             node_clusters_header.append('node_proteomes_present')
             node_clusters = []
             node_clusters.append("\t".join(node_clusters_header))
+            # header_f_by_node_name
+            header_f_by_node_name = {}
+            charts_f_by_node_name = {}
             for node in self.tree_ete.traverse("levelorder"):
                 for synapomorphic_cluster_string in node.synapomorphic_cluster_strings:
-                    node_clusters.append("\t".join(list(synapomorphic_cluster_string)))
+                    node_clusters.append("\t".join([str(string) for string in list(synapomorphic_cluster_string)]))
                 node_stats_line = []
                 node_stats_line.append(node.name)
                 node_stats_line.append(node.apomorphic_cluster_counts['singletons'])
@@ -1304,103 +1306,17 @@ class AloCollection():
                 node_stats_line.append(node.synapomorphic_cluster_counts['complete_presence'])
                 node_stats_line.append(node.synapomorphic_cluster_counts['stochastic_absence'])
                 node_stats_line.append(len(node.proteome_ids))
-                header_f_by_node_name = self.generate_header_for_node(node_stats_by_node_id)
                 node_stats.append("\t".join([str(string) for string in node_stats_line]))
-
-                header_f_by_node_name = self.generate_header_for_node(node_stats_by_node_id)
-                charts_f_by_node_name = self.generate_chart_for_node(node_stats_by_node_id)
-                if inputObj.render_tree:
-                    self.plot_tree(header_f_by_node_name, charts_f_by_node_name)
-
-            sys.exit("STOP")
-
-    def write_tree_metrics(self):
-
-
-        print self.tree_ete.get_ascii(attributes=["name"], show_internal=True)
-        for node_name in counts_by_proteome_subset_by_node_name:
-            proteome_ids_by_label = {}
-            label = ''
-            if str(node_name).isdigit():
-                label = "n%s" % (node_name)
-            else:
-                label = "%s" % (node_name)
-
-            apomorphies_non_singletons = sum([leaf.counts['specific'] for leaf in self.tree_ete.search_nodes(name=node_name)[0]])
-            apomorphies_singletons = sum([leaf.counts['singleton'] for leaf in self.tree_ete.search_nodes(name=node_name)[0]])
-            node_proteome_count = len(self.tree_ete.search_nodes(name=node_name)[0].get_leaves())
-            node_proteomes_by_child_node = {}
-            for child_node in self.tree_ete.search_nodes(name=node_name)[0].children:
-                node_proteomes_by_child_node[child_node] = set([leaf.name for leaf in child_node])
-            synapomorphies_present_in_all = 0
-            synapomorphies_with_stochastic_absence = 0
-            synapomorphies_coverage = []
-            for proteome_subset, count in sorted(counts_by_proteome_subset_by_node_name[node_name].items(), key=lambda x: x[1], reverse=True):
-                if count:
-                    proteome_ids_by_label[label] = "+".join(sorted(list(node_label_by_proteome_subset[proteome_subset])))
-                    child_node_proteome_count_present = []
-                    child_node_proteome_count_total = []
-                    child_node_proteome_count_string = []
-                    for child_node in node_proteomes_by_child_node:
-                        count_present = len(proteome_subset.intersection(node_proteomes_by_child_node[child_node]))
-                        count_total = len(node_proteomes_by_child_node[child_node])
-                        child_node_proteome_count_present.append(count_present)
-                        child_node_proteome_count_total.append(count_total)
-                        if str(child_node.name).isdigit():
-                            child_node_proteome_count_string.append("n%s=(%s/%s)" % (child_node.name, count_present, count_total))
-                        else:
-                            child_node_proteome_count_string.append("%s=(%s/%s)" % (child_node.name, count_present, count_total))
-                    child_node_proteome_fraction = sum(child_node_proteome_count_present)/sum(child_node_proteome_count_total)
-                    synapomorphies_coverage.append(child_node_proteome_fraction)
-
-                    if label == proteome_ids_by_label[label]:
-                        # synapomorphy-all
-                        synapomorphies_present_in_all = count
-                        for cluster_id in self.cluster_ids_of_all_proteome_subsets.get(proteome_subset, []):
-                            node_clusters.append("\t".join([ \
-                                cluster_id, \
-                                label, \
-                                'synapomorphy-all', \
-                                '{0:.3}'.format(child_node_proteome_fraction), \
-                                ";".join(child_node_proteome_count_string), \
-                                ",".join(list(sorted(proteome_subset))) \
-                                ]))
-                    else:
-                        # synapomorphy-stochastic
-                        synapomorphies_with_stochastic_absence += count
-                        for cluster_id in self.cluster_ids_of_all_proteome_subsets.get(proteome_subset, []):
-                            node_clusters.append("\t".join([ \
-                                cluster_id, \
-                                label, \
-                                'synapomorphy-stochastic-absent', \
-                                '{0:.3}'.format(child_node_proteome_fraction), \
-                                ";".join(child_node_proteome_count_string), \
-                                ",".join(list(sorted(proteome_subset))) \
-                                ]))
-            node_stats_by_node_id[node_name] = {}
-            node_stats_by_node_id[node_name]['apomorphies_singletons'] = apomorphies_singletons
-            node_stats_by_node_id[node_name]['apomorphies_non_singletons'] = apomorphies_non_singletons
-            node_stats_by_node_id[node_name]['synapomorphies_all'] = synapomorphies_present_in_all + synapomorphies_with_stochastic_absence
-            node_stats_by_node_id[node_name]['synapomorphies_present_in_all'] = synapomorphies_present_in_all
-            node_stats_by_node_id[node_name]['synapomorphies_with_stochastic_absence'] = synapomorphies_with_stochastic_absence
-            node_stats_by_node_id[node_name]['synapomorphies_coverage'] = synapomorphies_coverage
-
-            node_stats_line = []
-            node_stats_line.append(label)
-            node_stats_line.append(str(apomorphies_singletons))
-            node_stats_line.append(str(apomorphies_non_singletons))
-            node_stats_line.append(str(synapomorphies_present_in_all + synapomorphies_with_stochastic_absence))
-            node_stats_line.append(str(synapomorphies_present_in_all))
-            node_stats_line.append(str(synapomorphies_with_stochastic_absence))
-            node_stats_line.append(str(node_proteome_count))
-            node_stats.append("\t".join(node_stats_line))
-        print "[STATUS] - Writing %s ... " % node_stats_f
-        with open(node_stats_f, 'w') as node_stats_fh:
-            node_stats_fh.write("\n".join(node_stats) + "\n")
-        print "[STATUS] - Writing %s ... " % node_clusters_f
-        with open(node_clusters_f, 'w') as node_clusters_fh:
-            node_clusters_fh.write("\n".join(node_clusters) + "\n")
-        return node_stats_by_node_id
+                header_f_by_node_name[node.name] = self.generate_header_for_node(node)
+                charts_f_by_node_name[node.name] = self.generate_chart_for_node(node)
+            print "[STATUS] - Writing %s ... " % node_stats_f
+            with open(node_stats_f, 'w') as node_stats_fh:
+                node_stats_fh.write("\n".join(node_stats) + "\n")
+            print "[STATUS] - Writing %s ... " % node_clusters_f
+            with open(node_clusters_f, 'w') as node_clusters_fh:
+                node_clusters_fh.write("\n".join(node_clusters) + "\n")
+            if inputObj.render_tree:
+                self.plot_tree(header_f_by_node_name, charts_f_by_node_name)
 
     def plot_tree(self, header_f_by_node_name, charts_f_by_node_name):
         tree_f = join(dataFactory.dirs['tree'], "tree.%s" % ('pdf')) # must be PDF! (otherwise it breaks)
@@ -1410,9 +1326,10 @@ class AloCollection():
         style["fgcolor"] = "darkgrey"
         for node in self.tree_ete.traverse("levelorder"):
             node.set_style(style)
-            node_header_face = ete3.faces.ImgFace(header_f_by_node_name[node.name]) # must be PNG! (ETE can't do PDF Faces)
-            node.add_face(node_header_face, column=0, position="branch-top")
-            if node.name in charts_f_by_node_name:
+            if header_f_by_node_name[node.name]:
+                node_header_face = ete3.faces.ImgFace(header_f_by_node_name[node.name]) # must be PNG! (ETE can't do PDF Faces)
+                node.add_face(node_header_face, column=0, position="branch-top")
+            if charts_f_by_node_name[node.name]:
                 node_chart_face = ete3.faces.ImgFace(charts_f_by_node_name[node.name]) # must be PNG! (ETE can't do PDF Faces)
                 node.add_face(node_chart_face, column=0, position="branch-bottom")
             node_name_face = ete3.TextFace(node.name, fsize=64)
@@ -1431,117 +1348,69 @@ class AloCollection():
         print "[STATUS] - Writing tree %s ... " % (tree_f)
         self.tree_ete.render(tree_f, dpi=600, h=1189, units="mm", tree_style = ts)
 
-    def generate_node_labels(self, counts_by_proteome_subset_by_node_name):
-        node_label_by_proteome_subset = {}
-        for node_name in counts_by_proteome_subset_by_node_name:
-            #print node_name
-            for proteome_subset in counts_by_proteome_subset_by_node_name[node_name]:
-                #print "\t", proteome_subset
-                for proteome_ids, node_label in sorted(self.node_idx_by_proteome_ids.items(), key=lambda x: x[1]):
-                    #print "\t", proteome_ids, node_label
-                    if proteome_ids.issubset(proteome_subset):
-                        if len(proteome_ids) >= 2:
-                            if not proteome_subset in node_label_by_proteome_subset:
-                                node_label_by_proteome_subset[proteome_subset] = list(proteome_subset.difference(proteome_ids))
-                                node_label_by_proteome_subset[proteome_subset].append("n"+str(node_label))
-                        else:
-                            if not proteome_subset in node_label_by_proteome_subset:
-                                node_label_by_proteome_subset[proteome_subset] = list(proteome_subset)
-        return node_label_by_proteome_subset
-
-    def generate_header_for_node(self, node_stats_by_node_id):
-        node_header_f_by_node_name = {}
-        print "[STATUS] - Generating headers for nodes in tree ... "
-        left, width = .25, .5
-        bottom, height = .25, .5
-        right = left + width
-        top = bottom + height
-        for node_name in node_stats_by_node_id:
-            data = []
-            data.append(("Apomorphies (size=1)", "{:,}".format(node_stats_by_node_id[node_name]['apomorphies_singletons'])))
-            data.append(("Apomorphies (size>1)", "{:,}".format(node_stats_by_node_id[node_name]['apomorphies_non_singletons'])))
-            data.append(("Synapomorphies (all)", "{:,}".format(node_stats_by_node_id[node_name]['synapomorphies_all'])))
-            data.append(("Synapomorphies (cov=100%)", "{:,}".format(node_stats_by_node_id[node_name]['synapomorphies_present_in_all'])))
-            data.append(("Synapomorphies (cov<100%)", "{:,}".format(node_stats_by_node_id[node_name]['synapomorphies_with_stochastic_absence'])))
-
-            node_header_f = join(dataFactory.dirs['tree_headers'], "node_%s.header.pdf" % (node_name))
-            col_labels = ('Type','Count')
-            nrows, ncols = len(data)-1, len(col_labels)
-            hcell, wcell = 0.3, 1.
-            hpad, wpad = 0, 0
-            fig, ax = plt.subplots(figsize=(2, 0.5))
-            table= ax.table(cellText=data,
+    def generate_header_for_node(self, node):
+        node_header_f = join(dataFactory.dirs['tree_headers'], "%s.header.pdf" % (node.name))
+        data = []
+        data.append(("Apomorphies (size=1)", "{:,}".format(node.apomorphic_cluster_counts['singletons'])))
+        data.append(("Apomorphies (size>1)", "{:,}".format(node.apomorphic_cluster_counts['non_singletons'])))
+        data.append(("Synapomorphies (all)", "{:,}".format(node.synapomorphic_cluster_counts['complete_presence'] + node.synapomorphic_cluster_counts['stochastic_absence'])))
+        data.append(("Synapomorphies (cov=100%)", "{:,}".format(node.synapomorphic_cluster_counts['complete_presence'])))
+        data.append(("Synapomorphies (cov<100%)", "{:,}".format(node.synapomorphic_cluster_counts['stochastic_absence'])))
+        col_labels = ('Type','Count')
+        nrows, ncols = len(data)-1, len(col_labels)
+        hcell, wcell = 0.3, 1.
+        hpad, wpad = 0, 0
+        fig, ax = plt.subplots(figsize=(2, 0.5))
+        table= ax.table(cellText=data,
                     colLabels=col_labels,
                     #loc='bottom',fontsize=64, colLoc='center',rowLoc='right', edges='')
                     loc='bottom',fontsize=24, colLoc='center',rowLoc='right', edges='')
-            #table.set_fontsize(48)
-            table.set_fontsize(24)
-            #table.scale(ncols, nrows)
-            table.scale(2, 1)
-            for key, cell in table.get_celld().items():
-                row, col = key
-                cell._text.set_color('grey')
-                if row > 0:
-                    cell.set_edgecolor("darkgrey")
-                    cell.visible_edges = "T"
-                else:
-                    cell.set_edgecolor("darkgrey")
-                    cell.visible_edges = "B"
-                if row == len(data)-2:
-                    cell.set_edgecolor("darkgrey")
-                    cell.visible_edges = "T"
-            #fig.suptitle('n%s' % node_name, color="darkgrey")
-            ax.axis('tight')
-            ax.axis("off")
-            #fig.savefig(node_header_f, bbox_inches='tight', format=inputObj.plot_format)
-            print "[STATUS]\t- Plotting %s" % (node_header_f)
-            fig.savefig(node_header_f, pad=0, bbox_inches='tight', format='png')
+        table.set_fontsize(24)
+        table.scale(2, 1)
+        for key, cell in table.get_celld().items():
+            row, col = key
+            cell._text.set_color('grey')
+            if row > 0:
+                cell.set_edgecolor("darkgrey")
+                cell.visible_edges = "T"
+            else:
+                cell.set_edgecolor("darkgrey")
+                cell.visible_edges = "B"
+            if row == len(data)-2:
+                cell.set_edgecolor("darkgrey")
+                cell.visible_edges = "T"
+        ax.axis('tight')
+        ax.axis("off")
+        print "[STATUS]\t- Plotting %s" % (node_header_f)
+        fig.savefig(node_header_f, pad=0, bbox_inches='tight', format='png')
+        plt.close()
+        return node_header_f
+
+    def generate_chart_for_node(self, node):
+        proteome_coverages = []
+        for synapomorphic_cluster_string in node.synapomorphic_cluster_strings:
+            proteome_coverages.append(float(synapomorphic_cluster_string[3]))
+        if proteome_coverages:
+            chart_f = join(dataFactory.dirs['tree_charts'], "%s.barchart.pdf" % (node.name))
+            f, ax = plt.subplots(figsize=(3.0, 3.0))
+            x_values = np.array(proteome_coverages)
+            ax.hist(x_values, histtype='stepfilled', align='mid', bins=np.arange(0.0, 1.0 + 0.1, 0.1))
+            ax.set_xlim(-0.1, 1.1)
+            for tick in ax.xaxis.get_major_ticks():
+                tick.label.set_fontsize(inputObj.plot_font_size-2)
+                tick.label.set_rotation('vertical')
+            for tick in ax.yaxis.get_major_ticks():
+                tick.label.set_fontsize(inputObj.plot_font_size-2)
+            ax.set_frame_on(False)
+            ax.xaxis.grid(True, linewidth=1, which="major", color="lightgrey")
+            ax.yaxis.grid(True, linewidth=1, which="major", color="lightgrey")
+            f.suptitle("Synapomorphies", y=1.1)
+            ax.set_ylabel("Count", fontsize=inputObj.plot_font_size)
+            ax.set_xlabel("Proteome coverage", fontsize=inputObj.plot_font_size)
+            print "[STATUS]\t- Plotting %s" % (chart_f)
+            f.savefig(chart_f,  bbox_inches='tight', format='png')
             plt.close()
-            node_header_f_by_node_name[node_name] = node_header_f
-        return node_header_f_by_node_name
-
-    def generate_chart_for_node(self, node_stats_by_node_id):
-        node_chart_f_by_node_name = {}
-        print "[STATUS] - Generating charts for nodes in tree ... "
-        for node_name in node_stats_by_node_id:
-            values = sorted(node_stats_by_node_id[node_name]['synapomorphies_coverage'])
-            if values:
-                chart_f = join(dataFactory.dirs['tree_charts'], "node_%s.barchart.pdf" % (node_name))
-                f, ax = plt.subplots(figsize=(3.0, 3.0))
-                x_values = np.array(values)
-                ax.hist(x_values, histtype='stepfilled', align='mid', bins=np.arange(0.0, 1.0 + 0.1, 0.1))
-                ax.set_xlim(-0.1, 1.1)
-                for tick in ax.xaxis.get_major_ticks():
-                    tick.label.set_fontsize(inputObj.plot_font_size-2)
-                    tick.label.set_rotation('vertical')
-                for tick in ax.yaxis.get_major_ticks():
-                    tick.label.set_fontsize(inputObj.plot_font_size-2)
-                ax.set_frame_on(False)
-                ax.xaxis.grid(True, linewidth=1, which="major", color="lightgrey")
-                ax.yaxis.grid(True, linewidth=1, which="major", color="lightgrey")
-                f.suptitle("Synapomorphies", y=1.1)
-                ax.set_ylabel("Count", fontsize=inputObj.plot_font_size)
-                ax.set_xlabel("Proteome coverage", fontsize=inputObj.plot_font_size)
-                print "[STATUS]\t- Plotting %s" % (chart_f)
-                f.savefig(chart_f,  bbox_inches='tight', format='png')
-                plt.close()
-                node_chart_f_by_node_name[node_name] = chart_f
-        return node_chart_f_by_node_name
-
-    #def generate_subsets_to_query_for_node(self, proteome_ids, children_nodes):
-    #    subsets_of_proteome_ids = []
-    #    subsets_of_proteome_ids.append(proteome_ids)
-    #    children_proteome_ids = [child_node.proteome_ids for child_node in children_nodes]
-    #    for proteome_subset, count in sorted(self.counts_of_all_proteome_subsets.items(), key=lambda x: x[1], reverse=True):
-    #        if len(proteome_subset) > 1:
-    #            if not proteome_subset.difference(proteome_ids):
-    #                overlapping_children = 0
-    #                for child_proteome_ids in children_proteome_ids:
-    #                    if child_proteome_ids.intersection(proteome_subset):
-    #                        overlapping_children += 1
-    #                if overlapping_children >1:
-    #                    subsets_of_proteome_ids.append(proteome_subset)
-    #    return subsets_of_proteome_ids
+            return chart_f
 
     def compute_rarefaction_data(self):
         rarefaction_by_samplesize_by_level_by_attribute = {}
@@ -2078,7 +1947,6 @@ if __name__ == "__main__":
     aloCollection.analyse_clusters()
     # aloCollection.analyse_domains() # takes prohibitely long, implement faster!
     aloCollection.write_tree()
-    sys.exit("STOP.")
     aloCollection.compute_rarefaction_data()
     dataFactory.write_output()
 
@@ -2096,14 +1964,6 @@ if __name__ == "__main__":
         1. generate output for some overall metrics:
             - singletons with domains
             - specific clusters with domains
-        2. annotate legend with boniferroni corrected p-values
         3. Make Vulcanos's after attribute-output is completed
         4. Make separate output file for 1-to-1's
-
-        for each set of proteomes theit cluster ids
-        for each subnode
-            intersectiom
-            if true append to list
-        if all in list true synapomorphy
-
     '''
