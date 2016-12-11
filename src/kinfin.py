@@ -670,6 +670,14 @@ class DataFactory():
             for domain_source in clusterCollection.domain_sources:
                 pairwise_representation_test_header.append(domain_source)
             return "\t".join(pairwise_representation_test_header)
+        elif filetype == 'cluster_1to1s_ALO':
+            cluster_1to1s_ALO_header = []
+            cluster_1to1s_ALO_header.append("#cluster_id")
+            cluster_1to1s_ALO_header.append("cluster_type")
+            cluster_1to1s_ALO_header.append("cardinality")
+            cluster_1to1s_ALO_header.append("proteome_count")
+            cluster_1to1s_ALO_header.append("percentage_at_n")
+            return "\t".join(cluster_1to1s_ALO_header)
         else:
             sys.exit("[ERROR] %s is not a valid header 'filetype'" % (filetype))
 
@@ -746,10 +754,31 @@ class DataFactory():
                 # cluster_metrics_ALO : setup
                 ###########################
 
-                cluster_metrics_ALO_f = join(self.dirs[attribute], "%s.cluster_metrics_ALO.%s.txt" % (attribute, level))
+                cluster_metrics_ALO_f = join(self.dirs[attribute], "%s.%s.cluster_metrics_ALO.txt" % (attribute, level))
                 cluster_metrics_ALO_output = []
                 cluster_metrics_ALO_output.append(self.get_header_line('cluster_metrics_ALO', attribute))
+
                 background_representation_test_by_pair_by_attribute = {}
+
+                ###########################
+                # cluster_1to1s
+                ###########################
+
+                cluster_1to1_ALO_f = join(self.dirs[attribute], "%s.%s.cluster_1to1s_ALO.txt" % (attribute, level))
+                cluster_1to1_ALO_output = []
+                cluster_1to1_ALO_output.append(self.get_header_line('cluster_1to1s_ALO', attribute))
+                if not attribute == "PROTEOME":
+                    for cluster_type in ALO.clusters_by_cluster_cardinality_by_cluster_type:
+                        for cluster_cardinality in ALO.clusters_by_cluster_cardinality_by_cluster_type[cluster_type]:
+                            for cluster_id in ALO.clusters_by_cluster_cardinality_by_cluster_type[cluster_type][cluster_cardinality]:
+                                cluster_1to1_ALO_line = []
+                                cluster_1to1_ALO_line.append(cluster_id)
+                                cluster_1to1_ALO_line.append(cluster_type)
+                                cluster_1to1_ALO_line.append(cluster_cardinality)
+                                cluster_1to1_ALO_line.append(clusterCollection.clusterObjs_by_cluster_id[cluster_id].proteome_count)
+                                cluster_1to1_ALO_line.append("{0:.2f}".format(len([protein_count for proteome_id, protein_count in clusterCollection.clusterObjs_by_cluster_id[cluster_id].protein_count_by_proteome_id.items() if protein_count == inputObj.fuzzy_count])/clusterCollection.clusterObjs_by_cluster_id[cluster_id].proteome_count))
+                                cluster_1to1_ALO_output.append("\t".join([str(field) for field in cluster_1to1_ALO_line]))
+
 
                 for clusterObj in clusterCollection.clusterObjs:
 
@@ -945,7 +974,12 @@ class DataFactory():
                         cluster_metrics_domains_fh.write("\n".join(cluster_metrics_domains_output) + "\n")
                     cluster_metrics_domains_output = []
                 if len(cluster_metrics_ALO_output) > 1:
-                    with open(cluster_metrics_ALO_f, 'w') as cluster_metrics_ALO_fh:
+                    with open(cluster_1to1_ALO_f, 'w') as cluster_1to1_ALO_fh:
+                        print "[STATUS] - Writing %s" % (cluster_1to1_ALO_f)
+                        cluster_1to1_ALO_fh.write("\n".join(cluster_1to1_ALO_output) + "\n")
+                    cluster_1to1_ALO_output = []
+                if len(cluster_1to1_ALO_output) > 1:
+                    with open(cluster_1to1_ALO_output_f, 'w') as cluster_metrics_ALO_fh:
                         print "[STATUS] - Writing %s" % (cluster_metrics_ALO_f)
                         cluster_metrics_ALO_fh.write("\n".join(cluster_metrics_ALO_output) + "\n")
                     cluster_metrics_ALO_output = []
