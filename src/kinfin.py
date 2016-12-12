@@ -974,15 +974,15 @@ class DataFactory():
                         cluster_metrics_domains_fh.write("\n".join(cluster_metrics_domains_output) + "\n")
                     cluster_metrics_domains_output = []
                 if len(cluster_metrics_ALO_output) > 1:
+                    with open(cluster_metrics_ALO_f, 'w') as cluster_metrics_ALO_fh:
+                        print "[STATUS] - Writing %s" % (cluster_metrics_ALO_f)
+                        cluster_metrics_ALO_fh.write("\n".join(cluster_metrics_ALO_output) + "\n")
+                    cluster_metrics_ALO_output = []
+                if len(cluster_1to1_ALO_output) > 1:
                     with open(cluster_1to1_ALO_f, 'w') as cluster_1to1_ALO_fh:
                         print "[STATUS] - Writing %s" % (cluster_1to1_ALO_f)
                         cluster_1to1_ALO_fh.write("\n".join(cluster_1to1_ALO_output) + "\n")
                     cluster_1to1_ALO_output = []
-                if len(cluster_1to1_ALO_output) > 1:
-                    with open(cluster_1to1_ALO_output_f, 'w') as cluster_metrics_ALO_fh:
-                        print "[STATUS] - Writing %s" % (cluster_metrics_ALO_f)
-                        cluster_metrics_ALO_fh.write("\n".join(cluster_metrics_ALO_output) + "\n")
-                    cluster_metrics_ALO_output = []
                 if background_representation_test_by_pair_by_attribute:
                     self.plot_count_comparisons_vulcano(background_representation_test_by_pair_by_attribute)
 
@@ -1227,8 +1227,8 @@ class AloCollection():
                                             node_cluster_type, \
                                             '{0:.3}'.format(node_proteome_coverage), \
                                             ";".join(child_node_proteome_coverage_strings), \
-                                            ",".join(sorted(intersection)), \
-                                            ",".join(sorted(clusterObj.proteome_ids))) \
+                                            ",".join(sorted(intersection))) \
+                                            #",".join(sorted(clusterObj.proteome_ids))) \
                                         )
                     else:
                         sys.exit("[ERROR] You broke my program ...")
