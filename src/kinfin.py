@@ -179,9 +179,12 @@ def parse_tree(tree_f, outgroups):
     print "[STATUS] - Parsing Tree file : %s ..." % (tree_f)
     tree_ete = ete3.Tree(tree_f)
     if len(outgroups) > 1:
-        print "[STATUS] - Setting LCA of %s as outgroup : ..." % (",".join(outgroups))
         outgroup_node = tree_ete.get_common_ancestor(outgroups)
-        tree_ete.set_outgroup(outgroup_node)
+        try:
+            tree_ete.set_outgroup(outgroup_node)
+            print "[STATUS] - Setting LCA of %s as outgroup : ..." % (",".join(outgroups))
+        except TreeError:
+            print "[STATUS] - Tree seems to be rooted already : ..."
     else:
         print "[STATUS] - Setting %s as outgroup : ..." % (",".join(outgroups))
         tree_ete.set_outgroup(outgroups[0])
@@ -1998,6 +2001,21 @@ if __name__ == "__main__":
         1. generate output for some overall metrics:
             - singletons with domains
             - specific clusters with domains
-        3. Make Vulcanos's after attribute-output is completed
-        4. Make separate output file for 1-to-1's
+        0. Executable bash script that calls
+            a) "xvfb-run" : if in path
+            b) "normal" : if not
+        1. Test ETE
+        2. AUx script to parse GOATools output, to append coverage of ALO at end of row
+            - input GOATtools output
+            - tree.node.metrics.txt (get Count of proteomes)
+            - specify number of total taxa
+            - calculate coverage, mean count
+        3. Hypsibius :
+            - cluster transcriptome
+            - make trees
+            - run kinfin on new clustering (genome/transcriptome both IVs)
+                - with multiple trees.
+
+            - barcharts
+            - Go term enrichments
     '''
