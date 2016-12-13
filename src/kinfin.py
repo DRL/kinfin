@@ -183,7 +183,7 @@ def parse_tree(tree_f, outgroups):
         try:
             tree_ete.set_outgroup(outgroup_node)
             print "[STATUS] - Setting LCA of %s as outgroup : ..." % (",".join(outgroups))
-        except TreeError:
+        except ete3.coretype.tree.TreeError:
             print "[STATUS] - Tree seems to be rooted already : ..."
     else:
         print "[STATUS] - Setting %s as outgroup : ..." % (",".join(outgroups))
