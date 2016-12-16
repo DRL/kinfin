@@ -420,6 +420,8 @@ class DataFactory():
             if proteome_id:
                 proteinObj = ProteinObj(protein_id, proteome_id, species_id, sequence_id)
                 proteinObjs.append(proteinObj)
+            else:
+                sys.exit("[ERROR] - Offending SequenceID : %s (unknown species_id %s)" % (line, species_id))
         proteinCollection = ProteinCollection(proteinObjs)
         print "[STATUS]\t - Proteins found = %s" % (proteinCollection.protein_count)
 
