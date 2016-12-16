@@ -1669,13 +1669,15 @@ class ProteinCollection():
 
     def add_annotation_to_proteinObj(self, domain_protein_id, domain_counter_by_domain_source, go_terms):
         proteinObj = self.proteinObjs_by_protein_id.get(domain_protein_id, None)
-        if not proteinObj:
-            sys.exit("[ERROR] : Protein-ID %s is part of functional annotation but is not part of any proteome" % (domainObj.domain_protein_id))
-        proteinObj.domain_counter_by_domain_source = domain_counter_by_domain_source
-        signalp_notm = proteinObj.domain_counter_by_domain_source.get("SignalP_EUK", None)
-        if signalp_notm and "SignalP-noTM" in signalp_notm:
-            proteinObj.secreted = True
-        proteinObj.go_terms = go_terms
+        if proteinObj:
+            proteinObj.domain_counter_by_domain_source = domain_counter_by_domain_source
+            signalp_notm = proteinObj.domain_counter_by_domain_source.get("SignalP_EUK", None)
+            if signalp_notm and "SignalP-noTM" in signalp_notm:
+                proteinObj.secreted = True
+            proteinObj.go_terms = go_terms
+        else:
+            sys.exit("[ERROR] : Protein-ID %s is part of functional annotation but is not part of any proteome. Ignored." % (domain_protein_id))
+
 
     def get_protein_length_stats(self, protein_ids):
         protein_length_stats = {'sum' : 0, 'mean' : 0.0, 'median' : 0, 'sd': 0.0}
