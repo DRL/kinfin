@@ -446,7 +446,7 @@ class DataFactory():
             # PARSE DOMAINS
             print "[STATUS] - Parsing %s ... this may take a while" % (functional_annotation_f)
             for line in read_file(functional_annotation_f):
-                temp = line.split("\t")
+                temp = line.split()
                 if temp[0].startswith("#"):
                     proteinCollection.domain_sources = temp[1:]
                 else:
