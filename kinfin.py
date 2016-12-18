@@ -506,7 +506,7 @@ class DataFactory():
             # PARSE DOMAINS
             print "[STATUS] - Parsing %s ... this may take a while" % (functional_annotation_f)
             for line in read_file(functional_annotation_f):
-                temp = line.split("\t")
+                temp = line.split()
                 if temp[0].startswith("#"):
                     proteinCollection.domain_sources = temp[1:]
                 else:
@@ -961,18 +961,27 @@ class DataFactory():
                                     proteome_count_with_domain = 0
                                     protein_without_domain_count_by_proteome_id = {}
                                     for proteome_id, protein_ids in clusterObj.protein_ids_by_proteome_id.items():
+                                        proteome_seen = False
                                         for protein_id in protein_ids:
                                             if domain_source in proteinCollection.proteinObjs_by_protein_id[protein_id].domain_counter_by_domain_source and domain_id in proteinCollection.proteinObjs_by_protein_id[protein_id].domain_counter_by_domain_source[domain_source]:
                                                 protein_with_domain_count_by_proteome_id[proteome_id] = protein_with_domain_count_by_proteome_id.get(proteome_id, 0) + 1
-                                                proteome_count_with_domain += 1
+                                                if not proteome_seen:
+                                                    proteome_count_with_domain += 1
+                                                    proteome_seen = True
                                             else:
                                                 protein_without_domain_count_by_proteome_id[proteome_id] = protein_without_domain_count_by_proteome_id.get(proteome_id, 0) + 1
                                     proteomes_with_domain_count_string = ",".join(sorted(["%s:%s/%s" % (proteome_id, count, len(clusterObj.protein_ids_by_proteome_id[proteome_id])) for proteome_id, count in protein_with_domain_count_by_proteome_id.items()]))
                                     proteomes_without_domain_count_string = ",".join(sorted(["%s:%s/%s" % (proteome_id, count, len(clusterObj.protein_ids_by_proteome_id[proteome_id])) for proteome_id, count in protein_without_domain_count_by_proteome_id.items()]))
                                     cluster_metrics_domains_detailed_output_line.append(sum(protein_with_domain_count_by_proteome_id.values()))
                                     cluster_metrics_domains_detailed_output_line.append("{0:.3f}".format(proteome_count_with_domain/clusterObj.proteome_count))
-                                    cluster_metrics_domains_detailed_output_line.append(proteomes_with_domain_count_string)
-                                    cluster_metrics_domains_detailed_output_line.append(proteomes_without_domain_count_string)
+                                    if proteomes_with_domain_count_string:
+                                        cluster_metrics_domains_detailed_output_line.append(proteomes_with_domain_count_string)
+                                    else:
+                                        cluster_metrics_domains_detailed_output_line.append("N/A")
+                                    if proteomes_without_domain_count_string:
+                                        cluster_metrics_domains_detailed_output_line.append(proteomes_without_domain_count_string)
+                                    else:
+                                        cluster_metrics_domains_detailed_output_line.append("N/A")
                                     cluster_metrics_domains_detailed_output_by_domain_source[domain_source].append("\t".join([str(field) for field in cluster_metrics_domains_detailed_output_line]))
 
 
@@ -1801,7 +1810,7 @@ class ProteinCollection():
     def add_annotation_to_proteinObj(self, domain_protein_id, domain_counter_by_domain_source, go_terms):
         proteinObj = self.proteinObjs_by_protein_id.get(domain_protein_id, None)
         if not proteinObj:
-            sys.exit("[ERROR] : Protein-ID %s is part of functional annotation but is not part of any proteome" % (domainObj.domain_protein_id))
+            sys.exit("[ERROR] : Protein-ID %s is part of functional annotation but is not part of any proteome" % (domain_protein_id))
         proteinObj.domain_counter_by_domain_source = domain_counter_by_domain_source
         signalp_notm = proteinObj.domain_counter_by_domain_source.get("SignalP_EUK", None)
         if signalp_notm and "SignalP-noTM" in signalp_notm:
@@ -2123,7 +2132,7 @@ def welcome_screen():
     " % (__version__)
     print screen
 if __name__ == "__main__":
-    __version__ = "0.7.4"
+    __version__ = "0.7.5"
     args = docopt(__doc__)
     # Sanitise input
     welcome_screen()
@@ -2181,8 +2190,6 @@ if __name__ == "__main__":
         3. Hypsibius :
             - cluster transcriptome
             - make trees
-            - run kinfin on new clustering (genome/transcriptome both IVs)
-                - with multiple trees.
 
             - barcharts
             - Go term enrichments
