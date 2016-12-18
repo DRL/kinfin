@@ -1508,7 +1508,7 @@ class AloCollection():
         self.tree_ete.render(tree_f, dpi=600, h=1189, units="mm", tree_style = ts)
 
     def generate_header_for_node(self, node):
-        node_header_f = join(dataFactory.dirs['tree_headers'], "%s.header.pdf" % (node.name))
+        node_header_f = join(dataFactory.dirs['tree_headers'], "%s.header.png" % (node.name))
         data = []
         data.append(("Apomorphies (size=1)", "{:,}".format(node.apomorphic_cluster_counts['singletons'])))
         data.append(("Apomorphies (size>1)", "{:,}".format(node.apomorphic_cluster_counts['non_singletons'])))
@@ -1550,7 +1550,7 @@ class AloCollection():
         for synapomorphic_cluster_string in node.synapomorphic_cluster_strings:
             proteome_coverages.append(float(synapomorphic_cluster_string[3]))
         if proteome_coverages:
-            chart_f = join(dataFactory.dirs['tree_charts'], "%s.barchart.pdf" % (node.name))
+            chart_f = join(dataFactory.dirs['tree_charts'], "%s.barchart.png" % (node.name))
             f, ax = plt.subplots(figsize=(3.0, 3.0))
             x_values = np.array(proteome_coverages)
             ax.hist(x_values, histtype='stepfilled', align='mid', bins=np.arange(0.0, 1.0 + 0.1, 0.1))
@@ -1568,6 +1568,9 @@ class AloCollection():
             ax.set_xlabel("Proteome coverage", fontsize=inputObj.plot_font_size)
             print "[STATUS]\t- Plotting %s" % (chart_f)
             f.savefig(chart_f,  bbox_inches='tight', format='png')
+            if inputObj.plot_format == 'pdf':
+                pdf_chart_f = join(dataFactory.dirs['tree_charts'], "%s.barchart.pdf" % (node.name))
+                f.savefig(pdf_chart_f,  bbox_inches='tight', format='pdf')
             plt.close()
             return chart_f
 
