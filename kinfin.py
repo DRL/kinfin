@@ -52,11 +52,12 @@ usage: kinfin-d.py      -g <FILE> -c <FILE> -s <FILE> [-t <FILE>] [-o <PREFIX>]
 
 from __future__ import division
 import sys
-from os.path import isfile, join, exists
+from os.path import isfile, join, exists, realpath, dirname
 from os import getcwd, mkdir
 import shutil
 import random
 import time
+import urllib
 from decimal import Decimal
 
 from collections import Counter, defaultdict
@@ -104,10 +105,17 @@ mat.rcParams.update({'font.size': 22})
 # General functions
 ########################################################################
 
+def retrieve_ftp(remote_f, local_f):
+    try:
+        print "[STATUS] - Downloading '%s' to '%s'." % (remote_f, local_f)
+        urllib.urlretrieve(remote_f, local_f)
+    except IOError:
+        sys.exit("[ERROR] : '%s' could not be downloaded." % (remote_f))
+
 def check_file(infile):
     if infile:
         if not isfile(infile):
-            sys.exit("[ERROR] - %s does not exist." % (infile))
+            sys.exit("[ERROR] : %s does not exist." % (infile))
 
 def get_attribute_cluster_type(singleton, implicit_protein_ids_by_proteome_id_by_level):
     if singleton:
@@ -173,6 +181,50 @@ def parse_nodesdb(nodesdb_f):
             if nodesdb_count:
                 progress(nodes_count, 1000, nodesdb_count)
     return nodesdb
+
+def parse_mapping(mapping_file_by_domain_source):
+    domain_description_by_domain_id_by_domain_source = {}
+    if mapping_file_by_domain_source:
+        for domain_source, mapping_f in mapping_file_by_domain_source.items():
+            if domain_source == 'Pfam':
+                domain_description_by_domain_id_by_domain_source[domain_source] = {}
+                print "[STATUS] - Parsing %s ... this may take a while" % (mapping_f)
+                for line in read_file(mapping_f):
+                    temp = line.split("\t")
+                    domain_id = temp[0]
+                    domain_desc = temp[4]
+                    if not domain_id in domain_description_by_domain_id_by_domain_source[domain_source]:
+                        domain_description_by_domain_id_by_domain_source[domain_source][domain_id] = domain_desc
+                    else:
+                        if not domain_desc == domain_description_by_domain_id_by_domain_source[domain_source][domain_id]:
+                            sys.exit("[ERROR] : Conflicting descriptions for %s" % (domain_id))
+            elif domain_source == 'GO':
+                domain_description_by_domain_id_by_domain_source['GO'] = {}
+                print "[STATUS] - Parsing %s ... this may take a while" % (mapping_f)
+                for line in read_file(mapping_f):
+                    if not line.startswith("!"):
+                        temp = line.replace(" > ", "|").split("|")
+                        go_string = temp[1].split(";")
+                        go_desc, go_id = go_string[0].replace("GO:", ""), go_string[1].lstrip(" ")
+                        if not go_id in domain_description_by_domain_id_by_domain_source['GO']:
+                            domain_description_by_domain_id_by_domain_source['GO'][go_id] = go_desc
+                        else:
+                            if not go_desc == domain_description_by_domain_id_by_domain_source['GO'][go_id]:
+                                sys.exit("[ERROR] : Conflicting descriptions for %s" % (go_id))
+            elif domain_source == 'IPR':
+                domain_description_by_domain_id_by_domain_source['IPR'] = {}
+                print "[STATUS] - Parsing %s ... this may take a while" % (mapping_f)
+                for line in read_file(mapping_f):
+                    if not line.startswith("Active_site"):
+                        temp = line.split()
+                        ipr_id = temp[0]
+                        ipr_desc = " ".join(temp[1:])
+                        if not ipr_id in domain_description_by_domain_id_by_domain_source['IPR']:
+                            domain_description_by_domain_id_by_domain_source['IPR'][ipr_id] = ipr_desc
+                        else:
+                            if not ipr_desc == domain_description_by_domain_id_by_domain_source['IPR'][ipr_id]:
+                                sys.exit("[ERROR] : Conflicting descriptions for %s" % (ipr_id))
+    return domain_description_by_domain_id_by_domain_source
 
 def parse_tree(tree_f, outgroups):
     check_file(tree_f)
@@ -265,9 +317,15 @@ def progress(iteration, steps, max_value):
 def read_file(infile):
     if not infile or not exists(infile):
         sys.exit("[ERROR] - File '%s' does not exist." % (infile))
-    with open(infile) as fh:
-        for line in fh:
-            yield line.rstrip("\n")
+    if infile.endswith(".gz"):
+        import gzip
+        with gzip.open(infile) as fh:
+            for line in fh:
+                yield line.rstrip("\n")
+    else:
+        with open(infile) as fh:
+            for line in fh:
+                yield line.rstrip("\n")
 
 ########################################################################
 # CLASS : DataFactory
@@ -448,7 +506,7 @@ class DataFactory():
             # PARSE DOMAINS
             print "[STATUS] - Parsing %s ... this may take a while" % (functional_annotation_f)
             for line in read_file(functional_annotation_f):
-                temp = line.split()
+                temp = line.split("\t")
                 if temp[0].startswith("#"):
                     proteinCollection.domain_sources = temp[1:]
                 else:
@@ -461,18 +519,27 @@ class DataFactory():
                         if not field == "None":
                             domain_source = proteinCollection.domain_sources[idx]
                             domain_string = field.split(";")
-                            if domain_source == "GO":
-                                for go_term in domain_string:
-                                    go_terms.append(go_term)
-                            else:
-                                domain_counts_by_domain_id = {}
-                                for domain_id_count in domain_string:
+                            domain_counts_by_domain_id = {}
+                            for domain_id_count in domain_string:
+                                domain_id, domain_count = '', 1
+                                if domain_source == "GO":
+                                    domain_id = domain_id_count
+                                else:
                                     domain_id, domain_count = domain_id_count.split(":")
-                                    domain_counts_by_domain_id[domain_id] = int(domain_count)
-                                domain_counter = Counter(domain_counts_by_domain_id)
-                                domain_counter_by_domain_source[domain_source] = domain_counter
+                                domain_counts_by_domain_id[domain_id] = int(domain_count)
+                            domain_counter = Counter(domain_counts_by_domain_id)
+                            domain_counter_by_domain_source[domain_source] = domain_counter
                     proteinCollection.add_annotation_to_proteinObj(domain_protein_id, domain_counter_by_domain_source, go_terms)
             proteinCollection.functional_annotation_parsed = True
+            mapping_file_by_domain_source = {}
+            if inputObj.pfam_mapping and "Pfam" in proteinCollection.domain_sources:
+                mapping_file_by_domain_source["Pfam"] = inputObj.pfam_mapping_f
+            if inputObj.ipr_mapping and "IPR" in proteinCollection.domain_sources:
+                mapping_file_by_domain_source["IPR"] = inputObj.ipr_mapping_f
+            if inputObj.go_mapping_f:
+                mapping_file_by_domain_source["GO"] = inputObj.go_mapping_f
+            proteinCollection.domain_description_by_domain_id_by_domain_source = parse_mapping(mapping_file_by_domain_source)
+
         return proteinCollection
 
     ###############################
@@ -650,11 +717,21 @@ class DataFactory():
             cluster_metrics_domains_header.append("protein_span_mean")
             cluster_metrics_domains_header.append("protein_span_sd")
             cluster_metrics_domains_header.append("fraction_secreted")
-            cluster_metrics_domains_header.append("go_terms")
             for domain_source in clusterCollection.domain_sources:
                 cluster_metrics_domains_header.append(domain_source)
                 cluster_metrics_domains_header.append("%s_entropy" % (domain_source))
             return "\t".join(cluster_metrics_domains_header)
+        elif filetype == "cluster_metrics_domains_detailed":
+            cluster_metrics_domains_detailed_header = []
+            cluster_metrics_domains_detailed_header.append("#cluster_id")
+            cluster_metrics_domains_detailed_header.append("domain_source")
+            cluster_metrics_domains_detailed_header.append("domain_id")
+            cluster_metrics_domains_detailed_header.append("domain_description")
+            cluster_metrics_domains_detailed_header.append("protein_count")
+            cluster_metrics_domains_detailed_header.append("protein_count_with_domain")
+            cluster_metrics_domains_detailed_header.append("proteomes_with_domain")
+            cluster_metrics_domains_detailed_header.append("proteomes_without_domain")
+            return "\t".join(cluster_metrics_domains_detailed_header)
         elif filetype == "cafe":
             cafe_header = []
             cafe_header.append("Description")
@@ -722,6 +799,13 @@ class DataFactory():
         cluster_metrics_domains_f = join(self.dirs['main'], "cluster_metrics_domains.txt")
         cluster_metrics_domains_output = []
         cluster_metrics_domains_output.append(self.get_header_line('cluster_metrics_domains', "PROTEOME"))
+
+        cluster_metrics_domains_detailed_output_by_domain_source = {}
+        cluster_metrics_domains_detailed_f_by_domain_source = {}
+        for domain_source in clusterCollection.domain_sources:
+            cluster_metrics_domains_detailed_output_by_domain_source[domain_source] = []
+            cluster_metrics_domains_detailed_output_by_domain_source[domain_source].append(self.get_header_line('cluster_metrics_domains_detailed', "PROTEOME"))
+            cluster_metrics_domains_detailed_f_by_domain_source[domain_source] = join(self.dirs['main'], "cluster_metrics_domains_detailed.%s.txt" % (domain_source))
 
         for attribute in aloCollection.attributes:
 
@@ -828,10 +912,13 @@ class DataFactory():
 
                     ###########################
                     # cluster_metrics_domains (only done for attribute "PROTEOME")
+                    # - now different:
+                    # - has line for each domain_id for each domain_source
                     ###########################
 
                     if not levels_seen and attribute == "PROTEOME":
                         if clusterCollection.functional_annotation_parsed:
+                            # cluster_metrics_domain_line
                             cluster_metrics_domains_line = []
                             cluster_metrics_domains_line.append(clusterObj.cluster_id)
                             cluster_metrics_domains_line.append(clusterObj.protein_count)
@@ -846,18 +933,44 @@ class DataFactory():
                                 cluster_metrics_domains_line.append("{0:.2f}".format(clusterObj.secreted_cluster_coverage))
                             else:
                                 cluster_metrics_domains_line.append("N/A")
-                            if clusterObj.go_terms:
-                                cluster_metrics_domains_line.append(";".join(sorted(list(clusterObj.go_terms))))
-                            else:
-                                cluster_metrics_domains_line.append("N/A")
                             for domain_source in clusterCollection.domain_sources:
+                                # cluster_metrics_domains
                                 if domain_source in clusterObj.domain_counter_by_domain_source:
-                                    cluster_metrics_domains_line.append(";".join(["%s:%s" % (domain, count) for domain, count in clusterObj.domain_counter_by_domain_source[domain_source].most_common()]))
+                                    cluster_metrics_domains_line.append(";".join(["%s:%s" % (domain_id, count) for domain_id, count in clusterObj.domain_counter_by_domain_source[domain_source].most_common()]))
                                     cluster_metrics_domains_line.append("{0:.3f}".format(clusterObj.domain_entropy_by_domain_source[domain_source]))
                                 else:
                                     cluster_metrics_domains_line.append("N/A")
                                     cluster_metrics_domains_line.append("N/A")
                             cluster_metrics_domains_output.append("\t".join([str(field) for field in cluster_metrics_domains_line]))
+                            for domain_source in clusterObj.domain_counter_by_domain_source:
+                                for domain_id, count in clusterObj.domain_counter_by_domain_source[domain_source].most_common():
+                                    cluster_metrics_domains_detailed_output_line = []
+                                    cluster_metrics_domains_detailed_output_line.append(clusterObj.cluster_id)
+                                    cluster_metrics_domains_detailed_output_line.append(domain_source)
+                                    cluster_metrics_domains_detailed_output_line.append(domain_id)
+                                    if domain_source == 'SignalP_EUK':
+                                        cluster_metrics_domains_detailed_output_line.append(domain_id)
+                                    else:
+                                        if domain_source in proteinCollection.domain_description_by_domain_id_by_domain_source:
+                                            cluster_metrics_domains_detailed_output_line.append(proteinCollection.domain_description_by_domain_id_by_domain_source[domain_source].get(domain_id, "N/A"))
+                                        else:
+                                            cluster_metrics_domains_detailed_output_line.append("N/A")
+                                    cluster_metrics_domains_detailed_output_line.append(clusterObj.protein_count)
+                                    protein_with_domain_count_by_proteome_id = {}
+                                    protein_without_domain_count_by_proteome_id = {}
+                                    for proteome_id, protein_ids in clusterObj.protein_ids_by_proteome_id.items():
+                                        for protein_id in protein_ids:
+                                            if domain_source in proteinCollection.proteinObjs_by_protein_id[protein_id].domain_counter_by_domain_source and domain_id in proteinCollection.proteinObjs_by_protein_id[protein_id].domain_counter_by_domain_source[domain_source]:
+                                                protein_with_domain_count_by_proteome_id[proteome_id] = protein_with_domain_count_by_proteome_id.get(proteome_id, 0) + 1
+                                            else:
+                                                protein_without_domain_count_by_proteome_id[proteome_id] = protein_without_domain_count_by_proteome_id.get(proteome_id, 0) + 1
+                                    proteomes_with_domain_count_string = ",".join(sorted(["%s:%s/%s" % (proteome_id, count, len(clusterObj.protein_ids_by_proteome_id[proteome_id])) for proteome_id, count in protein_with_domain_count_by_proteome_id.items()]))
+                                    proteomes_without_domain_count_string = ",".join(sorted(["%s:%s/%s" % (proteome_id, count, len(clusterObj.protein_ids_by_proteome_id[proteome_id])) for proteome_id, count in protein_without_domain_count_by_proteome_id.items()]))
+                                    cluster_metrics_domains_detailed_output_line.append(sum(protein_with_domain_count_by_proteome_id.values()))
+                                    cluster_metrics_domains_detailed_output_line.append(proteomes_with_domain_count_string)
+                                    cluster_metrics_domains_detailed_output_line.append(proteomes_without_domain_count_string)
+                                    cluster_metrics_domains_detailed_output_by_domain_source[domain_source].append("\t".join([str(field) for field in cluster_metrics_domains_detailed_output_line]))
+
 
                     ###########################
                     # cluster_metrics_ALO : populate
@@ -978,6 +1091,13 @@ class DataFactory():
                         print "[STATUS] - Writing %s" % (cluster_metrics_domains_f)
                         cluster_metrics_domains_fh.write("\n".join(cluster_metrics_domains_output) + "\n")
                     cluster_metrics_domains_output = []
+                for domain_source in cluster_metrics_domains_detailed_output_by_domain_source:
+                    if len(cluster_metrics_domains_detailed_output_by_domain_source[domain_source]) > 1:
+                        cluster_metrics_domains_detailed_f = cluster_metrics_domains_detailed_f_by_domain_source[domain_source]
+                        with open(cluster_metrics_domains_detailed_f, 'w') as cluster_metrics_domains_detailed_fh:
+                            print "[STATUS] - Writing %s" % (cluster_metrics_domains_detailed_f)
+                            cluster_metrics_domains_detailed_fh.write("\n".join(cluster_metrics_domains_detailed_output_by_domain_source[domain_source]) + "\n")
+                        cluster_metrics_domains_detailed_output_by_domain_source[domain_source] = []
                 if len(cluster_metrics_ALO_output) > 1:
                     with open(cluster_metrics_ALO_f, 'w') as cluster_metrics_ALO_fh:
                         print "[STATUS] - Writing %s" % (cluster_metrics_ALO_f)
@@ -1664,6 +1784,7 @@ class ProteinCollection():
         self.domain_sources = []
         self.fastas_parsed = False
         self.functional_annotation_parsed = False
+        self.domain_description_by_domain_id_by_domain_source = None
 
     ###############################
     ### add_domainObjs_to_proteinObjs
@@ -1671,15 +1792,13 @@ class ProteinCollection():
 
     def add_annotation_to_proteinObj(self, domain_protein_id, domain_counter_by_domain_source, go_terms):
         proteinObj = self.proteinObjs_by_protein_id.get(domain_protein_id, None)
-        if proteinObj:
-            proteinObj.domain_counter_by_domain_source = domain_counter_by_domain_source
-            signalp_notm = proteinObj.domain_counter_by_domain_source.get("SignalP_EUK", None)
-            if signalp_notm and "SignalP-noTM" in signalp_notm:
-                proteinObj.secreted = True
-            proteinObj.go_terms = go_terms
-        else:
-            sys.exit("[ERROR] : Protein-ID %s is part of functional annotation but is not part of any proteome. Ignored." % (domain_protein_id))
-
+        if not proteinObj:
+            sys.exit("[ERROR] : Protein-ID %s is part of functional annotation but is not part of any proteome" % (domainObj.domain_protein_id))
+        proteinObj.domain_counter_by_domain_source = domain_counter_by_domain_source
+        signalp_notm = proteinObj.domain_counter_by_domain_source.get("SignalP_EUK", None)
+        if signalp_notm and "SignalP-noTM" in signalp_notm:
+            proteinObj.secreted = True
+        proteinObj.go_terms = go_terms
 
     def get_protein_length_stats(self, protein_ids):
         protein_length_stats = {'sum' : 0, 'mean' : 0.0, 'median' : 0, 'sd': 0.0}
@@ -1749,7 +1868,8 @@ class ClusterCollection():
         self.inferred_singletons_count = inferred_singletons_count
         self.functional_annotation_parsed = functional_annotation_parsed
         self.fastas_parsed = fastas_parsed
-        self.domain_sources = [domain_source for domain_source in domain_sources if not domain_source == "GO"]
+        #self.domain_sources = [domain_source for domain_source in domain_sources if not domain_source == "GO"]
+        self.domain_sources = domain_sources
 ########################################################################
 # CLASS : ClusterObj
 ########################################################################
@@ -1852,6 +1972,11 @@ class InputObj():
         self.render_tree = True
         self.nodesdb_f = args['--nodesdb']
         self.functional_annotation_f = args['--functional_annotation']
+        self.pfam_mapping = True
+        self.pfam_mapping_f = None
+        self.ipr_mapping = True
+        self.ipr_mapping_f = None
+        self.go_mapping_f = None
         self.check_input_files()
         #self.check_that_ete_can_plot()
         # FASTA files
@@ -1919,6 +2044,26 @@ class InputObj():
         check_file(self.sequence_ids_f)
         check_file(self.tree_f)
         check_file(self.nodesdb_f)
+        if self.pfam_mapping:
+            pfam_mapping_f = join(dirname(realpath(__file__)), "data/Pfam-A.clans.tsv.gz")
+            if not isfile(pfam_mapping_f):
+                print "[WARN] : PFAM-ID file 'data/Pfam-A.clans.tsv.gz' not found."
+                remote_f = "ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.clans.tsv.gz"
+                retrieve_ftp(remote_f, pfam_mapping_f)
+            self.pfam_mapping_f = pfam_mapping_f
+        if self.ipr_mapping:
+            ipr_mapping_f = join(dirname(realpath(__file__)), "data/entry.list")
+            if not isfile(ipr_mapping_f):
+                print "[WARN] : IPR-ID file 'data/entry.list' not found."
+                remote_f = "ftp://ftp.ebi.ac.uk/pub/databases/interpro/entry.list"
+                retrieve_ftp(remote_f, ipr_mapping_f)
+            self.ipr_mapping_f = ipr_mapping_f
+            go_mapping_f = join(dirname(realpath(__file__)), "data/interpro2go")
+            if not isfile(go_mapping_f):
+                print "[WARN] : GO-ID file, but 'data/interpro2go' not found."
+                remote_f = "ftp://ftp.ebi.ac.uk/pub/databases/interpro/interpro2go"
+                retrieve_ftp(remote_f, go_mapping_f)
+            self.go_mapping_f = go_mapping_f
 
     def check_that_ete_can_plot(self):
         if self.tree_f:
@@ -1959,10 +2104,21 @@ class InputObj():
         else:
             sys.exit("[ERROR] : --min %s is greater than --max %s" (fuzzy_min, fuzzy_max))
 
+def welcome_screen():
+    screen = "\
+     _    _ _       _______ _        \n\
+    | |  / |_)     (_______|_)       \n\
+    | | / / _ ____  _____   _ ____   \n\
+    | |< < | |  _ \|  ___) | |  _ \  \n\
+    | | \ \| | | | | |     | | | | | \n\
+    |_|  \_)_|_| |_|_|     |_|_| |_| v%s\n\
+    " % (__version__)
+    print screen
 if __name__ == "__main__":
     __version__ = 0.1
     args = docopt(__doc__)
     # Sanitise input
+    welcome_screen()
     inputObj = InputObj(args)
     if inputObj.tree_f:
         try:

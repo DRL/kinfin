@@ -4,3 +4,8 @@ kinfin.md
 *kinfin_results
 *big_test_data/
 data/nodesDB.txt
+data/interpro2go
+data/pdb*
+data/entry.list
+data/Pfam-A.clans.tsv.gz
+data/interpro2go
