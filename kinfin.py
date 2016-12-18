@@ -41,7 +41,7 @@ usage: kinfin-d.py      -g <FILE> -c <FILE> -s <FILE> [-t <FILE>] [-o <PREFIX>]
             -r, --repetitions <INT>             Number of repetitions for rarefaction curves [default: 30]
             --fontsize <INT>                    Fontsize for plots [default: 18]
             --plotsize <INT,INT>                Size (WIDTH,HEIGHT) for plots [default: 24,12]
-            --plotfmt <STR>                     Plot formats [default: png]
+            --plotfmt <STR>                     Plot formats [default: pdf]
 
 """
 
@@ -1570,6 +1570,7 @@ class AloCollection():
             f.savefig(chart_f,  bbox_inches='tight', format='png')
             if inputObj.plot_format == 'pdf':
                 pdf_chart_f = join(dataFactory.dirs['tree_charts'], "%s.barchart.pdf" % (node.name))
+                print "[STATUS]\t- Plotting %s" % (pdf_chart_f)
                 f.savefig(pdf_chart_f,  bbox_inches='tight', format='pdf')
             plt.close()
             return chart_f
@@ -2118,7 +2119,7 @@ def welcome_screen():
     " % (__version__)
     print screen
 if __name__ == "__main__":
-    __version__ = "0.7.2"
+    __version__ = "0.7.3"
     args = docopt(__doc__)
     # Sanitise input
     welcome_screen()
