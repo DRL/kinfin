@@ -121,3 +121,8 @@ if __name__ == "__main__":
     print "[+] Parsing domains in %s ..." % (inputObj.interproscan_f)
     domains_ids_by_domain_source_by_protein_id = parse_interproscan(inputObj)
     output(inputObj, domains_ids_by_domain_source_by_protein_id)
+
+'''
+Pending:
+    - make sure that at least one domain is parsed (otherwise there is no GO-Terms)
+'''
