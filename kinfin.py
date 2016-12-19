@@ -188,7 +188,7 @@ def parse_mapping(mapping_file_by_domain_source):
         for domain_source, mapping_f in mapping_file_by_domain_source.items():
             if domain_source == 'Pfam':
                 domain_description_by_domain_id_by_domain_source[domain_source] = {}
-                print "[STATUS] - Parsing %s ... this may take a while" % (mapping_f)
+                print "[STATUS] - Parsing %s ... " % (mapping_f)
                 for line in read_file(mapping_f):
                     temp = line.split("\t")
                     domain_id = temp[0]
@@ -200,7 +200,7 @@ def parse_mapping(mapping_file_by_domain_source):
                             sys.exit("[ERROR] : Conflicting descriptions for %s" % (domain_id))
             elif domain_source == 'GO':
                 domain_description_by_domain_id_by_domain_source['GO'] = {}
-                print "[STATUS] - Parsing %s ... this may take a while" % (mapping_f)
+                print "[STATUS] - Parsing %s ... " % (mapping_f)
                 for line in read_file(mapping_f):
                     if not line.startswith("!"):
                         temp = line.replace(" > ", "|").split("|")
@@ -213,7 +213,7 @@ def parse_mapping(mapping_file_by_domain_source):
                                 sys.exit("[ERROR] : Conflicting descriptions for %s" % (go_id))
             elif domain_source == 'IPR':
                 domain_description_by_domain_id_by_domain_source['IPR'] = {}
-                print "[STATUS] - Parsing %s ... this may take a while" % (mapping_f)
+                print "[STATUS] - Parsing %s ... " % (mapping_f)
                 for line in read_file(mapping_f):
                     if not line.startswith("Active_site"):
                         temp = line.split()
@@ -371,9 +371,12 @@ class DataFactory():
         proteome_id_by_species_id = {}
         for line in read_file(attribute_f):
             if line.startswith("#"):
-                attributes = [x.strip() for x in line.lstrip("#").split(",")]
-                if not 'IDX' == attributes[0] or not 'PROTEOME' == attributes[1]:
-                    sys.exit("[ERROR] - First/second element have to be IDX/PROTEOME.\n\t%s" % (attributes))
+                if not attributes:
+                    attributes = [x.strip() for x in line.lstrip("#").split(",")]
+                    if not 'IDX' == attributes[0] or not 'PROTEOME' == attributes[1]:
+                        sys.exit("[ERROR] - First/second element have to be IDX/PROTEOME.\n\t%s" % (attributes))
+                else:
+                    pass # accounts for SpeciesIDs that are commented out for Orthifinder
             elif line.strip():
                 temp = line.split(",")
                 if not len(temp) == len(attributes):
@@ -478,8 +481,8 @@ class DataFactory():
             if proteome_id:
                 proteinObj = ProteinObj(protein_id, proteome_id, species_id, sequence_id)
                 proteinObjs.append(proteinObj)
-            else:
-                sys.exit("[ERROR] - Offending SequenceID : %s (unknown species_id %s)" % (line, species_id))
+            #else:
+            #    sys.exit("[ERROR] - Offending SequenceID : %s (unknown species_id %s)" % (line, species_id))
         proteinCollection = ProteinCollection(proteinObjs)
         print "[STATUS]\t - Proteins found = %s" % (proteinCollection.protein_count)
 
@@ -549,8 +552,9 @@ class DataFactory():
     def parse_species_ids(self, species_ids_f):
         fasta_by_ortho_id = {}
         for line in read_file(species_ids_f):
-            idx, fasta = line.split(": ")
-            fasta_by_ortho_id[idx] = fasta
+            if not line.startswith("#"):
+                idx, fasta = line.split(": ")
+                fasta_by_ortho_id[idx] = fasta
         self.species_ids_file = species_ids_f
         return fasta_by_ortho_id
 
@@ -1809,13 +1813,12 @@ class ProteinCollection():
 
     def add_annotation_to_proteinObj(self, domain_protein_id, domain_counter_by_domain_source, go_terms):
         proteinObj = self.proteinObjs_by_protein_id.get(domain_protein_id, None)
-        if not proteinObj:
-            sys.exit("[ERROR] : Protein-ID %s is part of functional annotation but is not part of any proteome" % (domain_protein_id))
-        proteinObj.domain_counter_by_domain_source = domain_counter_by_domain_source
-        signalp_notm = proteinObj.domain_counter_by_domain_source.get("SignalP_EUK", None)
-        if signalp_notm and "SignalP-noTM" in signalp_notm:
-            proteinObj.secreted = True
-        proteinObj.go_terms = go_terms
+        if proteinObj:
+            proteinObj.domain_counter_by_domain_source = domain_counter_by_domain_source
+            signalp_notm = proteinObj.domain_counter_by_domain_source.get("SignalP_EUK", None)
+            if signalp_notm and "SignalP-noTM" in signalp_notm:
+                proteinObj.secreted = True
+            proteinObj.go_terms = go_terms
 
     def get_protein_length_stats(self, protein_ids):
         protein_length_stats = {'sum' : 0, 'mean' : 0.0, 'median' : 0, 'sd': 0.0}
@@ -2132,7 +2135,7 @@ def welcome_screen():
     " % (__version__)
     print screen
 if __name__ == "__main__":
-    __version__ = "0.7.5"
+    __version__ = "0.7.6"
     args = docopt(__doc__)
     # Sanitise input
     welcome_screen()
