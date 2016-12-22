@@ -1900,7 +1900,11 @@ class ClusterObj():
         self.cluster_id = cluster_id
         self.protein_ids = set(protein_ids)
         self.protein_count = len(protein_ids)
-        self.proteomes_by_protein_id = {protein_id : proteinCollection.proteinObjs_by_protein_id[protein_id].proteome_id for protein_id in protein_ids}
+        try:
+            self.proteomes_by_protein_id = {protein_id : proteinCollection.proteinObjs_by_protein_id[protein_id].proteome_id for protein_id in protein_ids}
+        except KeyError:
+            sys.exit("[ERROR] - Proteins in clustering belong to proteomes that are not present in the SpeciesClassification-file. Please add those proteoemes or recluster by omitting these proteomes.")
+
         self.proteome_ids_list = self.proteomes_by_protein_id.values()
         self.protein_count_by_proteome_id = Counter(self.proteome_ids_list)
         self.proteome_ids = frozenset(self.proteome_ids_list)
