@@ -586,6 +586,7 @@ class DataFactory():
             for line in fh:
                 temp = line.rstrip("\n").split(" ")
                 cluster_id, protein_string = temp[0].replace(":", ""), temp[1:]
+                protein_string = [protein_id for protein_id in protein_string if protein_id]
                 clusterObj = ClusterObj(cluster_id, protein_string)
                 for protein_id in protein_string:
                     proteinObj = proteinCollection.proteinObjs_by_protein_id[protein_id]
