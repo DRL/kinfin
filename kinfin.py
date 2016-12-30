@@ -2140,7 +2140,7 @@ def welcome_screen():
     " % (__version__)
     print screen
 if __name__ == "__main__":
-    __version__ = "0.7.9"
+    __version__ = "0.8.0"
     args = docopt(__doc__)
     # Sanitise input
     welcome_screen()
