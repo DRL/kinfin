@@ -709,10 +709,10 @@ class DataFactory():
             cluster_metrics_header.append("attribute_cluster_type")
             cluster_metrics_header.append("protein_span_mean")
             cluster_metrics_header.append("protein_span_sd")
-            cluster_metrics_header += ["%s_count" % level for level in aloCollection.ALO_by_level_by_attribute[attribute]]
+            cluster_metrics_header += ["%s_count" % level for level in sorted(aloCollection.ALO_by_level_by_attribute[attribute])]
             if not attribute == "PROTEOME":
-                cluster_metrics_header += ["%s_median" % level for level in aloCollection.ALO_by_level_by_attribute[attribute]]
-                cluster_metrics_header += ["%s_cov" % level for level in aloCollection.ALO_by_level_by_attribute[attribute]]
+                cluster_metrics_header += ["%s_median" % level for level in sorted(aloCollection.ALO_by_level_by_attribute[attribute])]
+                cluster_metrics_header += ["%s_cov" % level for level in sorted(aloCollection.ALO_by_level_by_attribute[attribute])]
             return "\t".join(cluster_metrics_header)
         elif filetype == "cluster_metrics_domains":
             cluster_metrics_domains_header = []
@@ -742,7 +742,7 @@ class DataFactory():
             cafe_header = []
             cafe_header.append("Description")
             cafe_header.append("ID")
-            for level in aloCollection.ALO_by_level_by_attribute['PROTEOME']:
+            for level in sorted(aloCollection.ALO_by_level_by_attribute['PROTEOME']):
                 cafe_header.append(level)
             return "\t".join(cafe_header)
         elif filetype == "pairwise_representation_test":

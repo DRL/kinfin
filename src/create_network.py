@@ -4,6 +4,7 @@
 """
 usage: generate_and_analyse_network.py      -c <FILE> -s <FILE> -a <STR>
                                             [-n <STR>] [-t <FLOAT>] [-e <STR>]
+                                            [--colour <FILE>]
                                             [-o <STR>] [-d]
                                             [-h|--help]
 
@@ -17,6 +18,7 @@ usage: generate_and_analyse_network.py      -c <FILE> -s <FILE> -a <STR>
         -t, --weight_threshold <FLOAT>          Minimal weight threshold (default: 0.0)
         -e, --exclude_proteome_ids <STR>        Proteomes to be excluded (seprated by ",")
         -d, --draw_all_edges                    Draw all edges (as opposed to only filtered ones)
+        --colour_f <FILE>                       CSV file containing colours of attribute levels
         -o, --out_prefix <STR>                  Outprefix (default: graph)
 
 """
@@ -65,37 +67,6 @@ def read_file(f):
     with open(f) as fh:
         for line in fh:
             yield line.rstrip("\n")
-
-def pie(ax, values, **kwargs):
-    total = sum(values)
-    def formatter(pct):
-        return '{:0.0f}\n({:0.1f}%)'.format(pct*total/100, pct)
-    wedges, _, labels = ax.pie(values, autopct=formatter, **kwargs)
-    return wedges
-
-def plot_icons():
-    fig, ax = plt.subplots()
-    ax.axis('equal')
-
-    width = 0.35
-    kwargs = dict(colors=['#66FF66', '#9999FF', '#FF9999'], startangle=90)
-
-    outside = pie(ax, [96, 124, 88], radius=1, pctdistance=1-width/2, **kwargs)
-    inside = pie(ax, [45, 87, 77], radius=1-width,
-                 pctdistance=1 - (width/2) / (1-width), **kwargs)
-    plt.setp(inside + outside, width=width, edgecolor='white')
-
-    ax.legend(inside[::-1], ['Hardware', 'Software', 'Services'], frameon=False)
-
-    kwargs = dict(size=13, color='white', va='center', fontweight='bold')
-    ax.text(0, 0, 'Year 2005', ha='center',
-            bbox=dict(boxstyle='round', facecolor='blue', edgecolor='none'),
-            **kwargs)
-    ax.annotate('Year 2006', (0, 0), xytext=(np.radians(-45), 1.1),
-                bbox=dict(boxstyle='round', facecolor='green', edgecolor='none'),
-                textcoords='polar', ha='left', **kwargs)
-
-    plt.show()
 
 class ProteomeObj():
     def __init__(self, proteome_id, label, colour, idx):
@@ -209,21 +180,6 @@ def generate_edges(normalisation, weight_by_positional_edges):
         pass
     return edges_positional
 
-def binomial(n,k):
-    """
-    A fast way to calculate binomial coefficients by Andrew Dalke (contrib).
-    """
-    if 0 <= k <= n:
-        ntok = 1
-        ktok = 1
-        for t in xrange(1, min(k, n - k) + 1):
-            ntok *= n
-            ktok *= t
-            n -= 1
-        return ntok // ktok
-    else:
-        return 0
-
 
 def generate_proteomeObjs():
     proteomeObj_by_proteome_id = {}
@@ -245,20 +201,6 @@ def check_normalisation(normalisation_algo):
 def check_exclude_proteome_ids(exclude_proteome_ids):
     return set([proteome_id for proteome_id in exclude_proteome_ids.split(",")])
 
-def santisise_args(args):
-    sane_args = {}
-    sane_args['--cluster_stats'] = check_file(args['--cluster_stats'])
-    sane_args['--species_classification'] = check_file(args['--species_classification'])
-    sane_args['--attribute'] = args['--attribute']
-    sane_args['--normalisation'] = check_normalisation(args['--normalisation'])
-    sane_args['--weight_threshold'] = float(args['--weight_threshold'])
-    if args['--exclude_proteome_ids']:
-        sane_args['--exclude_proteome_ids'] = check_exclude_proteome_ids(args['--exclude_proteome_ids'])
-    else:
-        sane_args['--exclude_proteome_ids'] = set()
-    sane_args['--draw_all_edges'] = args['--draw_all_edges']
-    sane_args['--out_prefix'] = args['--out_prefix']
-    return sane_args
 
 def generate_outpath_by_name(target_attribute, normalisation, weight_threshold, out_prefix):
     outpath_by_name = {}
@@ -458,6 +400,22 @@ def filter_edges(edges_positional, weight_threshold, edge_count):
              edge_count['excluded_weight'] = edge_count.get('excluded_weight', 0) + 1
     return edges_positional_filtered, edge_count
 
+def santisise_args(args):
+    sane_args = {}
+    sane_args['--cluster_stats'] = check_file(args['--cluster_stats'])
+    sane_args['--colour_f'] = check_file(args['--colour_f'])
+    sane_args['--species_classification'] = check_file(args['--species_classification'])
+    sane_args['--attribute'] = args['--attribute']
+    sane_args['--normalisation'] = check_normalisation(args['--normalisation'])
+    sane_args['--weight_threshold'] = float(args['--weight_threshold'])
+    if args['--exclude_proteome_ids']:
+        sane_args['--exclude_proteome_ids'] = check_exclude_proteome_ids(args['--exclude_proteome_ids'])
+    else:
+        sane_args['--exclude_proteome_ids'] = set()
+    sane_args['--draw_all_edges'] = args['--draw_all_edges']
+    sane_args['--out_prefix'] = args['--out_prefix']
+    return sane_args
+
 if __name__ == "__main__":
     '''
     IDEAS:
@@ -470,7 +428,7 @@ if __name__ == "__main__":
          src/create_network.py -c ~/Dropbox/projects/manuscripts/50helminths/results/50helminth.20161115.master.kinfin_results/PROTEOME/PROTEOME.cluster_stats.txt -s ~/Dropbox/projects/manuscripts/50helminths/results/50helminth.20161115.master.kinfin_results/PROTEOME/PROTEOME.cluster_stats.txt -a superphylum -n "max_weight" -t 0.30 -o test -d
 
     '''
-    __version__ = 0.1
+    __version__ = 0.2
 
     NORMALISATION_ALGOS = set(["max_weight", "none"])
     FIGSIZE = (16,16)
@@ -485,11 +443,13 @@ if __name__ == "__main__":
     exclude_proteome_ids = sane_args['--exclude_proteome_ids']
     draw_all_edges = sane_args['--draw_all_edges']
     out_prefix = sane_args['--out_prefix']
+    colour_f = sane_args['--colour_f']
 
     results = {}
     outpath_by_name = generate_outpath_by_name(target_attribute, normalisation, weight_threshold, out_prefix)
 
     proteome_ids, label_by_proteome_id, proteome_ids_by_label = parse_species_classification(species_classification_f)
+    colour_by_proteome_id = parse_colour_f(colour_f)
     results['proteome_count'] = len(proteome_ids)
     results['labels'] = ",".join(["%s (%s)" % (label, len(proteomes)) for label, proteomes in proteome_ids_by_label.items()])
     proteomeObj_by_proteome_id = generate_proteomeObjs()
