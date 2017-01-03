@@ -2140,7 +2140,7 @@ def welcome_screen():
     " % (__version__)
     print screen
 if __name__ == "__main__":
-    __version__ = "0.8.0"
+    __version__ = "0.8.1"
     args = docopt(__doc__)
     # Sanitise input
     welcome_screen()
@@ -2183,21 +2183,14 @@ if __name__ == "__main__":
     ###
     '''
     Pending
-        1. generate output for some overall metrics:
+        0. generate output for some overall metrics:
             - singletons with domains
             - specific clusters with domains
-        0. Executable bash script that calls
+        1. Executable bash script that calls
             a) "xvfb-run" : if in path
             b) "normal" : if not
-        1. Test ETE
-        2. AUx script to parse GOATools output, to append coverage of ALO at end of row
-            - input GOATtools output
-            - tree.node.metrics.txt (get Count of proteomes)
-            - specify number of total taxa
-            - calculate coverage, mean count
-        3. Hypsibius :
-            - cluster transcriptome
-            - make trees
+        2. Memory argument
+
 
             - barcharts
             - Go term enrichments
