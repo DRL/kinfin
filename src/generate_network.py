@@ -42,8 +42,10 @@ def parse_cluster_stats_f(cluster_stats_f, proteomeObj_by_proteome_id, attribute
     for line in read_file(cluster_stats_f):
         temp = line.rstrip("\n").split("\t")
         if line.startswith("#"):
-            proteome_id_by_idx = {idx: column.replace("_count", "") for idx, column in enumerate(temp) if column.replace("_count", "") in proteomeObj_by_proteome_id}
-            print proteome_id_by_idx
+            proteome_id_by_idx = {idx: col.replace("_count", "") for idx, col in enumerate(temp) if col.replace("_count", "") in proteomeObj_by_proteome_id}
+            #proteome_id_fields = [column.replace("_count", "") for column in temp if column.replace("_count", "") in proteomeObj_by_proteome_id]
+            #proteome_id_idx = [idx for idx, column in enumerate(temp) if column.replace("_count", "") in proteomeObj_by_proteome_id]
+            #proteome_id_by_idx = {idx : proteome_id for idx, proteome_id in zip(proteome_id_idx, sorted(proteome_id_fields))}
             if not proteome_id_by_idx:
                 sys.exit("[-] No column header ending in '_count' found in %s" % (",".join(temp)))
             for idx, col in enumerate(temp):
@@ -66,25 +68,21 @@ def parse_cluster_stats_f(cluster_stats_f, proteomeObj_by_proteome_id, attribute
                     if not edge_nodes in edge_weights:
                         edge_weights[edge_nodes] = 0
                     edge_weights[edge_nodes] += 1
-    print edge_weights
-    #print "ascaris_suum", "ascaris_lumbricoides", edge_weights[frozenset(['ascaris_lumbricoides', 'ascaris_suum'])]
-    #print "ascaris_suum", "ascaris_lumbricoides", edge_weights[frozenset(['ascaris_suum', 'ascaris_lumbricoides'])]
-    normalised_edges = normalise_edges(edge_weights)
+    #print edge_weights
+    weighted_edges = generate_edges(edge_weights)
     for proteome_id, proteomeObj in proteomeObj_by_proteome_id.items():
         proteomeObj.level_by_attribute['protein_count'] = proteomeObj.protein_counts['total']
-    return normalised_edges, proteomeObj_by_proteome_id
+    return weighted_edges, proteomeObj_by_proteome_id
 
-def normalise_edges(edge_weights):
-    normalised_edges = []
+def generate_edges(edge_weights):
+    weighted_edges = []
     max_edge_weight = max(edge_weights.values())
-    print "[+] Max edge weight is %s, normalising other edge weights..." % (max_edge_weight)
+    print "[+] Max edge weight is %s, ..." % (max_edge_weight)
     for edge_nodes, weight in edge_weights.items():
         nodes = list(edge_nodes)
-        normalised_weight = weight/max_edge_weight
-        edge_tuple = (nodes[0], nodes[1], normalised_weight)
-        #print nodes, edge_nodes, weight, "=>", edge_tuple
-        normalised_edges.append(edge_tuple)
-    return normalised_edges
+        edge_tuple = (nodes[0], nodes[1], weight)
+        weighted_edges.append(edge_tuple)
+    return weighted_edges
 
 def generate_outpath_by_name(out_prefix):
     outpath_by_name = {}
@@ -98,25 +96,15 @@ def generate_outpath_by_name(out_prefix):
     return outpath_by_name
 
 
-def construct_graphs(normalised_edges, proteomeObj_by_proteome_id, attributes):
+def construct_graphs(weighted_edges, proteomeObj_by_proteome_id, attributes):
     print "[+] Building graphs"
     G = nx.Graph()
     G.name = "Graph"
     proteome_id_by_idx = {}
     for proteome_id, proteomeObj  in proteomeObj_by_proteome_id.items():
-        # add nodes
         G.add_node(proteomeObj.proteome_id, {k :v for k, v in proteomeObj.level_by_attribute.items()})
         G.add_node(proteomeObj.proteome_id, {k :v for k, v in proteomeObj.level_by_attribute.items()})
-    # set max_node size
-    #max_node_size = max([G_edges_all.node[node]['protein_counts']['total'] for node in G_edges_all.nodes()])
-    # set node sizes scaled by max_node_size*1000
-    #node_sizes_of_nodes = {node : 1000*G_edges_all.node[node]['protein_counts']['total']/max_node_size for node in G_edges_all.nodes()}
-    # set node colour
-    #node_colour_of_nodes = {node : G_edges_all.node[node]['colour'] for node in G_edges_all.nodes()}
-    # set node label
-    #node_label_of_nodes = {node : G_edges_all.node[node]['label'] for node in G_edges_all.nodes()}
-
-    G.add_weighted_edges_from(normalised_edges)
+    G.add_weighted_edges_from(weighted_edges)
     print nx.info(G)
     print "[+] Saving network %s" % outpath_by_name["graphml_f"]
     nx.write_graphml(G, outpath_by_name["graphml_f"])
@@ -178,14 +166,7 @@ class ProteomeObj():
         self.cluster_counts["total"] += 1
 
 if __name__ == "__main__":
-    '''
-    IDEAS:
-        - No filtering of edges, just normalisation on strongest weight
-        - No colours, just writing of gml file for use in Gephi
-         src/create_network.py -c ~/Dropbox/projects/manuscripts/50helminths/results/50helminth.20161115.master.kinfin_results/PROTEOME/PROTEOME.cluster_stats.txt -s ~/Dropbox/projects/manuscripts/50helminths/results/50helminth.20161115.master.kinfin_results/PROTEOME/PROTEOME.cluster_stats.txt -a superphylum -n "max_weight" -t 0.30 -o test -d
-
-    '''
-    __version__ = 0.2
+    __version__ = 0.3
 
     args = docopt(__doc__)
     sane_args = santisise_args(args)
@@ -195,12 +176,7 @@ if __name__ == "__main__":
 
     #######################################################################
 
-    results = {}
-
     proteomeObj_by_proteome_id, attributes = parse_classification_f(species_classification_f)
     outpath_by_name = generate_outpath_by_name(out_prefix)
-
-    #print proteome_ids
-    normalised_edges, proteomeObj = parse_cluster_stats_f(cluster_stats_f, proteomeObj_by_proteome_id, attributes)
-
-    construct_graphs(normalised_edges, proteomeObj_by_proteome_id, attributes)
+    weighted_edges, proteomeObj = parse_cluster_stats_f(cluster_stats_f, proteomeObj_by_proteome_id, attributes)
+    construct_graphs(weighted_edges, proteomeObj_by_proteome_id, attributes)
