@@ -2,15 +2,17 @@
 # -*- coding: utf-8 -*-
 
 """
-usage: get_proteins_from_cluster.py     -g <FILE> [--header <FILE>] [--cluster <FILE>] [-s]
+usage: get_proteins_from_cluster.py     -g <FILE> [--header <FILE>]
+                                        [-c <STRING>] [--clusters <FILE>] [-s]
                                         [-h|--help]
 
     Options:
-        -h --help                           show this
-        -g, --groups <FILE>                 OrthologousGroups.txt produced by OrthoFinder
-        --header <FILE>                     Filter based on sequence IDs in file
-        --cluster <FILE>                    Filter based on cluster IDs in file
-        -s, --single_out_file               Write all proteins to a single files
+        -h --help                       show this
+        -g, --groups <FILE>             OrthologousGroups.txt produced by OrthoFinder
+        --header <FILE>                 Filter based on sequence IDs in file
+        -c, --cluster <STRING>          Filter based on cluster ID
+        --clusters <FILE>               Filter based on cluster IDs in file
+        -s, --single_out_file           Write all proteins to a single files
 
 """
 
@@ -30,7 +32,7 @@ def parse_headers(header_f):
                 headers[header] = None
     return headers
 
-def parse_clusters(cluster_f):
+def parse_clusters(clusters):
     clusters = {}
     with open(cluster_f) as cluster_fh:
         for line in cluster_fh:
@@ -65,7 +67,6 @@ def parse_groups(group_f):
     return output
 
 def write_output(output):
-
     headers_found = set([k for k, v in headers.iteritems() if v])
     clusters_found = set([k for k, v in clusters.iteritems() if v])
     if headers:
@@ -99,15 +100,13 @@ def write_output(output):
 
 
 if __name__ == "__main__":
-    __version__ = 0.1
+    __version__ = 0.2
     args = docopt(__doc__)
-    try:
-        groups_f = args['--groups']
-        header_f = args['--header']
-        cluster_f = args['--cluster']
-        single_out_file = args['--single_out_file']
-    except docopt.DocoptExit:
-        print __doc__.strip()
+    groups_f = args['--groups']
+    header_f = args['--header']
+    cluster_id = args['--cluster']
+    cluster_f = args['--clusters']
+    single_out_file = args['--single_out_file']
 
     headers = {}
     clusters = {}
@@ -117,6 +116,9 @@ if __name__ == "__main__":
         print "[+] Parsing headers in %s ..." % header_f
         parse_type = 'header'
         headers = parse_headers(header_f)
+    elif cluster_id:
+        print "[+] Getting cluster %s ..." % cluster_id
+        clusters[cluster_id] = None
     elif cluster_f:
         print "[+] Parsing clusters in %s ..." % cluster_f
         parse_type = 'cluster'
