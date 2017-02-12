@@ -1,6 +1,9 @@
 ### kinFin
 Taxon-aware analysis of clustered proteomes
 
+### Please cite
+Dominik R Laetsch. (2017). KinFin v0.8.1 Zenodo. http://doi.org/10.5281/zenodo.290589
+
 ----------
 
 ### Installation
