@@ -77,28 +77,28 @@ try:
     import scipy
 except ImportError:
     import_errors.append("[ERROR] : Module \'SciPy\' was not found. Please install \'SciPy\' using \'pip install scipy\'")
-#try:
-#    import seaborn as sns
-#except ImportError:
-#    import_errors.append("[ERROR] : Module \'Seaborn\' was not found. Please install \'Seaborn\' using \'pip install seaborn\'")
+try:
+    import seaborn as sns
+except ImportError:
+    import_errors.append("[ERROR] : Module \'Seaborn\' was not found. Please install \'Seaborn\' using \'pip install seaborn\'")
 #try:
 #    import powerlaw
 #except ImportError:
 #    import_errors.append("[ERROR] : Module \'powerlaw\'' was not found. Please install \'powerlaw\' using \'pip install powerlaw\'")
+
 if import_errors:
     sys.exit("\n".join(import_errors))
 
 import numpy as np
 from matplotlib.ticker import FormatStrFormatter
 import matplotlib.pyplot as plt
-import seaborn as sns
 plt.style.use('ggplot')
 sns.set_context("talk")
 sns.set(style="whitegrid")
 sns.set_color_codes("pastel")
 mat.rc('ytick', labelsize=20)
 mat.rc('xtick', labelsize=20)
-axis_font = {'size':'20'}
+axis_font = {'size': '20'}
 mat.rcParams.update({'font.size': 22})
 
 ########################################################################
@@ -338,6 +338,7 @@ class DataFactory():
     ###############################
     ### build_AloCollection
     ###############################
+
     def build_AloCollection(self):
         attribute_f = inputObj.attribute_f
         nodesdb_f = inputObj.nodesdb_f
@@ -695,7 +696,6 @@ class DataFactory():
             cluster_metrics_ALO_header.append("ALO_proteome_coverage")
             cluster_metrics_ALO_header.append("ALO_proteomes_present_count")
             cluster_metrics_ALO_header.append("ALO_proteomes_present")
-            cluster_metrics_ALO_header.append("go_terms")
             for domain_source in clusterCollection.domain_sources:
                 cluster_metrics_ALO_header.append(domain_source)
             return "\t".join(cluster_metrics_ALO_header)
@@ -871,9 +871,10 @@ class DataFactory():
                                 cluster_1to1_ALO_line.append(cluster_type)
                                 cluster_1to1_ALO_line.append(cluster_cardinality)
                                 cluster_1to1_ALO_line.append(clusterCollection.clusterObjs_by_cluster_id[cluster_id].proteome_count)
-                                cluster_1to1_ALO_line.append("{0:.2f}".format(len([protein_count for proteome_id, protein_count in clusterCollection.clusterObjs_by_cluster_id[cluster_id].protein_count_by_proteome_id.items() if protein_count == inputObj.fuzzy_count])/clusterCollection.clusterObjs_by_cluster_id[cluster_id].proteome_count))
+                                cluster_1to1_ALO_line.append("{0:.2f}".format(
+                                    len([protein_count for proteome_id, protein_count in clusterCollection.clusterObjs_by_cluster_id[cluster_id].protein_count_by_proteome_id.items() if protein_count == inputObj.fuzzy_count]) / clusterCollection.clusterObjs_by_cluster_id[cluster_id].proteome_count)
+                                )
                                 cluster_1to1_ALO_output.append("\t".join([str(field) for field in cluster_1to1_ALO_line]))
-
 
                 for clusterObj in clusterCollection.clusterObjs:
 
@@ -978,7 +979,7 @@ class DataFactory():
                                     proteomes_with_domain_count_string = ",".join(sorted(["%s:%s/%s" % (proteome_id, count, len(clusterObj.protein_ids_by_proteome_id[proteome_id])) for proteome_id, count in protein_with_domain_count_by_proteome_id.items()]))
                                     proteomes_without_domain_count_string = ",".join(sorted(["%s:%s/%s" % (proteome_id, count, len(clusterObj.protein_ids_by_proteome_id[proteome_id])) for proteome_id, count in protein_without_domain_count_by_proteome_id.items()]))
                                     cluster_metrics_domains_detailed_output_line.append(sum(protein_with_domain_count_by_proteome_id.values()))
-                                    cluster_metrics_domains_detailed_output_line.append("{0:.3f}".format(proteome_count_with_domain/clusterObj.proteome_count))
+                                    cluster_metrics_domains_detailed_output_line.append("{0:.3f}".format(proteome_count_with_domain / clusterObj.proteome_count))
                                     if proteomes_with_domain_count_string:
                                         cluster_metrics_domains_detailed_output_line.append(proteomes_with_domain_count_string)
                                     else:
@@ -988,7 +989,6 @@ class DataFactory():
                                     else:
                                         cluster_metrics_domains_detailed_output_line.append("N/A")
                                     cluster_metrics_domains_detailed_output_by_domain_source[domain_source].append("\t".join([str(field) for field in cluster_metrics_domains_detailed_output_line]))
-
 
                     ###########################
                     # cluster_metrics_ALO : populate
@@ -1012,9 +1012,9 @@ class DataFactory():
                     if ALO.cluster_type_by_cluster_id[clusterObj.cluster_id] == 'shared':
                         if ALO.cluster_mwu_log2_mean_by_cluster_id[clusterObj.cluster_id]:
                             background_pair = (level, "background")
-                            if not attribute in background_representation_test_by_pair_by_attribute:
+                            if attribute not in background_representation_test_by_pair_by_attribute:
                                 background_representation_test_by_pair_by_attribute[attribute] = {}
-                            if not background_pair in background_representation_test_by_pair_by_attribute[attribute]:
+                            if background_pair not in background_representation_test_by_pair_by_attribute[attribute]:
                                 background_representation_test_by_pair_by_attribute[attribute][background_pair] = []
                             background_representation_test = []
                             background_representation_test.append(clusterObj.cluster_id)
@@ -1403,14 +1403,14 @@ class AloCollection():
 
             for level in self.ALO_by_level_by_attribute[attribute]:
                 ALO = self.ALO_by_level_by_attribute[attribute][level]
-                proteome_coverage_by_level_by_attribute[attribute][level] = len(implicit_protein_ids_by_proteome_id_by_level_by_attribute[attribute].get(level, []))/ALO.proteome_count
+                proteome_coverage_by_level_by_attribute[attribute][level] = len(implicit_protein_ids_by_proteome_id_by_level_by_attribute[attribute].get(level, [])) / ALO.proteome_count
                 ALO_cluster_status = None
                 ALO_cluster_cardinality = None
                 mwu_pvalue = None
                 mwu_log2_mean = None
                 mean_ALO_count = None
                 mean_non_ALO_count = None
-                if not level in implicit_protein_ids_by_proteome_id_by_level_by_attribute[attribute]:
+                if level not in implicit_protein_ids_by_proteome_id_by_level_by_attribute[attribute]:
                     ALO_cluster_status = 'absent'
                 else:
                     ALO_cluster_status = 'present'
@@ -1425,18 +1425,18 @@ class AloCollection():
                                     non_ALO_proteome_counts_in_cluster.append(explicit_protein_count_by_proteome_id_by_level[non_ALO_level][proteome_id])
                             mwu_pvalue, mwu_log2_mean, mean_ALO_count, mean_non_ALO_count = mannwhitneyu(ALO_proteome_counts_in_cluster, non_ALO_proteome_counts_in_cluster)
 
-                ALO.add_clusterObj(\
-                    clusterObj, \
-                    cluster_type_by_attribute[attribute], \
-                    ALO_cluster_status, \
-                    ALO_cluster_cardinality, \
-                    protein_ids_by_level[level], \
-                    protein_length_stats_by_level[level], \
-                    mwu_pvalue, \
-                    mwu_log2_mean, \
-                    mean_ALO_count, \
-                    mean_non_ALO_count \
-                    )
+                ALO.add_clusterObj(
+                    clusterObj,
+                    cluster_type_by_attribute[attribute],
+                    ALO_cluster_status,
+                    ALO_cluster_cardinality,
+                    protein_ids_by_level[level],
+                    protein_length_stats_by_level[level],
+                    mwu_pvalue,
+                    mwu_log2_mean,
+                    mean_ALO_count,
+                    mean_non_ALO_count
+                )
         clusterObj.protein_counts_of_proteomes_by_level_by_attribute = protein_counts_of_proteomes_by_level_by_attribute
         clusterObj.protein_median = median([count for count in protein_counts_of_proteomes_by_level_by_attribute['global']['True'] if not count == 0])
         clusterObj.proteome_coverage_by_level_by_attribute = proteome_coverage_by_level_by_attribute
@@ -1446,7 +1446,7 @@ class AloCollection():
     def write_tree(self):
         if self.tree_ete:
             print "[STATUS] - Writing data for tree ... "
-            ### Node stats
+            # Node stats
             node_stats_f = join(dataFactory.dirs['tree'], "tree.node_metrics.txt")
             node_stats_header = []
             node_stats_header.append('nodeID')
@@ -1458,7 +1458,7 @@ class AloCollection():
             node_stats_header.append('proteome_count')
             node_stats = []
             node_stats.append("\t".join(node_stats_header))
-            ### Cluster node stats
+            # Cluster node stats
             node_clusters_f = join(dataFactory.dirs['tree'], "tree.cluster_metrics.txt")
             node_clusters_header = []
             node_clusters_header.append('clusterID')
@@ -1496,7 +1496,7 @@ class AloCollection():
                 self.plot_tree(header_f_by_node_name, charts_f_by_node_name)
 
     def plot_tree(self, header_f_by_node_name, charts_f_by_node_name):
-        tree_f = join(dataFactory.dirs['tree'], "tree.%s" % ('pdf')) # must be PDF! (otherwise it breaks)
+        tree_f = join(dataFactory.dirs['tree'], "tree.%s" % ('pdf'))  # must be PDF! (otherwise it breaks)
         style = ete3.NodeStyle()
         style["vt_line_width"] = 5
         style["hz_line_width"] = 5
@@ -1504,10 +1504,10 @@ class AloCollection():
         for node in self.tree_ete.traverse("levelorder"):
             node.set_style(style)
             if header_f_by_node_name[node.name]:
-                node_header_face = ete3.faces.ImgFace(header_f_by_node_name[node.name]) # must be PNG! (ETE can't do PDF Faces)
+                node_header_face = ete3.faces.ImgFace(header_f_by_node_name[node.name])  # must be PNG! (ETE can't do PDF Faces)
                 node.add_face(node_header_face, column=0, position="branch-top")
             if charts_f_by_node_name[node.name]:
-                node_chart_face = ete3.faces.ImgFace(charts_f_by_node_name[node.name]) # must be PNG! (ETE can't do PDF Faces)
+                node_chart_face = ete3.faces.ImgFace(charts_f_by_node_name[node.name])  # must be PNG! (ETE can't do PDF Faces)
                 node.add_face(node_chart_face, column=0, position="branch-bottom")
             node_name_face = ete3.TextFace(node.name, fsize=64)
             node.img_style["size"] = 10
@@ -1517,13 +1517,13 @@ class AloCollection():
                 node.add_face(node_name_face, column=0, position="branch-right")
             node.add_face(node_name_face, column=0, position="aligned")
         ts = ete3.TreeStyle()
-        ts.draw_guiding_lines=True
-        ts.show_scale=False
-        ts.show_leaf_name=False
-        ts.allow_face_overlap=True
-        ts.guiding_lines_color="lightgrey"
+        ts.draw_guiding_lines = True
+        ts.show_scale = False
+        ts.show_leaf_name = False
+        ts.allow_face_overlap = True
+        ts.guiding_lines_color = "lightgrey"
         print "[STATUS] - Writing tree %s ... " % (tree_f)
-        self.tree_ete.render(tree_f, dpi=600, h=1189, units="mm", tree_style = ts)
+        self.tree_ete.render(tree_f, dpi=600, h=1189, units="mm", tree_style=ts)
 
     def generate_header_for_node(self, node):
         node_header_f = join(dataFactory.dirs['tree_headers'], "%s.header.png" % (node.name))
@@ -1533,15 +1533,13 @@ class AloCollection():
         data.append(("Synapomorphies (all)", "{:,}".format(node.synapomorphic_cluster_counts['complete_presence'] + node.synapomorphic_cluster_counts['stochastic_absence'])))
         data.append(("Synapomorphies (cov=100%)", "{:,}".format(node.synapomorphic_cluster_counts['complete_presence'])))
         data.append(("Synapomorphies (cov<100%)", "{:,}".format(node.synapomorphic_cluster_counts['stochastic_absence'])))
-        col_labels = ('Type','Count')
-        nrows, ncols = len(data)-1, len(col_labels)
-        hcell, wcell = 0.3, 1.
-        hpad, wpad = 0, 0
+        col_labels = ('Type', 'Count')
         fig, ax = plt.subplots(figsize=(2, 0.5))
-        table= ax.table(cellText=data,
-                    colLabels=col_labels,
-                    #loc='bottom',fontsize=64, colLoc='center',rowLoc='right', edges='')
-                    loc='bottom',fontsize=24, colLoc='center',rowLoc='right', edges='')
+        table = ax.table(
+            cellText=data,
+            colLabels=col_labels,
+            loc='bottom', fontsize=24, colLoc='center', rowLoc='right', edges=''
+        )
         table.set_fontsize(24)
         table.scale(2, 1)
         for key, cell in table.get_celld().items():
@@ -1553,7 +1551,7 @@ class AloCollection():
             else:
                 cell.set_edgecolor("darkgrey")
                 cell.visible_edges = "B"
-            if row == len(data)-2:
+            if row == len(data) - 2:
                 cell.set_edgecolor("darkgrey")
                 cell.visible_edges = "T"
         ax.axis('tight')
@@ -1574,10 +1572,10 @@ class AloCollection():
             ax.hist(x_values, histtype='stepfilled', align='mid', bins=np.arange(0.0, 1.0 + 0.1, 0.1))
             ax.set_xlim(-0.1, 1.1)
             for tick in ax.xaxis.get_major_ticks():
-                tick.label.set_fontsize(inputObj.plot_font_size-2)
+                tick.label.set_fontsize(inputObj.plot_font_size - 2)
                 tick.label.set_rotation('vertical')
             for tick in ax.yaxis.get_major_ticks():
-                tick.label.set_fontsize(inputObj.plot_font_size-2)
+                tick.label.set_fontsize(inputObj.plot_font_size - 2)
             ax.set_frame_on(False)
             ax.xaxis.grid(True, linewidth=1, which="major", color="lightgrey")
             ax.yaxis.grid(True, linewidth=1, which="major", color="lightgrey")
@@ -2129,6 +2127,7 @@ class InputObj():
         else:
             sys.exit("[ERROR] : --min %s is greater than --max %s" (fuzzy_min, fuzzy_max))
 
+
 def welcome_screen():
     screen = "\
      _    _ _       _______ _        \n\
@@ -2139,11 +2138,13 @@ def welcome_screen():
     |_|  \_)_|_| |_|_|     |_|_| |_| v%s\n\
     " % (__version__)
     print screen
+
+
 if __name__ == "__main__":
-    __version__ = "0.8.1"
+    __version__ = "0.8.2"
+    welcome_screen()
     args = docopt(__doc__)
     # Sanitise input
-    welcome_screen()
     inputObj = InputObj(args)
     if inputObj.tree_f:
         try:
