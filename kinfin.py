@@ -2090,14 +2090,6 @@ class InputObj():
 
     def check_that_ete_can_plot(self):
         if self.tree_f:
-            try:
-                import ete3
-            except ImportError:
-                sys.exit("[ERROR] : Module \'ete3\' was not found. Please install \'ete3\' using \'pip install ete3\'\n/tPlotting of trees requires additional dependencies:\n\t- PyQt4\n\t")
-            try:
-                import PyQt4
-            except ImportError:
-                sys.exit("[ERROR] : PyQt4 is not installed. Please install PyQt4")
             from ete3 import Tree
             t = Tree( "((a,b),c);" )
             test_tree_f = join(getcwd(), "this_is_a_test_tree.pdf")
@@ -2147,7 +2139,15 @@ if __name__ == "__main__":
     args = docopt(__doc__)
     # Sanitise input
     inputObj = InputObj(args)
-
+    if inputObj.tree_f:
+        try:
+            import ete3
+        except ImportError:
+            sys.exit("[ERROR] : Module \'ete3\' was not found. Please install \'ete3\' using \'pip install ete3\'\n/tPlotting of trees requires additional dependencies:\n\t- PyQt4\n\t")
+        try:
+            import PyQt4
+        except ImportError:
+            sys.exit("[ERROR] : PyQt4 is not installed. Please install PyQt4")
     # Input sane ... now we start
     print "[STATUS] - Starting analysis ..."
     overall_start = time.time()
