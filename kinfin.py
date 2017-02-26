@@ -2070,20 +2070,20 @@ class InputObj():
         if self.pfam_mapping:
             pfam_mapping_f = join(dirname(realpath(__file__)), "data/Pfam-A.clans.tsv.gz")
             if not isfile(pfam_mapping_f):
-                print "[WARN] : PFAM-ID file 'data/Pfam-A.clans.tsv.gz' not found."
+                print "[WARN] - PFAM-ID file 'data/Pfam-A.clans.tsv.gz' not found."
                 remote_f = "ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.clans.tsv.gz"
                 retrieve_ftp(remote_f, pfam_mapping_f)
             self.pfam_mapping_f = pfam_mapping_f
         if self.ipr_mapping:
             ipr_mapping_f = join(dirname(realpath(__file__)), "data/entry.list")
             if not isfile(ipr_mapping_f):
-                print "[WARN] : IPR-ID file 'data/entry.list' not found."
+                print "[WARN] - IPR-ID file 'data/entry.list' not found."
                 remote_f = "ftp://ftp.ebi.ac.uk/pub/databases/interpro/entry.list"
                 retrieve_ftp(remote_f, ipr_mapping_f)
             self.ipr_mapping_f = ipr_mapping_f
             go_mapping_f = join(dirname(realpath(__file__)), "data/interpro2go")
             if not isfile(go_mapping_f):
-                print "[WARN] : GO-ID file, but 'data/interpro2go' not found."
+                print "[WARN] - GO-ID file, but 'data/interpro2go' not found."
                 remote_f = "ftp://ftp.ebi.ac.uk/pub/databases/interpro/interpro2go"
                 retrieve_ftp(remote_f, go_mapping_f)
             self.go_mapping_f = go_mapping_f
@@ -2091,14 +2091,17 @@ class InputObj():
     def check_that_ete_can_plot(self):
         if self.tree_f:
             from ete3 import Tree
+            try:
+                import PyQt4
+            except ImportError:
+                sys.exit("[ERROR] : PyQt4 is not installed. Please install PyQt4")
             t = Tree( "((a,b),c);" )
             test_tree_f = join(getcwd(), "this_is_a_test_tree.pdf")
             try:
                 t.render(test_tree_f, w=40, units="mm")
-                print "[STATUS] : ETE can connect to X server (X11). Tree will be rendered."
-                self.render_tree = True
+                print "[STATUS] - ETE can connect to X server (X11). Tree will be rendered."
             except:
-                print "[WARN] : ETE cannot connect to X server (X11). No tree will be rendered."
+                print "[WARN] - ETE cannot connect to X server (X11). No tree will be rendered."
                 self.render_tree = False
 
     def check_fuzzy_count(self, target_count):
@@ -2144,10 +2147,6 @@ if __name__ == "__main__":
             import ete3
         except ImportError:
             sys.exit("[ERROR] : Module \'ete3\' was not found. Please install \'ete3\' using \'pip install ete3\'\n/tPlotting of trees requires additional dependencies:\n\t- PyQt4\n\t")
-        try:
-            import PyQt4
-        except ImportError:
-            sys.exit("[ERROR] : PyQt4 is not installed. Please install PyQt4")
     # Input sane ... now we start
     print "[STATUS] - Starting analysis ..."
     overall_start = time.time()
