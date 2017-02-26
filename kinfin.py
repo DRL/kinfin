@@ -2101,16 +2101,13 @@ class InputObj():
             from ete3 import Tree
             t = Tree( "((a,b),c);" )
             test_tree_f = join(getcwd(), "this_is_a_test_tree.pdf")
-            t.render("test_tree_f.pdf", w=40, units="mm")
-            print "[STATUS] : ETE can connect to X server (X11). Tree will be rendered."
-            self.render_tree = True
-            # try:
-            #     test_tree_f = join(getcwd(), "%s.this_is_a_test_tree.pdf" % (outprefix))
-            #     t.render("test_tree_f.pdf", w=40, units="mm")
-            #     print "[STATUS] : ETE can connect to X server (X11). Tree will be rendered."
-            # except:
-            #     print "[WARN] : ETE cannot connect to X server (X11). No tree will be rendered."
-            #     self.render_tree = False
+            try:
+                t.render(test_tree_f, w=40, units="mm")
+                print "[STATUS] : ETE can connect to X server (X11). Tree will be rendered."
+                self.render_tree = True
+            except:
+                print "[WARN] : ETE cannot connect to X server (X11). No tree will be rendered."
+                self.render_tree = False
 
     def check_fuzzy_count(self, target_count):
         if int(target_count) > 0:
@@ -2150,11 +2147,6 @@ if __name__ == "__main__":
     args = docopt(__doc__)
     # Sanitise input
     inputObj = InputObj(args)
-    if inputObj.tree_f:
-        try:
-            import ete3
-        except:
-            sys.exit("[ERROR] : Module \'ete3\' was not found. Please install \'ete3\' using \'pip install ete3\'")
 
     # Input sane ... now we start
     print "[STATUS] - Starting analysis ..."
