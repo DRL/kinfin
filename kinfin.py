@@ -2001,7 +2001,7 @@ class InputObj():
         self.ipr_mapping_f = None
         self.go_mapping_f = None
         self.check_input_files()
-        #self.check_that_ete_can_plot()
+        self.check_that_ete_can_plot()
         # FASTA files
         self.fasta_dir = args['--fasta_dir']
         self.check_if_fasta_dir_and_species_ids_f()
