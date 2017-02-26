@@ -2103,10 +2103,10 @@ class InputObj():
                 t = ete3.Tree( "((a,b),c);" )
                 t.render(test_tree_f, w=40, units="mm")
                 print "[STATUS] - ETE can connect to X server (X11). Tree will be rendered."
-                os.remove(test_tree_f)
             except:
                 print "[WARN] - ETE cannot connect to X server (X11). No tree will be rendered."
                 self.render_tree = False
+            os.remove(test_tree_f)
 
     def check_fuzzy_count(self, target_count):
         if int(target_count) > 0:
