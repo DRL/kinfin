@@ -2102,7 +2102,8 @@ class InputObj():
             test_tree_f = join(getcwd(), "this_is_a_test_tree.pdf")
             t = ete3.Tree( "((a,b),c);" )
             try:
-                t.render(test_tree_f, w=40, units="mm")
+                a = t.render(test_tree_f, w=40, units="mm")
+                print a
                 print "[STATUS] - ETE can connect to X server (X11). Tree will be rendered."
             except:
                 self.render_tree = False
