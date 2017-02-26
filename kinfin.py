@@ -2091,6 +2091,10 @@ class InputObj():
     def check_that_ete_can_plot(self):
         if self.tree_f:
             try:
+                import ete3
+            except ImportError:
+                sys.exit("[ERROR] : Module \'ete3\' was not found. Please install \'ete3\' using \'pip install ete3\'\n/tPlotting of trees requires additional dependencies:\n\t- PyQt4\n\t")
+            try:
                 import PyQt4
             except ImportError:
                 sys.exit("[ERROR] : PyQt4 is not installed. Please install PyQt4")
@@ -2138,7 +2142,6 @@ if __name__ == "__main__":
     __version__ = "0.8.2"
     welcome_screen()
     args = docopt(__doc__)
-    # Sanitise input
     inputObj = InputObj(args)
     if inputObj.tree_f:
         print "[STATUS] - Tree specified : %s" % (inputObj.tree_f)
