@@ -2095,9 +2095,9 @@ class InputObj():
                 import PyQt4
             except ImportError:
                 sys.exit("[ERROR] : PyQt4 is not installed. Please install PyQt4")
-            t = Tree( "((a,b),c);" )
             test_tree_f = join(getcwd(), "this_is_a_test_tree.pdf")
             try:
+                t = Tree( "((a,b),c);" )
                 t.render(test_tree_f, w=40, units="mm")
                 print "[STATUS] - ETE can connect to X server (X11). Tree will be rendered."
             except:
