@@ -2111,7 +2111,7 @@ class InputObj():
                     print "[WARN] - ETE cannot connect to X server (X11). No tree will be rendered."
                 remove(test_tree_f)
             else:
-                print "[STATUS] - No X server seems to be present. ETE can't render the tree. Consider using \'xvfb-run\' ..."
+                print "[STATUS] - No X server found. ETE can't render the tree. Consider using \'xvfb-run\' ..."
                 self.render_tree = False
 
     def check_fuzzy_count(self, target_count):
@@ -2152,7 +2152,6 @@ if __name__ == "__main__":
     args = docopt(__doc__)
     inputObj = InputObj(args)
     if inputObj.tree_f:
-        print "[STATUS] - Tree specified : %s" % (inputObj.tree_f)
         try:
             import ete3
         except ImportError:
