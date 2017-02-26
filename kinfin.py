@@ -2099,17 +2099,20 @@ class InputObj():
             except ImportError:
                 sys.exit("[ERROR] : PyQt4 is not installed. Please install PyQt4")
 
-            test_tree_f = join(getcwd(), "this_is_a_test_tree.pdf")
-            t = ete3.Tree( "((a,b),c);" )
-            print environ['DISPLAY']
-            try:
-                a = t.render(test_tree_f, w=40, units="mm")
-                print a
-                print "[STATUS] - ETE can connect to X server (X11). Tree will be rendered."
-            except:
+            if 'DISPLAY' in environ:
+                print "[STATUS] - X server seems to be present..."
+                test_tree_f = join(getcwd(), "this_is_a_test_tree.pdf")
+                t = ete3.Tree( "((a,b),c);" )
+                try:
+                    a = t.render(test_tree_f, w=40, units="mm")
+                    print "[STATUS] - ETE can connect to X server (X11). Tree will be rendered."
+                except:
+                    self.render_tree = False
+                    print "[WARN] - ETE cannot connect to X server (X11). No tree will be rendered."
+                remove(test_tree_f)
+            else:
+                print "[STATUS] - No X server seems to be present. ETE can't render the tree. Consider using \'xvfb-run\' ..."
                 self.render_tree = False
-                print "[WARN] - ETE cannot connect to X server (X11). No tree will be rendered."
-            remove(test_tree_f)
 
     def check_fuzzy_count(self, target_count):
         if int(target_count) > 0:
