@@ -2141,6 +2141,7 @@ if __name__ == "__main__":
     # Sanitise input
     inputObj = InputObj(args)
     if inputObj.tree_f:
+        print "[STATUS] - Tree specified : %s" % (inputObj.tree_f)
         try:
             import ete3
         except ImportError:
