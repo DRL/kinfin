@@ -53,7 +53,7 @@ usage: kinfin-d.py      -g <FILE> -c <FILE> -s <FILE> [-t <FILE>] [-o <PREFIX>]
 from __future__ import division
 import sys
 from os.path import isfile, join, exists, realpath, dirname
-from os import getcwd, mkdir, remove
+from os import getcwd, mkdir, remove, environ
 import shutil
 import random
 import time
@@ -2101,6 +2101,7 @@ class InputObj():
 
             test_tree_f = join(getcwd(), "this_is_a_test_tree.pdf")
             t = ete3.Tree( "((a,b),c);" )
+            print environ['DISPLAY']
             try:
                 a = t.render(test_tree_f, w=40, units="mm")
                 print a
