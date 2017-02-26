@@ -53,7 +53,7 @@ usage: kinfin-d.py      -g <FILE> -c <FILE> -s <FILE> [-t <FILE>] [-o <PREFIX>]
 from __future__ import division
 import sys
 from os.path import isfile, join, exists, realpath, dirname
-from os import getcwd, mkdir
+from os import getcwd, mkdir, remove
 import shutil
 import random
 import time
@@ -2107,7 +2107,7 @@ class InputObj():
             except:
                 self.render_tree = False
                 print "[WARN] - ETE cannot connect to X server (X11). No tree will be rendered."
-            os.remove(test_tree_f)
+            remove(test_tree_f)
 
     def check_fuzzy_count(self, target_count):
         if int(target_count) > 0:
