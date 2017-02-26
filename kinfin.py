@@ -2090,14 +2090,13 @@ class InputObj():
 
     def check_that_ete_can_plot(self):
         if self.tree_f:
-            from ete3 import Tree
             try:
                 import PyQt4
             except ImportError:
                 sys.exit("[ERROR] : PyQt4 is not installed. Please install PyQt4")
             test_tree_f = join(getcwd(), "this_is_a_test_tree.pdf")
             try:
-                t = Tree( "((a,b),c);" )
+                t = ete3.Tree( "((a,b),c);" )
                 t.render(test_tree_f, w=40, units="mm")
                 print "[STATUS] - ETE can connect to X server (X11). Tree will be rendered."
             except:
