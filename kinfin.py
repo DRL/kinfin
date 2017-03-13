@@ -53,7 +53,7 @@ usage: kinfin-d.py      -g <FILE> -c <FILE> -s <FILE> [-t <FILE>] [-o <PREFIX>]
 from __future__ import division
 import sys
 from os.path import isfile, join, exists, realpath, dirname
-from os import getcwd, mkdir
+from os import getcwd, mkdir, remove, environ
 import shutil
 import random
 import time
@@ -1900,8 +1900,8 @@ class ClusterObj():
         self.protein_count = len(protein_ids)
         try:
             self.proteomes_by_protein_id = {protein_id : proteinCollection.proteinObjs_by_protein_id[protein_id].proteome_id for protein_id in protein_ids}
-        except KeyError:
-            sys.exit("[ERROR] - Proteins in clustering belong to proteomes that are not present in the SpeciesClassification-file. Please add those proteoemes or recluster by omitting these proteomes.")
+        except KeyError as e:
+            sys.exit("[ERROR] - Protein %s in clustering belong to proteomes that are not present in the SpeciesClassification-file. Please add those proteoemes or recluster by omitting these proteomes." % (e.args[0]))
 
         self.proteome_ids_list = self.proteomes_by_protein_id.values()
         self.protein_count_by_proteome_id = Counter(self.proteome_ids_list)
@@ -2070,20 +2070,20 @@ class InputObj():
         if self.pfam_mapping:
             pfam_mapping_f = join(dirname(realpath(__file__)), "data/Pfam-A.clans.tsv.gz")
             if not isfile(pfam_mapping_f):
-                print "[WARN] : PFAM-ID file 'data/Pfam-A.clans.tsv.gz' not found."
+                print "[WARN] - PFAM-ID file 'data/Pfam-A.clans.tsv.gz' not found."
                 remote_f = "ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.clans.tsv.gz"
                 retrieve_ftp(remote_f, pfam_mapping_f)
             self.pfam_mapping_f = pfam_mapping_f
         if self.ipr_mapping:
             ipr_mapping_f = join(dirname(realpath(__file__)), "data/entry.list")
             if not isfile(ipr_mapping_f):
-                print "[WARN] : IPR-ID file 'data/entry.list' not found."
+                print "[WARN] - IPR-ID file 'data/entry.list' not found."
                 remote_f = "ftp://ftp.ebi.ac.uk/pub/databases/interpro/entry.list"
                 retrieve_ftp(remote_f, ipr_mapping_f)
             self.ipr_mapping_f = ipr_mapping_f
             go_mapping_f = join(dirname(realpath(__file__)), "data/interpro2go")
             if not isfile(go_mapping_f):
-                print "[WARN] : GO-ID file, but 'data/interpro2go' not found."
+                print "[WARN] - GO-ID file, but 'data/interpro2go' not found."
                 remote_f = "ftp://ftp.ebi.ac.uk/pub/databases/interpro/interpro2go"
                 retrieve_ftp(remote_f, go_mapping_f)
             self.go_mapping_f = go_mapping_f
@@ -2098,14 +2098,20 @@ class InputObj():
                 import PyQt4
             except ImportError:
                 sys.exit("[ERROR] : PyQt4 is not installed. Please install PyQt4")
-            from ete3 import Tree
-            t = Tree( "((a,b),c);" )
-            try:
-                test_tree_f = join(getcwd(), "%s.this_is_a_test_tree.pdf" % (outprefix))
-                t.render("test_tree_f.pdf", w=40, units="mm")
-                print "[STATUS] : ETE can connect to X server (X11). Tree will be rendered."
-            except:
-                print "[WARN] : ETE cannot connect to X server (X11). No tree will be rendered."
+
+            if 'DISPLAY' in environ:
+                print "[STATUS] - X server seems to be present..."
+                test_tree_f = join(getcwd(), "this_is_a_test_tree.pdf")
+                t = ete3.Tree( "((a,b),c);" )
+                try:
+                    a = t.render(test_tree_f, w=40, units="mm")
+                    print "[STATUS] - ETE can connect to X server (X11). Tree will be rendered."
+                except:
+                    self.render_tree = False
+                    print "[WARN] - ETE cannot connect to X server (X11). No tree will be rendered."
+                remove(test_tree_f)
+            else:
+                print "[STATUS] - No X server found. ETE can't render the tree. Consider using \'xvfb-run\' ..."
                 self.render_tree = False
 
     def check_fuzzy_count(self, target_count):
@@ -2141,17 +2147,15 @@ def welcome_screen():
 
 
 if __name__ == "__main__":
-    __version__ = "0.8.2"
+    __version__ = "0.8.3"
     welcome_screen()
     args = docopt(__doc__)
-    # Sanitise input
     inputObj = InputObj(args)
     if inputObj.tree_f:
         try:
             import ete3
-        except:
-            sys.exit("[ERROR] : Module \'ete3\' was not found. Please install \'ete3\' using \'pip install ete3\'")
-
+        except ImportError:
+            sys.exit("[ERROR] : Module \'ete3\' was not found. Please install \'ete3\' using \'pip install ete3\'\n/tPlotting of trees requires additional dependencies:\n\t- PyQt4\n\t")
     # Input sane ... now we start
     print "[STATUS] - Starting analysis ..."
     overall_start = time.time()
