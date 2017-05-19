@@ -270,10 +270,12 @@ def readFastaLen(infile):
         for l in fh:
             if l[0] == '>':
                 if header:
+                    header = header.replace(":", "_").replace(",", "_").replace("(", "_").replace(")", "_") # orthofinder replaces chars
                     yield header, len(''.join(seqs))
                 header, seqs = l[1:-1].split()[0], [] # Header is split at first whitespace
             else:
                 seqs.append(l[:-1])
+        header = header.replace(":", "_").replace(",", "_").replace("(", "_").replace(")", "_") # orthofinder replaces chars
         yield header, len(''.join(seqs))
 
 def median(lst):
@@ -476,7 +478,7 @@ class DataFactory():
         for line in read_file(sequence_ids_f):
             temp = line.split(": ")
             sequence_id = temp[0]
-            protein_id = temp[1].split(" ")[0]
+            protein_id = temp[1].split(" ")[0].replace(":", "_").replace(",", "_").replace("(", "_").replace(")", "_") # orthofinder replaces characters
             species_id = sequence_id.split("_")[0]
             proteome_id = aloCollection.proteome_id_by_species_id.get(species_id, None)
             if proteome_id:
@@ -1901,7 +1903,7 @@ class ClusterObj():
         try:
             self.proteomes_by_protein_id = {protein_id : proteinCollection.proteinObjs_by_protein_id[protein_id].proteome_id for protein_id in protein_ids}
         except KeyError as e:
-            sys.exit("[ERROR] - Protein %s in clustering belong to proteomes that are not present in the SpeciesClassification-file. Please add those proteoemes or recluster by omitting these proteomes." % (e.args[0]))
+            sys.exit("[ERROR] - Protein %s in clustering belongs to proteomes that are not present in the SpeciesClassification-file. Please add those proteoemes or recluster by omitting these proteomes." % (e.args[0]))
 
         self.proteome_ids_list = self.proteomes_by_protein_id.values()
         self.protein_count_by_proteome_id = Counter(self.proteome_ids_list)
