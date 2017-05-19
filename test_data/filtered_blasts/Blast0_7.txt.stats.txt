@@ -1,0 +1,1 @@
+file=%s;total=0;FILE WAS EMPTY!.

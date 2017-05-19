@@ -9,3 +9,4 @@ data/pdb*
 data/entry.list
 data/Pfam-A.clans.tsv.gz
 data/interpro2go
+*.png

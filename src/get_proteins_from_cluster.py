@@ -4,6 +4,7 @@
 """
 usage: get_proteins_from_cluster.py     -g <FILE> [--header <FILE>]
                                         [-c <STRING>] [--clusters <FILE>] [-s]
+                                        [-o <STR>]
                                         [-h|--help]
 
     Options:
@@ -12,7 +13,8 @@ usage: get_proteins_from_cluster.py     -g <FILE> [--header <FILE>]
         --header <FILE>                 Filter based on sequence IDs in file
         -c, --cluster <STRING>          Filter based on cluster ID
         --clusters <FILE>               Filter based on cluster IDs in file
-        -s, --single_out_file           Write all proteins to a single files
+        -o, --outprefix <STR>           Outprefix
+        -s, --single_out_file           Write all proteins to a single file
 
 """
 
@@ -66,7 +68,7 @@ def parse_groups(group_f):
                         sys.exit("[-] cluster %s found more than once" % clusterID)
     return output
 
-def write_output(output):
+def write_output(output, outprefix):
     headers_found = set([k for k, v in headers.iteritems() if v])
     clusters_found = set([k for k, v in clusters.iteritems() if v])
     if headers:
@@ -74,6 +76,8 @@ def write_output(output):
     if clusters:
         print "[+] Found %s of clusters ..." % "{:.0%}".format(len(clusters_found)/len(clusters))
     stats_f = "%s.parse_stats.txt" % (splitext(basename(groups_f))[0])
+    if outprefix:
+        stats_f = "%s.%s" % (outprefix, stats_f)
     if headers_found or clusters_found:
         print "[+] Writing files ..."
         if not single_out_file:
@@ -85,14 +89,18 @@ def write_output(output):
                 proteins_target = len([x for x in proteins if x in headers_found])
                 proteins_non_target = proteins_total - proteins_target
                 out_f = "%s.%s.txt" % (splitext(basename(groups_f))[0], clusterID)
+                if outprefix:
+                    out_f = "%s.%s" % (outprefix, out_f)
                 with open(out_f, 'w') as out_fh:
                     out_fh.write("\n".join(protein_lines))
-                stats_lines.append("%s total=%s target=%s non-target=%s\n" % (clusterID, proteins_total, proteins_target, proteins_non_target))
+                stats_lines.append("%s total=%s target=%s non-target=%s" % (clusterID, proteins_total, proteins_target, proteins_non_target))
             with open(stats_f, 'w') as stats_fh:
                 stats_fh.write("\n".join(stats_lines))
         else:
             protein_lines = []
             out_f = "%s.protein_ids.txt" % (splitext(basename(cluster_f))[0])
+            if outprefix:
+                out_f = "%s.%s" % (outprefix, out_f)
             for clusterID, proteins in output.items():
                 protein_lines += proteins
             with open(out_f, 'w') as out_fh:
@@ -107,6 +115,7 @@ if __name__ == "__main__":
     cluster_id = args['--cluster']
     cluster_f = args['--clusters']
     single_out_file = args['--single_out_file']
+    outprefix = args['--outprefix']
 
     headers = {}
     clusters = {}
@@ -127,4 +136,4 @@ if __name__ == "__main__":
         sys.exit(__doc__.strip())
     print "[+] Parse groups %s ..." % groups_f
     output = parse_groups(groups_f)
-    write_output(output)
+    write_output(output, outprefix)

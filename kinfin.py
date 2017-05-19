@@ -345,8 +345,8 @@ class DataFactory():
         tree_f = inputObj.tree_f
         proteomes, proteome_id_by_species_id, attributes, level_by_attribute_by_proteome_id = self.parse_attributes(attribute_f)
         # Add taxonomy if needed
-        if 'taxid' in set(attributes):
-            print "[STATUS] - Attribute 'taxid' found, inferring taxonomic ranks from nodesDB..."
+        if 'TAXID' in set(attributes):
+            print "[STATUS] - Attribute 'TAXID' found, inferring taxonomic ranks from nodesDB..."
             attributes, level_by_attribute_by_proteome_id = self.add_taxid_attributes(nodesdb_f, attributes, level_by_attribute_by_proteome_id)
         # Add ALOs from tree if provided
         tree_ete = None
@@ -2194,9 +2194,4 @@ if __name__ == "__main__":
         1. Executable bash script that calls
             a) "xvfb-run" : if in path
             b) "normal" : if not
-        2. Memory argument
-
-
-            - barcharts
-            - Go term enrichments
     '''
