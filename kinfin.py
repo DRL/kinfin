@@ -406,19 +406,19 @@ class DataFactory():
         if nodesdb_f:
             check_file(nodesdb_f)
         else:
-            sys.exit("[ERROR] - Please provide a nodesDB file or remove the 'taxid' attribute")
+            sys.exit("[ERROR] - Please provide a nodesDB file or remove the 'TAXID' attribute")
         print "[STATUS] - Parsing nodesDB %s" % (nodesdb_f)
         NODESDB = parse_nodesdb(nodesdb_f)
         for proteome_id in level_by_attribute_by_proteome_id:
-            taxid = level_by_attribute_by_proteome_id[proteome_id]['taxid']
+            taxid = level_by_attribute_by_proteome_id[proteome_id]['TAXID']
             lineage = get_lineage(taxid, NODESDB)
             # add lineage attribute/levels
             for taxrank in inputObj.taxranks:
                 level_by_attribute_by_proteome_id[proteome_id][taxrank] = lineage[taxrank].replace(" ", "_")
             # remove taxid-levels
-            del level_by_attribute_by_proteome_id[proteome_id]['taxid']
+            del level_by_attribute_by_proteome_id[proteome_id]['TAXID']
         # remove taxid-attribute
-        attributes.remove('taxid')
+        attributes.remove('TAXID')
         # add taxranks to rank
         for taxrank in inputObj.taxranks:
             attributes.append(taxrank)
