@@ -34,6 +34,7 @@ setup(
     packages=find_packages(exclude=['docs', 'tests*']),
     include_package_data=True,
     author='Dominik R Laetsch',
+    setup_requires=['numpy'],
     install_requires=install_requires,
     dependency_links=dependency_links,
     author_email='dominik.laetsch@gmail.com'
