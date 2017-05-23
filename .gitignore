@@ -10,3 +10,6 @@ data/entry.list
 data/Pfam-A.clans.tsv.gz
 data/interpro2go
 *.png
+*.eggs/
+build/
+dist/

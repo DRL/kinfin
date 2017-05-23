@@ -6,4 +6,3 @@ powerlaw==1.4.1
 ete3==3.0.0b35
 sphinx
 sphinx_rtd_theme
-pypi-publisher
