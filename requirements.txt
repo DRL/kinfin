@@ -1,6 +1,9 @@
 # Dev/Deployment
 sphinx
 sphinx_rtd_theme
-nose
-coverage
 pypi-publisher
+# Dependencies
+scipy==0.19.0
+matplotlib==2.0.2
+ete3==3.0.0b35
+docopt==0.6.2
