@@ -1,4 +1,7 @@
+import pip
 from setuptools import setup, find_packages
+from setuptools.command.install import install
+from pip.req import parse_requirements
 from codecs import open
 from os import path
 
@@ -11,21 +14,20 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 # get the dependencies and installs
-with open(path.join(here, 'requirements.txt'), encoding='utf-8') as f:
-    all_reqs = f.read().split('\n')
+install_reqs = parse_requirements(path.join(here, 'requirements.txt'), session=False)
+reqs = [str(ir.req) for ir in install_reqs]
 
-try:
-    import matplotlib
-except ImportError:  # We do not have numpy installed
-    build_requires = ['matplotlib>=2.0.2']
-else:
-    # If we're building a wheel, assume there already exist numpy wheels
-    # for this platform, so it is safe to add numpy to build requirements.
-    # See gh-5184.
-    build_requires = (['matplotlib>=2.0.2'] if 'bdist_wheel' in sys.argv[1:] else [])
+class OverrideInstall(install):
 
-install_requires = [x.strip() for x in all_reqs if 'git+' not in x]
-dependency_links = [x.strip().replace('git+', '') for x in all_reqs if x.startswith('git+')]
+    """
+    Emulate sequential install of pip install -r requirements.txt
+    To fix numpy bug in scipy, scikit in py2
+    """
+
+    def run(self):
+        for req in reqs:
+            pip.main(["install", req])
+
 
 
 setup(
@@ -45,8 +47,6 @@ setup(
     packages=find_packages(exclude=['docs', 'tests*']),
     include_package_data=True,
     author='Dominik R Laetsch',
-    build_requires=build_requires,
-    install_requires=install_requires,
-    dependency_links=dependency_links,
+    cmdclass={'install': OverrideInstall},
     author_email='dominik.laetsch@gmail.com'
 )

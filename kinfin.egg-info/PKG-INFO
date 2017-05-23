@@ -1,0 +1,47 @@
+Metadata-Version: 1.1
+Name: kinfin
+Version: 0.9
+Summary: Taxon-aware analysis of clustered protein data
+Home-page: https://github.com/DRL/kinfin
+Author: Dominik R Laetsch
+Author-email: dominik.laetsch@gmail.com
+License: GnuGPL3
+Download-URL: https://github.com/DRL/kinfin/tarball/0.9
+Description: KinFin
+        ===============================
+        
+        version number: 0.9
+        author: Dominik R Laetsch
+        
+        Overview
+        --------
+        
+        Taxon-aware analysis of clustered protein data
+        
+        Installation / Usage
+        --------------------
+        
+        To install use pip:
+        
+            $ pip install kinfin
+        
+        
+        Or clone the repo:
+        
+            $ git clone https://github.com/DRL/kinfin.git
+            $ python setup.py install
+            
+        Contributing
+        ------------
+        
+        TBD
+        
+        Example
+        -------
+        
+        TBD
+Keywords: Comparative genomics
+Platform: UNKNOWN
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 2.7

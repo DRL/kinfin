@@ -1,0 +1,12 @@
+MANIFEST.in
+README.md
+requirements.txt
+setup.cfg
+setup.py
+kinfin/__init__.py
+kinfin/kinfin.py
+kinfin.egg-info/PKG-INFO
+kinfin.egg-info/SOURCES.txt
+kinfin.egg-info/dependency_links.txt
+kinfin.egg-info/requires.txt
+kinfin.egg-info/top_level.txt
