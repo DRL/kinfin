@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 
 """
-usage: get_proteins_from_cluster.py     -g <FILE> [--header <FILE>]
-                                        [-c <STRING>] [--clusters <FILE>] [-s]
-                                        [-o <STR>]
-                                        [-h|--help]
+usage: get_protein_ids_from_cluster.py     -g <FILE> [--header <FILE>]
+                                            [-c <STRING>] [--clusters <FILE>] [-s]
+                                            [-o <STR>]
+                                            [-h|--help]
 
     Options:
         -h --help                       show this
@@ -92,10 +92,10 @@ def write_output(output, outprefix):
                 if outprefix:
                     out_f = "%s.%s" % (outprefix, out_f)
                 with open(out_f, 'w') as out_fh:
-                    out_fh.write("\n".join(protein_lines))
+                    out_fh.write("%s\n" % "\n".join(protein_lines))
                 stats_lines.append("%s total=%s target=%s non-target=%s" % (clusterID, proteins_total, proteins_target, proteins_non_target))
             with open(stats_f, 'w') as stats_fh:
-                stats_fh.write("\n".join(stats_lines))
+                stats_fh.write("%s\n" % "\n".join(stats_lines))
         else:
             protein_lines = []
             out_f = "%s.protein_ids.txt" % (splitext(basename(cluster_f))[0])
@@ -104,7 +104,7 @@ def write_output(output, outprefix):
             for clusterID, proteins in output.items():
                 protein_lines += proteins
             with open(out_f, 'w') as out_fh:
-                out_fh.write("\n".join(protein_lines))
+                out_fh.write("%s\n" % "\n".join(protein_lines))
 
 
 if __name__ == "__main__":
