@@ -94,7 +94,7 @@ class DataCollection():
 
 def read_file(infile):
     if not os.path.exists(infile):
-        sys.exit("[X] File provided for argument --include_id_f/--exclude_id_f does not exist.")
+        sys.exit("[X] File %s does not exist." % (infile))
     else:
         with open(infile) as fh:
             for line in fh:
