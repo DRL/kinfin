@@ -1,2 +1,3 @@
 #!/usr/bin/env bash
-$0/../src/kinfin.py "$@"
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+$DIR/src/kinfin.py "$@"
