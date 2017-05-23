@@ -1,11 +1,6 @@
-features*
-kinfin.md
 *.pyc
-*kinfin_results
-*big_test_data/
 data/nodesDB.txt
 data/interpro2go
-data/pdb*
 data/entry.list
 data/Pfam-A.clans.tsv.gz
 data/interpro2go
@@ -13,3 +8,4 @@ data/interpro2go
 *.eggs/
 build/
 dist/
+
