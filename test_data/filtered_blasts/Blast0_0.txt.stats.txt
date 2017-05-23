@@ -1,1 +1,0 @@
-file=/Users/dom/git/kinfin/test_data/filtered_blasts/Blast0_0.txt;total=14;included=13;included_perc=92.9%;excluded=1;excluded_perc=7.1%

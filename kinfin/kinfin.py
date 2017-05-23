@@ -3,7 +3,7 @@
 
 """
 usage: kinfin-d.py      -g <FILE> -c <FILE> -s <FILE> [-t <FILE>] [-o <PREFIX>]
-                        [--infer_singletons]
+                        [--infer_singletons] [--plot_tree]
                         [-p <FILE>] [-a <DIR>]
                         [--functional_annotation <FILE>]
                         [--nodesdb <FILE>] [--taxranks <STRING>]
@@ -18,27 +18,28 @@ usage: kinfin-d.py      -g <FILE> -c <FILE> -s <FILE> [-t <FILE>] [-o <PREFIX>]
 
         Input files
             -g, --cluster_file <FILE>           OrthologousGroups.txt produced by OrthoFinder
-            -c, --attribute_file <FILE>         SpeciesClassification file
+            -c, --config_file <FILE>            Config file (in CSV format)
             -s, --sequence_ids_file <FILE>      SequenceIDs.txt used in OrthoFinder
 
             -p, --species_ids_file <FILE>       SpeciesIDs.txt used in OrthoFinder
             --functional_annotation <FILE>      Mapping of ProteinIDs to GO/IPRS/SignalP/Pfam/... (can be generated through 'iprs_to_table.py')
             -a, --fasta_dir <DIR>               Directory of FASTA files
-            --nodesdb <FILE>                    nodesdb file (sames as blobtools nodesDB file)
+            --nodesdb <FILE>                    nodesdb file (in data/ folder, has to be uncompressed)
             -t, --tree_file <FILE>              Tree file (on which ALOs are defined)
         General options
             -o, --outprefix <STR>               Output prefix
-            --infer_singletons                  Absence of proteins in clustering is interpreted as singleton
-            --min_proteomes <INT>               Minimum number of proteomes for an ALO to be used in computations [default: 2]
-            --taxranks <STRING>                 Taxranks to be inferred from TaxID [default: kingdom,phylum,class,superfamily]
-        "Fuzzy"-Orthology-groups
-            -f, --fuzzyness <FLOAT>             "Fuzzyness"-factor F [default: 0.75]
-            -n, --target_count <INT>            Protein count by proteome in (100*F)%% of cluster [default: 1]
-            --min <INT>                         Min count of proteins by proteome in (100*(1-F))%% of cluster [default: 0]
-            --max <INT>                         Max count of proteins by proteome in (100*(1-F))%% of cluster [default: 100]
-
-        Plotting
+            --infer_singletons                  Absence of proteins in clustering is interpreted as singleton (based on SequenceIDs.txt)
+            --plot_tree                         Plot annotated phylogenetic tree (requires full ETE3 installation and X-server/xvfb-run)
+            --min_proteomes <INT>               Required number of proteomes in a taxon-set to be used
+                                                    in rarefaction/representation-test computations [default: 2]
+            --taxranks <STRING>                 Taxonomic ranks to be inferred from TaxID [default: phylum,order,genus]
             -r, --repetitions <INT>             Number of repetitions for rarefaction curves [default: 30]
+        "Fuzzy"-Orthology-groups
+            -f, --target_fraction <FLOAT>       Minimum proportion of proteomes with target protein count [default: 0.75].
+            -n, --target_count <INT>            Target protein count by proteome in (100*F)% of cluster [default: 1]
+            --min <INT>                         Min count of proteins by proteome in (100*(1-F))% of cluster [default: 0]
+            --max <INT>                         Max count of proteins by proteome in (100*(1-F))% of cluster [default: 100]
+        Plotting
             --fontsize <INT>                    Fontsize for plots [default: 18]
             --plotsize <INT,INT>                Size (WIDTH,HEIGHT) for plots [default: 24,12]
             --plotfmt <STR>                     Plot formats [default: pdf]
@@ -77,14 +78,6 @@ try:
     import scipy
 except ImportError:
     import_errors.append("[ERROR] : Module \'SciPy\' was not found. Please install \'SciPy\' using \'pip install scipy\'")
-try:
-    import seaborn as sns
-except ImportError:
-    import_errors.append("[ERROR] : Module \'Seaborn\' was not found. Please install \'Seaborn\' using \'pip install seaborn\'")
-#try:
-#    import powerlaw
-#except ImportError:
-#    import_errors.append("[ERROR] : Module \'powerlaw\'' was not found. Please install \'powerlaw\' using \'pip install powerlaw\'")
 
 if import_errors:
     sys.exit("\n".join(import_errors))
@@ -93,9 +86,6 @@ import numpy as np
 from matplotlib.ticker import FormatStrFormatter
 import matplotlib.pyplot as plt
 plt.style.use('ggplot')
-sns.set_context("talk")
-sns.set(style="whitegrid")
-sns.set_color_codes("pastel")
 mat.rc('ytick', labelsize=20)
 mat.rc('xtick', labelsize=20)
 axis_font = {'size': '20'}
@@ -105,6 +95,7 @@ mat.rcParams.update({'font.size': 22})
 # General functions
 ########################################################################
 
+
 def retrieve_ftp(remote_f, local_f):
     try:
         print "[STATUS] - Downloading '%s' to '%s'." % (remote_f, local_f)
@@ -112,10 +103,12 @@ def retrieve_ftp(remote_f, local_f):
     except IOError:
         sys.exit("[ERROR] : '%s' could not be downloaded." % (remote_f))
 
+
 def check_file(infile):
     if infile:
         if not isfile(infile):
             sys.exit("[ERROR] : %s does not exist." % (infile))
+
 
 def get_attribute_cluster_type(singleton, implicit_protein_ids_by_proteome_id_by_level):
     if singleton:
@@ -126,6 +119,7 @@ def get_attribute_cluster_type(singleton, implicit_protein_ids_by_proteome_id_by
         else:
             return 'specific'
 
+
 def get_ALO_cluster_cardinality(ALO_proteome_counts_in_cluster):
     if len(ALO_proteome_counts_in_cluster) > 2:
         ALO_proteome_counts_in_cluster_length = len(ALO_proteome_counts_in_cluster)
@@ -134,11 +128,12 @@ def get_ALO_cluster_cardinality(ALO_proteome_counts_in_cluster):
         else:
             ALO_proteome_counts_in_cluster_at_fuzzycount_count = len([ALO_proteome_counts for ALO_proteome_counts in ALO_proteome_counts_in_cluster if ALO_proteome_counts == inputObj.fuzzy_count])
             ALO_proteome_counts_in_cluster_in_fuzzyrange_count = len([ALO_proteome_counts for ALO_proteome_counts in ALO_proteome_counts_in_cluster if ALO_proteome_counts in inputObj.fuzzy_range])
-            fuzzy_fraction = ALO_proteome_counts_in_cluster_at_fuzzycount_count/ALO_proteome_counts_in_cluster_length
+            fuzzy_fraction = ALO_proteome_counts_in_cluster_at_fuzzycount_count / ALO_proteome_counts_in_cluster_length
             if fuzzy_fraction >= inputObj.fuzzy_fraction:
                 if ALO_proteome_counts_in_cluster_at_fuzzycount_count + ALO_proteome_counts_in_cluster_in_fuzzyrange_count == ALO_proteome_counts_in_cluster_length:
                     return 'fuzzy'
     return None
+
 
 def mannwhitneyu(count_1, count_2):
     pvalue, log2_mean, mean_count_1, mean_count_2 = None, None, None, None
@@ -154,8 +149,9 @@ def mannwhitneyu(count_1, count_2):
         log2_mean = log((mean(implicit_count_1)/mean(implicit_count_2)), 2)
     return pvalue, log2_mean, mean_count_1, mean_count_2
 
+
 def get_lineage(taxid, nodesdb):
-    lineage = {taxrank : 'undef' for taxrank in inputObj.taxranks}
+    lineage = {taxrank: 'undef' for taxrank in inputObj.taxranks}
     parent = ''
     node = taxid
     while parent != "1":
@@ -167,6 +163,7 @@ def get_lineage(taxid, nodesdb):
         node = parent
     return lineage
 
+
 def parse_nodesdb(nodesdb_f):
     nodesdb = {}
     nodesdb_count = 0
@@ -177,10 +174,11 @@ def parse_nodesdb(nodesdb_f):
         else:
             nodes_count += 1
             node, rank, name, parent = line.rstrip("\n").split("\t")
-            nodesdb[node] = {'rank' : rank, 'name' : name, 'parent' : parent}
+            nodesdb[node] = {'rank': rank, 'name': name, 'parent': parent}
             if nodesdb_count:
                 progress(nodes_count, 1000, nodesdb_count)
     return nodesdb
+
 
 def parse_mapping(mapping_file_by_domain_source):
     domain_description_by_domain_id_by_domain_source = {}
@@ -193,7 +191,7 @@ def parse_mapping(mapping_file_by_domain_source):
                     temp = line.split("\t")
                     domain_id = temp[0]
                     domain_desc = temp[4]
-                    if not domain_id in domain_description_by_domain_id_by_domain_source[domain_source]:
+                    if domain_id not in domain_description_by_domain_id_by_domain_source[domain_source]:
                         domain_description_by_domain_id_by_domain_source[domain_source][domain_id] = domain_desc
                     else:
                         if not domain_desc == domain_description_by_domain_id_by_domain_source[domain_source][domain_id]:
@@ -206,7 +204,7 @@ def parse_mapping(mapping_file_by_domain_source):
                         temp = line.replace(" > ", "|").split("|")
                         go_string = temp[1].split(";")
                         go_desc, go_id = go_string[0].replace("GO:", ""), go_string[1].lstrip(" ")
-                        if not go_id in domain_description_by_domain_id_by_domain_source['GO']:
+                        if go_id not in domain_description_by_domain_id_by_domain_source['GO']:
                             domain_description_by_domain_id_by_domain_source['GO'][go_id] = go_desc
                         else:
                             if not go_desc == domain_description_by_domain_id_by_domain_source['GO'][go_id]:
@@ -219,12 +217,13 @@ def parse_mapping(mapping_file_by_domain_source):
                         temp = line.split()
                         ipr_id = temp[0]
                         ipr_desc = " ".join(temp[1:])
-                        if not ipr_id in domain_description_by_domain_id_by_domain_source['IPR']:
+                        if ipr_id not in domain_description_by_domain_id_by_domain_source['IPR']:
                             domain_description_by_domain_id_by_domain_source['IPR'][ipr_id] = ipr_desc
                         else:
                             if not ipr_desc == domain_description_by_domain_id_by_domain_source['IPR'][ipr_id]:
                                 sys.exit("[ERROR] : Conflicting descriptions for %s" % (ipr_id))
     return domain_description_by_domain_id_by_domain_source
+
 
 def parse_tree(tree_f, outgroups):
     check_file(tree_f)
@@ -245,24 +244,25 @@ def parse_tree(tree_f, outgroups):
     for idx, node in enumerate(tree_ete.traverse("levelorder")):
         proteome_ids = frozenset([leaf.name for leaf in node])
         if not node.name:
-            node.add_features(\
-                name="n%s" % (idx), \
-                nodetype="node", \
-                proteome_ids=proteome_ids, \
-                apomorphic_cluster_counts={'singletons' : 0, 'non_singletons' : 0}, \
-                synapomorphic_cluster_counts={'complete_presence' : 0, 'stochastic_absence' : 0}, \
-                synapomorphic_cluster_strings=[], \
-                counts={'specific' : 0, 'shared' : 0, "absent" : 0, "singleton" : 0})
+            node.add_features(
+                name="n%s" % (idx),
+                nodetype="node",
+                proteome_ids=proteome_ids,
+                apomorphic_cluster_counts={'singletons': 0, 'non_singletons': 0},
+                synapomorphic_cluster_counts={'complete_presence': 0, 'stochastic_absence': 0},
+                synapomorphic_cluster_strings=[],
+                counts={'specific': 0, 'shared': 0, "absent": 0, "singleton": 0})
         else:
-            node.add_features(\
-                nodetype="tip", \
-                proteome_ids=proteome_ids, \
-                apomorphic_cluster_counts={'singletons' : 0, 'non_singletons' : 0}, \
-                synapomorphic_cluster_counts={'complete_presence' : 0, 'stochastic_absence' : 0}, \
-                synapomorphic_cluster_strings=[], \
-                counts={'specific' : 0, 'shared' : 0, "absent" : 0, "singleton" : 0})
+            node.add_features(
+                nodetype="tip",
+                proteome_ids=proteome_ids,
+                apomorphic_cluster_counts={'singletons': 0, 'non_singletons': 0},
+                synapomorphic_cluster_counts={'complete_presence': 0, 'stochastic_absence': 0},
+                synapomorphic_cluster_strings=[],
+                counts={'specific': 0, 'shared': 0, "absent": 0, "singleton": 0})
         node_idx_by_proteome_ids[proteome_ids] = node.name
     return tree_ete, node_idx_by_proteome_ids
+
 
 def readFastaLen(infile):
     with open(infile) as fh:
@@ -270,13 +270,14 @@ def readFastaLen(infile):
         for l in fh:
             if l[0] == '>':
                 if header:
-                    header = header.replace(":", "_").replace(",", "_").replace("(", "_").replace(")", "_") # orthofinder replaces chars
+                    header = header.replace(":", "_").replace(",", "_").replace("(", "_").replace(")", "_")  # orthofinder replaces chars
                     yield header, len(''.join(seqs))
                 header, seqs = l[1:-1].split()[0], [] # Header is split at first whitespace
             else:
                 seqs.append(l[:-1])
-        header = header.replace(":", "_").replace(",", "_").replace("(", "_").replace(")", "_") # orthofinder replaces chars
+        header = header.replace(":", "_").replace(",", "_").replace("(", "_").replace(")", "_")  # orthofinder replaces chars
         yield header, len(''.join(seqs))
+
 
 def median(lst):
     list_sorted = sorted(lst)
@@ -287,11 +288,13 @@ def median(lst):
     else:
         return (list_sorted[index] + list_sorted[index + 1])/2.0
 
+
 def mean(lst):
     if lst:
         return float(sum(lst)) / len(lst)
     else:
         return 0.0
+
 
 def sd(lst, population=True):
     n = len(lst)
@@ -305,16 +308,18 @@ def sd(lst, population=True):
     sd_result = sqrt(variance)
     return sd_result
 
+
 def progress(iteration, steps, max_value):
     if int(iteration) == int(max_value):
         sys.stdout.write('\r')
         print "[PROGRESS] \t- %d%%" % (100)
-    elif int(iteration) % int(steps+1) == 0:
+    elif int(iteration) % int(steps + 1) == 0:
         sys.stdout.write('\r')
-        print "[PROGRESS] \t- %d%%" % (float(int(iteration)/int(max_value))*100),
+        print "[PROGRESS] \t- %d%%" % (float(int(iteration) / int(max_value)) * 100),
         sys.stdout.flush()
     else:
         pass
+
 
 def read_file(infile):
     if not infile or not exists(infile):
@@ -333,6 +338,7 @@ def read_file(infile):
 # CLASS : DataFactory
 ########################################################################
 
+
 class DataFactory():
     def __init__(self):
         self.dirs = None
@@ -342,10 +348,10 @@ class DataFactory():
     ###############################
 
     def build_AloCollection(self):
-        attribute_f = inputObj.attribute_f
+        config_f = inputObj.config_f
         nodesdb_f = inputObj.nodesdb_f
         tree_f = inputObj.tree_f
-        proteomes, proteome_id_by_species_id, attributes, level_by_attribute_by_proteome_id = self.parse_attributes(attribute_f)
+        proteomes, proteome_id_by_species_id, attributes, level_by_attribute_by_proteome_id = self.parse_attributes(config_f)
         # Add taxonomy if needed
         if 'TAXID' in set(attributes):
             print "[STATUS] - Attribute 'TAXID' found, inferring taxonomic ranks from nodesDB..."
@@ -356,7 +362,7 @@ class DataFactory():
         if tree_f:
             outgroups = []
             if not "OUT" in attributes:
-                sys.exit("[ERROR] - Please specify one of more outgroup taxa in the attribute file.")
+                sys.exit("[ERROR] - Please specify one of more outgroup taxa in the config file.")
             outgroups = [proteome_id for proteome_id in proteomes if level_by_attribute_by_proteome_id[proteome_id]["OUT"] == "1"]
             tree_ete, node_idx_by_proteome_ids = parse_tree(tree_f, outgroups)
         print "[STATUS] - Building AloCollection ..."
@@ -366,26 +372,26 @@ class DataFactory():
     ### build_AloCollection  parse_attributes
     ###############################
 
-    def parse_attributes(self, attribute_f):
-        print "[STATUS] - Parsing SpeciesClassification file: %s ..." % (attribute_f)
+    def parse_attributes(self, config_f):
+        print "[STATUS] - Parsing SpeciesClassification file: %s ..." % (config_f)
         attributes = []
         level_by_attribute_by_proteome_id = {}
         proteomes = set()
         proteome_id_by_species_id = {}
-        for line in read_file(attribute_f):
+        for line in read_file(config_f):
             if line.startswith("#"):
                 if not attributes:
                     attributes = [x.strip() for x in line.lstrip("#").split(",")]
-                    if not 'IDX' == attributes[0] or not 'PROTEOME' == attributes[1]:
-                        sys.exit("[ERROR] - First/second element have to be IDX/PROTEOME.\n\t%s" % (attributes))
+                    if not 'IDX' == attributes[0] or not 'TAXON' == attributes[1]:
+                        sys.exit("[ERROR] - First/second element have to be IDX/TAXON.\n\t%s" % (attributes))
                 else:
-                    pass # accounts for SpeciesIDs that are commented out for Orthifinder
+                    pass # accounts for SpeciesIDs that are commented out for Orthofinder
             elif line.strip():
                 temp = line.split(",")
                 if not len(temp) == len(attributes):
                     sys.exit("[ERROR] - number of columns in line differs from header\n\t%s\n\t%s" % (attributes, temp))
                 if temp[1] in proteomes:
-                    sys.exit("[ERROR] - 'proteome' should be unique. %s was encountered multiple times" % (temp[0]))
+                    sys.exit("[ERROR] - 'TAXON' should be unique. %s was encountered multiple times" % (temp[0]))
                 species_id = temp[0]
                 proteome_id = temp[1]
                 proteomes.add(proteome_id)
@@ -394,10 +400,10 @@ class DataFactory():
                 for idx, level in enumerate(temp):
                     attribute = attributes[idx]
                     level_by_attribute_by_proteome_id[proteome_id][attribute] = level
-                level_by_attribute_by_proteome_id[proteome_id]['global'] = 'True'
+                level_by_attribute_by_proteome_id[proteome_id]['all'] = 'all'
             else:
                 pass
-        attributes.insert(0, "global") # append to front
+        attributes.insert(0, "all") # append to front
         return proteomes, proteome_id_by_species_id, attributes, level_by_attribute_by_proteome_id
 
     ###############################
@@ -625,8 +631,9 @@ class DataFactory():
         for clusterObj in clusterCollection.clusterObjs:
             cluster_protein_count.append(clusterObj.protein_count)
         cluster_protein_counter = Counter(cluster_protein_count)
-        count_plot_f = join(self.dirs['main'], "cluster_sizes.%s" % (inputObj.plot_format))
+        count_plot_f = join(self.dirs['main'], "cluster_size_distribution.%s" % (inputObj.plot_format))
         f, ax = plt.subplots(figsize=inputObj.plot_size)
+        ax.set_facecolor('white')
         x_values = []
         y_values = []
         for value, count in cluster_protein_counter.items():
@@ -634,9 +641,6 @@ class DataFactory():
             y_values.append(count)
         x_array = np.array(x_values)
         y_array = np.array(y_values)
-        #fit = powerlaw.Fit(np.array(cluster_protein_count)+1,xmin=1,discrete=True)
-        #fit.power_law.plot_pdf(color= 'b',linestyle='--',label='fit ccdf')
-        #fit.plot_pdf( color= 'b')
         ax.scatter(x_array, y_array, marker='o', alpha=0.8, s=100)
         ax.set_xlabel('Cluster size', fontsize=inputObj.plot_font_size)
         ax.set_ylabel('Count', fontsize=inputObj.plot_font_size)
@@ -648,7 +652,7 @@ class DataFactory():
         ax.xaxis.set_major_formatter(FormatStrFormatter('%.0f'))
         ax.yaxis.set_major_formatter(FormatStrFormatter('%.0f'))
         f.tight_layout()
-        ax.grid(True, linewidth=0.5, which="minor", color="lightgrey")
+
         ax.grid(True, linewidth=1, which="major", color="lightgrey")
         print "[STATUS] - Plotting %s" % (count_plot_f)
         f.savefig(count_plot_f, format=inputObj.plot_format)
@@ -658,7 +662,7 @@ class DataFactory():
         if filetype == "attribute_metrics":
             attribute_metrics_header = []
             attribute_metrics_header.append("#attribute")
-            attribute_metrics_header.append("level")
+            attribute_metrics_header.append("taxon_set")
             attribute_metrics_header.append("cluster_total_count")
             attribute_metrics_header.append("protein_total_count")
             attribute_metrics_header.append("protein_total_span")
@@ -679,8 +683,8 @@ class DataFactory():
             attribute_metrics_header.append("absent_cluster_singleton_count")
             attribute_metrics_header.append("absent_cluster_specific_count")
             attribute_metrics_header.append("absent_cluster_shared_count")
-            attribute_metrics_header.append("members_count")
-            attribute_metrics_header.append("members")
+            attribute_metrics_header.append("TAXON_count")
+            attribute_metrics_header.append("TAXA")
             return "\t".join(attribute_metrics_header)
         elif filetype == "cluster_metrics_ALO":
             cluster_metrics_ALO_header = []
@@ -689,30 +693,30 @@ class DataFactory():
             cluster_metrics_ALO_header.append("cluster_type")
             cluster_metrics_ALO_header.append("cluster_protein_count")
             cluster_metrics_ALO_header.append("cluster_proteome_count")
-            cluster_metrics_ALO_header.append("ALO_protein_count")
-            cluster_metrics_ALO_header.append("ALO_mean_count")
-            cluster_metrics_ALO_header.append("non_ALO_mean_count")
+            cluster_metrics_ALO_header.append("taxon_protein_count")
+            cluster_metrics_ALO_header.append("taxon_mean_count")
+            cluster_metrics_ALO_header.append("non_taxon_mean_count")
             cluster_metrics_ALO_header.append("representation")
-            cluster_metrics_ALO_header.append("log2_mean(ALO/others)")
-            cluster_metrics_ALO_header.append("mwu_pvalue(ALO vs. others)")
-            cluster_metrics_ALO_header.append("ALO_proteome_coverage")
-            cluster_metrics_ALO_header.append("ALO_proteomes_present_count")
-            cluster_metrics_ALO_header.append("ALO_proteomes_present")
-            for domain_source in clusterCollection.domain_sources:
-                cluster_metrics_ALO_header.append(domain_source)
+            cluster_metrics_ALO_header.append("log2_mean(TAXON/others)")
+            cluster_metrics_ALO_header.append("mwu_pvalue(TAXON vs. others)")
+            cluster_metrics_ALO_header.append("taxon_proteome_coverage")
+            cluster_metrics_ALO_header.append("taxon_proteomes_present_count")
+            cluster_metrics_ALO_header.append("taxon_proteomes_present")
+            #for domain_source in clusterCollection.domain_sources:
+            #    cluster_metrics_ALO_header.append(domain_source)
             return "\t".join(cluster_metrics_ALO_header)
         elif filetype == "cluster_metrics":
             cluster_metrics_header = []
             cluster_metrics_header.append("#cluster_id")
             cluster_metrics_header.append("cluster_protein_count")
             cluster_metrics_header.append("protein_median_count")
-            cluster_metrics_header.append("proteome_count")
+            cluster_metrics_header.append("TAXON_count")
             cluster_metrics_header.append("attribute")
             cluster_metrics_header.append("attribute_cluster_type")
             cluster_metrics_header.append("protein_span_mean")
             cluster_metrics_header.append("protein_span_sd")
             cluster_metrics_header += ["%s_count" % level for level in sorted(aloCollection.ALO_by_level_by_attribute[attribute])]
-            if not attribute == "PROTEOME":
+            if not attribute == "TAXON":
                 cluster_metrics_header += ["%s_median" % level for level in sorted(aloCollection.ALO_by_level_by_attribute[attribute])]
                 cluster_metrics_header += ["%s_cov" % level for level in sorted(aloCollection.ALO_by_level_by_attribute[attribute])]
             return "\t".join(cluster_metrics_header)
@@ -720,7 +724,7 @@ class DataFactory():
             cluster_metrics_domains_header = []
             cluster_metrics_domains_header.append("#cluster_id")
             cluster_metrics_domains_header.append("cluster_protein_count")
-            cluster_metrics_domains_header.append("proteome_count")
+            cluster_metrics_domains_header.append("TAXON_count")
             cluster_metrics_domains_header.append("protein_span_mean")
             cluster_metrics_domains_header.append("protein_span_sd")
             cluster_metrics_domains_header.append("fraction_secreted")
@@ -736,29 +740,28 @@ class DataFactory():
             cluster_metrics_domains_detailed_header.append("domain_description")
             cluster_metrics_domains_detailed_header.append("protein_count")
             cluster_metrics_domains_detailed_header.append("protein_count_with_domain")
-            cluster_metrics_domains_detailed_header.append("proteomes_with_domain_fraction")
-            cluster_metrics_domains_detailed_header.append("proteomes_with_domain")
-            cluster_metrics_domains_detailed_header.append("proteomes_without_domain")
+            cluster_metrics_domains_detailed_header.append("TAXA_with_domain_fraction")
+            cluster_metrics_domains_detailed_header.append("TAXA_with_domain")
+            cluster_metrics_domains_detailed_header.append("TAXA_without_domain")
             return "\t".join(cluster_metrics_domains_detailed_header)
         elif filetype == "cafe":
             cafe_header = []
-            cafe_header.append("Description")
             cafe_header.append("ID")
-            for level in sorted(aloCollection.ALO_by_level_by_attribute['PROTEOME']):
+            for level in sorted(aloCollection.ALO_by_level_by_attribute['TAXON']):
                 cafe_header.append(level)
             return "\t".join(cafe_header)
         elif filetype == "pairwise_representation_test":
             pairwise_representation_test_header = []
             pairwise_representation_test_header.append("#cluster_id")
-            pairwise_representation_test_header.append("level_1")
-            pairwise_representation_test_header.append("level_1_mean")
-            pairwise_representation_test_header.append("level_2")
-            pairwise_representation_test_header.append("level_2_mean")
-            pairwise_representation_test_header.append("log2_mean(level_1/level_2)")
-            pairwise_representation_test_header.append("mwu_pvalue(level_1 vs. level2)")
-            pairwise_representation_test_header.append("go_terms")
-            for domain_source in clusterCollection.domain_sources:
-                pairwise_representation_test_header.append(domain_source)
+            pairwise_representation_test_header.append("TAXON_1")
+            pairwise_representation_test_header.append("TAXON_1_mean")
+            pairwise_representation_test_header.append("TAXON_2")
+            pairwise_representation_test_header.append("TAXON_2_mean")
+            pairwise_representation_test_header.append("log2_mean(TAXON_1/TAXON_2)")
+            pairwise_representation_test_header.append("mwu_pvalue(TAXON_1 vs. TAXON_2)")
+            #pairwise_representation_test_header.append("go_terms")
+            #for domain_source in clusterCollection.domain_sources:
+            #    pairwise_representation_test_header.append(domain_source)
             return "\t".join(pairwise_representation_test_header)
         elif filetype == 'cluster_1to1s_ALO':
             cluster_1to1s_ALO_header = []
@@ -766,7 +769,7 @@ class DataFactory():
             cluster_1to1s_ALO_header.append("cluster_type")
             cluster_1to1s_ALO_header.append("cardinality")
             cluster_1to1s_ALO_header.append("proteome_count")
-            cluster_1to1s_ALO_header.append("percentage_at_n")
+            cluster_1to1s_ALO_header.append("percentage_at_target_count")
             return "\t".join(cluster_1to1s_ALO_header)
         else:
             sys.exit("[ERROR] %s is not a valid header 'filetype'" % (filetype))
@@ -800,20 +803,20 @@ class DataFactory():
         return "\t".join([str(field) for field in attribute_metrics])
 
     def write_cluster_metrics(self):
-        cafe_f = join(self.dirs['main'], "clusters.cafe.txt")
+        cafe_f = join(self.dirs['main'], "clusters_counts_by_taxon.txt")
         cafe_output = []
-        cafe_output.append(self.get_header_line('cafe', "PROTEOME"))
+        cafe_output.append(self.get_header_line('cafe', "TAXON"))
 
         cluster_metrics_domains_f = join(self.dirs['main'], "cluster_metrics_domains.txt")
         cluster_metrics_domains_output = []
-        cluster_metrics_domains_output.append(self.get_header_line('cluster_metrics_domains', "PROTEOME"))
+        cluster_metrics_domains_output.append(self.get_header_line('cluster_metrics_domains', "TAXON"))
 
         cluster_metrics_domains_detailed_output_by_domain_source = {}
         cluster_metrics_domains_detailed_f_by_domain_source = {}
         for domain_source in clusterCollection.domain_sources:
             cluster_metrics_domains_detailed_output_by_domain_source[domain_source] = []
-            cluster_metrics_domains_detailed_output_by_domain_source[domain_source].append(self.get_header_line('cluster_metrics_domains_detailed', "PROTEOME"))
-            cluster_metrics_domains_detailed_f_by_domain_source[domain_source] = join(self.dirs['main'], "cluster_metrics_domains_detailed.%s.txt" % (domain_source))
+            cluster_metrics_domains_detailed_output_by_domain_source[domain_source].append(self.get_header_line('cluster_metrics_domains_detailed', "TAXON"))
+            cluster_metrics_domains_detailed_f_by_domain_source[domain_source] = join(self.dirs['main'], "cluster_metrics_domains.%s.txt" % (domain_source))
 
         for attribute in aloCollection.attributes:
 
@@ -851,7 +854,7 @@ class DataFactory():
                 # cluster_metrics_ALO : setup
                 ###########################
 
-                cluster_metrics_ALO_f = join(self.dirs[attribute], "%s.%s.cluster_metrics_ALO.txt" % (attribute, level))
+                cluster_metrics_ALO_f = join(self.dirs[attribute], "%s.%s.cluster_metrics.txt" % (attribute, level))
                 cluster_metrics_ALO_output = []
                 cluster_metrics_ALO_output.append(self.get_header_line('cluster_metrics_ALO', attribute))
 
@@ -861,10 +864,10 @@ class DataFactory():
                 # cluster_1to1s
                 ###########################
 
-                cluster_1to1_ALO_f = join(self.dirs[attribute], "%s.%s.cluster_1to1s_ALO.txt" % (attribute, level))
+                cluster_1to1_ALO_f = join(self.dirs[attribute], "%s.%s.cluster_1to1s.txt" % (attribute, level))
                 cluster_1to1_ALO_output = []
                 cluster_1to1_ALO_output.append(self.get_header_line('cluster_1to1s_ALO', attribute))
-                if not attribute == "PROTEOME":
+                if not attribute == "TAXON":
                     for cluster_type in ALO.clusters_by_cluster_cardinality_by_cluster_type:
                         for cluster_cardinality in ALO.clusters_by_cluster_cardinality_by_cluster_type[cluster_type]:
                             for cluster_id in ALO.clusters_by_cluster_cardinality_by_cluster_type[cluster_type][cluster_cardinality]:
@@ -900,7 +903,7 @@ class DataFactory():
                             cluster_metrics_line.append("N/A")
                         for _level in levels:
                             cluster_metrics_line.append(sum(clusterObj.protein_counts_of_proteomes_by_level_by_attribute[attribute][_level]))
-                        if not attribute == "PROTEOME":
+                        if not attribute == "TAXON":
                             for _level in levels:
                                 cluster_metrics_line.append(median(clusterObj.protein_counts_of_proteomes_by_level_by_attribute[attribute][_level]))
                             for _level in levels:
@@ -908,24 +911,24 @@ class DataFactory():
                         cluster_metrics_output.append("\t".join([str(field) for field in cluster_metrics_line]))
 
                     ###########################
-                    # cafe (only done for attribute "PROTEOME")
+                    # cafe (only done for attribute "TAXON")
                     ###########################
 
-                    if not levels_seen and attribute == "PROTEOME":
+                    if not levels_seen and attribute == "TAXON":
                         cafe_line = []
-                        cafe_line.append("None")
+                        #cafe_line.append("None")
                         cafe_line.append(str(clusterObj.cluster_id))
                         for _level in levels:
                             cafe_line.append(sum(clusterObj.protein_counts_of_proteomes_by_level_by_attribute[attribute][_level]))
                         cafe_output.append("\t".join([str(field) for field in cafe_line]))
 
                     ###########################
-                    # cluster_metrics_domains (only done for attribute "PROTEOME")
+                    # cluster_metrics_domains (only done for attribute "TAXON")
                     # - now different:
                     # - has line for each domain_id for each domain_source
                     ###########################
 
-                    if not levels_seen and attribute == "PROTEOME":
+                    if not levels_seen and attribute == "TAXON":
                         if clusterCollection.functional_annotation_parsed:
                             # cluster_metrics_domain_line
                             cluster_metrics_domains_line = []
@@ -1057,20 +1060,20 @@ class DataFactory():
                         cluster_metrics_ALO_line.append(";".join(sorted(list(clusterObj.go_terms))))
                     else:
                         cluster_metrics_ALO_line.append("N/A")
-                    for domain_source in clusterCollection.domain_sources:
-                        if domain_source in clusterObj.domain_counter_by_domain_source:
-                            cluster_metrics_ALO_line.append(";".join(["%s:%s" % (domain, count) for domain, count in clusterObj.domain_counter_by_domain_source[domain_source].most_common()]))
-                        else:
-                            cluster_metrics_ALO_line.append("N/A")
+                    #for domain_source in clusterCollection.domain_sources:
+                    #    if domain_source in clusterObj.domain_counter_by_domain_source:
+                    #        cluster_metrics_ALO_line.append(";".join(["%s:%s" % (domain, count) for domain, count in clusterObj.domain_counter_by_domain_source[domain_source].most_common()]))
+                    #    else:
+                    #        cluster_metrics_ALO_line.append("N/A")
                     cluster_metrics_ALO_output.append("\t".join([str(field) for field in cluster_metrics_ALO_line]))
 
                     if len(levels) > 1 and len(ALO_proteomes_present) >= inputObj.min_proteomes:
                         for result in self.pairwise_representation_test(clusterObj, attribute, level, levels_seen, levels):
                             # [clusterObj.cluster_id, level, other_level, mean_level, mean_other_level, log2fc_mean, pvalue]
-                            if not attribute in pairwise_representation_test_by_pair_by_attribute:
+                            if attribute not in pairwise_representation_test_by_pair_by_attribute:
                                 pairwise_representation_test_by_pair_by_attribute[attribute] = {}
                             pair = (result[1], result[2])
-                            if not pair in pairwise_representation_test_by_pair_by_attribute[attribute]:
+                            if pair not in pairwise_representation_test_by_pair_by_attribute[attribute]:
                                 pairwise_representation_test_by_pair_by_attribute[attribute][pair] = []
                             pairwise_representation_test_by_pair_by_attribute[attribute][pair].append(result)
 
@@ -1082,15 +1085,15 @@ class DataFactory():
                             pairwise_representation_test_line.append(result[4])
                             pairwise_representation_test_line.append(result[5])
                             pairwise_representation_test_line.append(result[6])
-                            if clusterObj.go_terms:
-                                pairwise_representation_test_line.append(";".join(sorted(list(clusterObj.go_terms))))
-                            else:
-                                pairwise_representation_test_line.append("N/A")
-                            for domain_source in clusterCollection.domain_sources:
-                                if domain_source in clusterObj.domain_counter_by_domain_source:
-                                    pairwise_representation_test_line.append(";".join(["%s:%s" % (domain, count) for domain, count in clusterObj.domain_counter_by_domain_source[domain_source].most_common()]))
-                                else:
-                                    pairwise_representation_test_line.append("N/A")
+                            #if clusterObj.go_terms:
+                            #    pairwise_representation_test_line.append(";".join(sorted(list(clusterObj.go_terms))))
+                            #else:
+                            #    pairwise_representation_test_line.append("N/A")
+                            #for domain_source in clusterCollection.domain_sources:
+                            #    if domain_source in clusterObj.domain_counter_by_domain_source:
+                            #        pairwise_representation_test_line.append(";".join(["%s:%s" % (domain, count) for domain, count in clusterObj.domain_counter_by_domain_source[domain_source].most_common()]))
+                            #    else:
+                            #        pairwise_representation_test_line.append("N/A")
                             pairwise_representation_test_output.append("\t".join([str(field) for field in pairwise_representation_test_line]))
 
                 levels_seen.add(level)
@@ -1160,39 +1163,41 @@ class DataFactory():
                 if p_values:
                     pairwise_representation_test_f = join(self.dirs[attribute], "%s.pairwise_representation_test.%s.%s" % (attribute, "_".join(pair_list), inputObj.plot_format))
                     f, ax = plt.subplots(figsize=inputObj.plot_size)
+                    ax.set_facecolor('white')
                     p_array = np.array(p_values)
                     log2fc_array = np.array(log2fc_values)
-                    ax.scatter(log2fc_array, p_array, alpha=0.8, edgecolors='none',s=25 , c='grey')
+                    ax.scatter(log2fc_array, p_array, alpha=0.8, edgecolors='none', s=25, c='grey')
 
                     ooFive = 0.05
                     ooOne = 0.01
-                    ooFive_corrected = 0.05/pair_data_count
-                    ooOne_corrected = 0.01/pair_data_count
+                    ooFive_corrected = 0.05 / pair_data_count
+                    ooOne_corrected = 0.01 / pair_data_count
 
                     ax.axhline(y=ooFive, linewidth=2, color='orange', linestyle="--")
-                    ooFive_artist = plt.Line2D((0,1),(0,0), color='orange', linestyle='--')
+                    ooFive_artist = plt.Line2D((0, 1), (0, 0), color='orange', linestyle='--')
                     ax.axhline(y=ooOne, linewidth=2, color='red', linestyle="--")
-                    ooOne_artist = plt.Line2D((0,1),(0,0), color='red', linestyle='--')
+                    ooOne_artist = plt.Line2D((0, 1), (0, 0), color='red', linestyle='--')
                     ax.axhline(y=ooFive_corrected, linewidth=2, color='grey', linestyle="--")
-                    ooFive_corrected_artist = plt.Line2D((0,1),(0,0), color='grey', linestyle='--')
+                    ooFive_corrected_artist = plt.Line2D((0, 1), (0, 0), color='grey', linestyle='--')
                     ax.axhline(y=ooOne_corrected, linewidth=2, color='black', linestyle="--")
-                    ooOne_corrected_artist = plt.Line2D((0,1),(0,0), color='black', linestyle='--')
+                    ooOne_corrected_artist = plt.Line2D((0, 1), (0, 0), color='black', linestyle='--')
 
-                    #Create legend from custom artist/label lists
-                    ax.legend([ooFive_artist, ooOne_artist, ooFive_corrected_artist, ooOne_corrected_artist], \
-                        [ooFive, ooOne, "%s (0.05 corrected)" % '%.2E' % Decimal(ooFive_corrected), "%s (0.01 corrected)" % '%.2E' % Decimal(ooOne_corrected)], \
-                        fontsize=inputObj.plot_font_size, frameon=True)
+                    # Create legend from custom artist/label lists
+                    legend = ax.legend([ooFive_artist, ooOne_artist, ooFive_corrected_artist, ooOne_corrected_artist],
+                              [ooFive, ooOne, "%s (0.05 corrected)" % '%.2E' % Decimal(ooFive_corrected), "%s (0.01 corrected)" % '%.2E' % Decimal(ooOne_corrected)],
+                              fontsize=inputObj.plot_font_size, frameon=True)
+                    legend.get_frame().set_facecolor('white')
                     if abs(np.min(log2fc_array)) < abs(np.max(log2fc_array)):
-                        x_min = 0.0-abs(np.max(log2fc_array))
-                        x_max = 0.0+abs(np.max(log2fc_array))
-                        ax.set_xlim(x_min-1, x_max+1)
+                        x_min = 0.0 - abs(np.max(log2fc_array))
+                        x_max = 0.0 + abs(np.max(log2fc_array))
+                        ax.set_xlim(x_min - 1, x_max + 1)
                     else:
-                        x_min = 0.0-abs(np.min(log2fc_array))
-                        x_max = 0.0+abs(np.min(log2fc_array))
-                        ax.set_xlim(x_min-1, x_max+1)
-                    ax.grid(True, linewidth=0.5, which="minor", color="lightgrey")
+                        x_min = 0.0 - abs(np.min(log2fc_array))
+                        x_max = 0.0 + abs(np.min(log2fc_array))
+                        ax.set_xlim(x_min - 1, x_max + 1)
+
                     ax.grid(True, linewidth=1, which="major", color="lightgrey")
-                    ax.set_ylim(np.min(p_array)*0.1, 1.1)
+                    ax.set_ylim(np.min(p_array) * 0.1, 1.1)
                     ax.set_xlabel("log2(mean(%s)/mean(%s))" % (x_label, y_label), fontsize=inputObj.plot_font_size)
                     ax.set_ylabel("p-value", fontsize=inputObj.plot_font_size)
                     plt.gca().invert_yaxis()
@@ -1440,7 +1445,7 @@ class AloCollection():
                     mean_non_ALO_count
                 )
         clusterObj.protein_counts_of_proteomes_by_level_by_attribute = protein_counts_of_proteomes_by_level_by_attribute
-        clusterObj.protein_median = median([count for count in protein_counts_of_proteomes_by_level_by_attribute['global']['True'] if not count == 0])
+        clusterObj.protein_median = median([count for count in protein_counts_of_proteomes_by_level_by_attribute['all']['all'] if not count == 0])
         clusterObj.proteome_coverage_by_level_by_attribute = proteome_coverage_by_level_by_attribute
         clusterObj.implicit_protein_ids_by_proteome_id_by_level_by_attribute = implicit_protein_ids_by_proteome_id_by_level_by_attribute
         clusterObj.cluster_type_by_attribute = cluster_type_by_attribute
@@ -1486,7 +1491,8 @@ class AloCollection():
                 node_stats_line.append(node.synapomorphic_cluster_counts['stochastic_absence'])
                 node_stats_line.append(len(node.proteome_ids))
                 node_stats.append("\t".join([str(string) for string in node_stats_line]))
-                header_f_by_node_name[node.name] = self.generate_header_for_node(node)
+                if inputObj.render_tree:
+                    header_f_by_node_name[node.name] = self.generate_header_for_node(node)
                 charts_f_by_node_name[node.name] = self.generate_chart_for_node(node)
             print "[STATUS] - Writing %s ... " % node_stats_f
             with open(node_stats_f, 'w') as node_stats_fh:
@@ -1537,6 +1543,7 @@ class AloCollection():
         data.append(("Synapomorphies (cov<100%)", "{:,}".format(node.synapomorphic_cluster_counts['stochastic_absence'])))
         col_labels = ('Type', 'Count')
         fig, ax = plt.subplots(figsize=(2, 0.5))
+        ax.set_facecolor('white')
         table = ax.table(
             cellText=data,
             colLabels=col_labels,
@@ -1570,6 +1577,7 @@ class AloCollection():
         if proteome_coverages:
             chart_f = join(dataFactory.dirs['tree_charts'], "%s.barchart.png" % (node.name))
             f, ax = plt.subplots(figsize=(3.0, 3.0))
+            ax.set_facecolor('white')
             x_values = np.array(proteome_coverages)
             ax.hist(x_values, histtype='stepfilled', align='mid', bins=np.arange(0.0, 1.0 + 0.1, 0.1))
             ax.set_xlim(-0.1, 1.1)
@@ -1610,7 +1618,7 @@ class AloCollection():
                         random_list_of_proteome_ids = [x for x in ALO.proteomes]
                         random.shuffle(random_list_of_proteome_ids)
                         for idx, proteome_id in enumerate(random_list_of_proteome_ids):
-                            proteome_ALO = self.ALO_by_level_by_attribute['PROTEOME'][proteome_id]
+                            proteome_ALO = self.ALO_by_level_by_attribute['TAXON'][proteome_id]
                             seen_cluster_ids.update(proteome_ALO.cluster_ids_by_cluster_type_by_cluster_status['present']['specific'])
                             seen_cluster_ids.update(proteome_ALO.cluster_ids_by_cluster_type_by_cluster_status['present']['shared'])
                             sample_size = idx + 1
@@ -1619,9 +1627,10 @@ class AloCollection():
                             rarefaction_by_samplesize_by_level_by_attribute[attribute][level][sample_size].append(len(seen_cluster_ids))
 
         for attribute in rarefaction_by_samplesize_by_level_by_attribute:
-            rarefaction_plot_f = join(dataFactory.dirs[attribute], "%s.rarefaction.%s" % (attribute, inputObj.plot_format))
+            rarefaction_plot_f = join(dataFactory.dirs[attribute], "%s.rarefaction_curve.%s" % (attribute, inputObj.plot_format))
             rarefaction_by_samplesize_by_level = rarefaction_by_samplesize_by_level_by_attribute[attribute]
             f, ax = plt.subplots(figsize=inputObj.plot_size)
+            ax.set_facecolor('white')
             max_number_of_samples = 0
             for idx, level in enumerate(rarefaction_by_samplesize_by_level):
                 number_of_samples = len(rarefaction_by_samplesize_by_level[level])
@@ -1647,7 +1656,10 @@ class AloCollection():
             ax.set_xlim([0, max_number_of_samples + 1])
             ax.set_ylabel("Count of non-singleton clusters", fontsize=inputObj.plot_font_size)
             ax.set_xlabel("Sampled proteomes", fontsize=inputObj.plot_font_size)
-            ax.legend(ncol=1, numpoints=1, loc="lower right", frameon=True, fontsize=inputObj.plot_font_size)
+
+            ax.grid(True, linewidth=1, which="major", color="lightgrey")
+            legend = ax.legend(ncol=1, numpoints=1, loc="lower right", frameon=True, fontsize=inputObj.plot_font_size)
+            legend.get_frame().set_facecolor('white')
             print "[STATUS]\t- Plotting %s" % (rarefaction_plot_f)
             f.savefig(rarefaction_plot_f, format=inputObj.plot_format)
             plt.close()
@@ -1990,11 +2002,11 @@ class InputObj():
         self.ATTRIBUTE_RESERVED = ['IDX', 'OUT', "TAXID"]
         # input files
         self.cluster_f = args['--cluster_file']
-        self.attribute_f = args['--attribute_file']
+        self.config_f = args['--config_file']
         self.sequence_ids_f = args['--sequence_ids_file']
         self.species_ids_f = args['--species_ids_file']
         self.tree_f = args['--tree_file']
-        self.render_tree = True
+        self.render_tree = args['--plot_tree']
         self.nodesdb_f = args['--nodesdb']
         self.functional_annotation_f = args['--functional_annotation']
         self.pfam_mapping = True
@@ -2015,7 +2027,7 @@ class InputObj():
         self.fuzzy_count = None
         self.check_fuzzy_count(args['--target_count'])
         self.fuzzy_fraction = None
-        self.check_fuzzy_fraction(args['--fuzzyness'])
+        self.check_fuzzy_fraction(args['--target_fraction'])
         self.fuzzy_min = None
         self.fuzzy_max = None
         self.check_fuzzy_min_max(args['--min'], args['--max'])
@@ -2064,26 +2076,26 @@ class InputObj():
     def check_input_files(self):
         check_file(self.sequence_ids_f)
         check_file(self.species_ids_f)
-        check_file(self.attribute_f)
+        check_file(self.config_f)
         check_file(self.functional_annotation_f)
         check_file(self.sequence_ids_f)
         check_file(self.tree_f)
         check_file(self.nodesdb_f)
         if self.pfam_mapping:
-            pfam_mapping_f = join(dirname(realpath(__file__)), "data/Pfam-A.clans.tsv.gz")
+            pfam_mapping_f = join(dirname(realpath(__file__)), "../data/Pfam-A.clans.tsv.gz")
             if not isfile(pfam_mapping_f):
                 print "[WARN] - PFAM-ID file 'data/Pfam-A.clans.tsv.gz' not found."
                 remote_f = "ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.clans.tsv.gz"
                 retrieve_ftp(remote_f, pfam_mapping_f)
             self.pfam_mapping_f = pfam_mapping_f
         if self.ipr_mapping:
-            ipr_mapping_f = join(dirname(realpath(__file__)), "data/entry.list")
+            ipr_mapping_f = join(dirname(realpath(__file__)), "../data/entry.list")
             if not isfile(ipr_mapping_f):
                 print "[WARN] - IPR-ID file 'data/entry.list' not found."
                 remote_f = "ftp://ftp.ebi.ac.uk/pub/databases/interpro/entry.list"
                 retrieve_ftp(remote_f, ipr_mapping_f)
             self.ipr_mapping_f = ipr_mapping_f
-            go_mapping_f = join(dirname(realpath(__file__)), "data/interpro2go")
+            go_mapping_f = join(dirname(realpath(__file__)), "../data/interpro2go")
             if not isfile(go_mapping_f):
                 print "[WARN] - GO-ID file, but 'data/interpro2go' not found."
                 remote_f = "ftp://ftp.ebi.ac.uk/pub/databases/interpro/interpro2go"
@@ -2091,16 +2103,11 @@ class InputObj():
             self.go_mapping_f = go_mapping_f
 
     def check_that_ete_can_plot(self):
-        if self.tree_f:
-            try:
-                import ete3
-            except ImportError:
-                sys.exit("[ERROR] : Module \'ete3\' was not found. Please install \'ete3\' using \'pip install ete3\'\n/tPlotting of trees requires additional dependencies:\n\t- PyQt4\n\t")
+        if self.render_tree:
             try:
                 import PyQt4
             except ImportError:
-                sys.exit("[ERROR] : PyQt4 is not installed. Please install PyQt4")
-
+                sys.exit("[ERROR] : Plotting of trees requires additional ETE3 dependencies. PyQt4 is not installed. Please install PyQt4")
             if 'DISPLAY' in environ:
                 print "[STATUS] - X server seems to be present..."
                 test_tree_f = join(getcwd(), "this_is_a_test_tree.pdf")
@@ -2126,7 +2133,7 @@ class InputObj():
         if 0 <= float(fuzzyness) <= 1:
             self.fuzzy_fraction = float(fuzzyness)
         else:
-            sys.exit("[ERROR] : --fuzzyness %s is not between 0.0 and 1.0" (fuzzyness))
+            sys.exit("[ERROR] : --target_fraction %s is not between 0.0 and 1.0" (fuzzyness))
 
     def check_fuzzy_min_max(self, fuzzy_min, fuzzy_max):
         if int(fuzzy_min) <= int(fuzzy_max):
@@ -2149,7 +2156,7 @@ def welcome_screen():
 
 
 if __name__ == "__main__":
-    __version__ = "0.8.3"
+    __version__ = "0.9"
     welcome_screen()
     args = docopt(__doc__)
     inputObj = InputObj(args)
@@ -2182,18 +2189,7 @@ if __name__ == "__main__":
     overall_end = time.time()
     overall_elapsed = overall_end - overall_start
     print "[STATUS] - Took %ss to run kinfin." % (overall_elapsed)
-    ###
     del aloCollection
     del proteinCollection
     del domainCollection
     del clusterCollection
-    ###
-    '''
-    Pending
-        0. generate output for some overall metrics:
-            - singletons with domains
-            - specific clusters with domains
-        1. Executable bash script that calls
-            a) "xvfb-run" : if in path
-            b) "normal" : if not
-    '''

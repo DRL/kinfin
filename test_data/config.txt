@@ -1,2 +1,0 @@
-I1_5,test.OrthologousGroups.txt
-I2_0,test.OrthologousGroups.2.txt

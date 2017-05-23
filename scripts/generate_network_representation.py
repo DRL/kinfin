@@ -7,8 +7,8 @@ usage: generate_network.py      -c <FILE> -s <FILE> [-o <STR>]
 
     Options:
         -h --help                               show this
-        -c, --cluster_stats <FILE>              Kinfin cluster_stats.txt output (i.e. PROTEOME.cluster_stats.txt)
-        -s, --species_classification <FILE>     SpeciesClassification.txt used in Kinfin analysis
+        -c, --cluster_stats <FILE>              Kinfin cluster_stats.txt output (i.e. PROTEOME.cluster_metrics.txt)
+        -s, --config_file <FILE>                config.txt used in Kinfin analysis
         -o, --out_prefix <STR>                  Outprefix (default: graph)
 
 """
@@ -115,7 +115,7 @@ def construct_graphs(weighted_edges, proteomeObj_by_proteome_id, attributes):
 def santisise_args(args):
     sane_args = {}
     sane_args['--cluster_stats'] = check_file(args['--cluster_stats'])
-    sane_args['--species_classification'] = check_file(args['--species_classification'])
+    sane_args['--config_file'] = check_file(args['--config_file'])
     sane_args['--out_prefix'] = args['--out_prefix']
     return sane_args
 
@@ -171,7 +171,7 @@ if __name__ == "__main__":
     args = docopt(__doc__)
     sane_args = santisise_args(args)
     cluster_stats_f = sane_args['--cluster_stats']
-    species_classification_f = sane_args['--species_classification']
+    species_classification_f = sane_args['--config_file']
     out_prefix = sane_args['--out_prefix']
 
     #######################################################################

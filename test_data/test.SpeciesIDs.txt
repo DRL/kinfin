@@ -1,8 +1,0 @@
-0,A.proteins.faa
-1,B.proteins.faa
-2,C.proteins.faa
-3,D.proteins.faa
-4,E.proteins.faa
-5,F.proteins.faa
-# 6: G.proteins.faa
-# 7: H.proteins.faa

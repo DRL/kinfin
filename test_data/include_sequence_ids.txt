@@ -1,3 +1,0 @@
-A.seq1
-B.seq1
-B.seq2

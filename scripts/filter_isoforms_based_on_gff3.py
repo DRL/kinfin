@@ -86,12 +86,15 @@ def parse_custom_fasta(fasta_f, fs, fe, fdel):
     out_non_longest_isoforms_f = "%s.non_longest_isoforms.txt" % (proteinCollection.proteome_id)
     out_longest_isoforms_f = "%s.longest_isoforms.txt" % (proteinCollection.proteome_id)
     out_stats_f = "%s.stats.txt" % (proteinCollection.proteome_id)
+    out_all_isoforms_by_gene_f = "%s.isoforms_by_gene_id.txt" % (proteinCollection.proteome_id)
     if out_prefix:
         out_non_longest_isoforms_f = "%s.%s.non_longest_isoforms.txt" % (out_prefix, proteinCollection.proteome_id)
         out_longest_isoforms_f = "%s.%s.longest_isoforms.txt" % (out_prefix, proteinCollection.proteome_id)
         out_stats_f = "%s.%s.stats.txt" % (out_prefix, proteinCollection.proteome_id)
+        out_all_isoforms_by_gene_f = "%s.%s.isoforms_by_gene_id.txt" % (out_prefix, proteinCollection.proteome_id)
     longest_isoforms = []
     non_longest_isoforms = []
+    all_isoforms = []
     for gene_id in data:
         longest_parsed = 0
         for protein_id, length in sorted(data[gene_id].items(), key=operator.itemgetter(1), reverse=True):
@@ -100,6 +103,8 @@ def parse_custom_fasta(fasta_f, fs, fe, fdel):
                 longest_parsed = 1
             else:
                 non_longest_isoforms.append(protein_id)
+        if len(data[gene_id]) > 1:
+            all_isoforms.append("%s\t%s" % (gene_id, ",".join(str(protein_id) for (protein_id, length) in sorted(data[gene_id].items(), key=operator.itemgetter(1), reverse=True))))
     longest_isoforms = set(longest_isoforms)
     non_longest_isoforms = set(non_longest_isoforms)
     print "[+] %s proteinIDs in FASTA file" % (proteinCollection.protein_count)
@@ -110,6 +115,10 @@ def parse_custom_fasta(fasta_f, fs, fe, fdel):
     fraction_fas_protein_ids_non_longest_isoform = count_non_longest_isoforms/proteinCollection.protein_count
     fraction_fas_protein_ids_allocated = count_allocated/proteinCollection.protein_count
 
+    if all_isoforms:
+        print "[+] Writing %s all isoforms to %s ..." % (len(all_isoforms), out_all_isoforms_by_gene_f)
+        with open(out_all_isoforms_by_gene_f, 'w') as out_all_isoforms_by_gene_fh:
+            out_all_isoforms_by_gene_fh.write("\n".join(all_isoforms) + "\n")
     if longest_isoforms:
         print "[+] Writing %s (%s) proteinIDs to %s ..." % (count_longest_isoforms, "{:.1%}".format(fraction_fas_protein_ids_longest_isoform), out_longest_isoforms_f)
         with open(out_longest_isoforms_f, 'w') as out_longest_isoforms_fh:
@@ -172,7 +181,7 @@ def parse_fasta(fasta_f, mapping_f, fs, fe, fdel):
 def parse_gff(gff_f, gff_type):
 
     protein_id_in_CDS_based_gff_types = set(["NCBI", "NHGRI", "SchistoDB", "OIST", "HGC", "OIST_MGU", "JGI", "VectorBase", "BeeBase", "Gnomon", "HGC", "ensembl_havana", "ensembl", "Ensembl_Metazoa", "BeetleBase", "NasoniaBase", "AphidBase", "ORCAE", "FlyBase"])
-    gene_based_gff_types = set(["AUGUSTUS", "WormBase", "WormBase_imported"])
+    gene_based_gff_types = set(["AUGUSTUS", "WormBase", "WormBase_imported", "transdecoder"])
 
     annotationCollection = AnnotationCollection()
     gene_id_by_protein_id = {}
@@ -310,23 +319,30 @@ def generate_output(out_prefix):
     out_non_longest_isoforms_f = "%s.non_longest_isoforms.txt" % (proteinCollection.proteome_id)
     out_longest_isoforms_f = "%s.longest_isoforms.txt" % (proteinCollection.proteome_id)
     out_fas_protein_ids_not_in_gff_f = "%s.fas_protein_ids_not_in_gff.txt" % (proteinCollection.proteome_id)
+    out_all_isoforms_by_gene_f = "%s.isoforms_by_gene_id.txt" % (proteinCollection.proteome_id)
     out_stats_f = "%s.stats.txt" % (proteinCollection.proteome_id)
     if out_prefix:
         out_non_longest_isoforms_f = "%s.%s.non_longest_isoforms.txt" % (out_prefix, proteinCollection.proteome_id)
         out_longest_isoforms_f = "%s.%s.longest_isoforms.txt" % (out_prefix, proteinCollection.proteome_id)
         out_fas_protein_ids_not_in_gff_f = "%s.%s.out_fas_protein_ids_not_in_gff.txt" % (out_prefix, proteinCollection.proteome_id)
+        out_all_isoforms_by_gene_f = "%s.%s.isoforms_by_gene_id.txt" % (out_prefix, proteinCollection.proteome_id)
         out_stats_f = "%s.%s.stats.txt" % (out_prefix, proteinCollection.proteome_id)
 
     longest_isoforms = []
     non_longest_isoforms = []
+    all_isoforms = []
     for gene_id, gff_protein_ids in annotationCollection.gff_protein_ids_by_gene_id.items():
         if len(gff_protein_ids):
             longest_gff_protein_id, longest_protein_length, gff_protein_ids = annotationCollection.get_longest_gff_protein_id(gene_id)
             if longest_protein_length:
+                all_isoforms_line = []
                 longest_isoforms.append("%s" % (annotationCollection.fas_protein_id_by_gff_protein_id[longest_gff_protein_id]))
                 for protein_id in gff_protein_ids:
+                    all_isoforms_line.append(protein_id)
                     if not protein_id == longest_gff_protein_id:
                         non_longest_isoforms.append("%s" % (annotationCollection.fas_protein_id_by_gff_protein_id[protein_id]))
+                if len(gff_protein_ids) > 1:
+                    all_isoforms.append("%s\t%s" % (gene_id, ",".join([annotationCollection.fas_protein_id_by_gff_protein_id[protein_id] for protein_id in gff_protein_ids])))
     longest_isoforms = set(longest_isoforms)
     non_longest_isoforms = set(non_longest_isoforms)
     print "[+] %s proteinIDs in FASTA file" % (proteinCollection.protein_count)
@@ -334,11 +350,15 @@ def generate_output(out_prefix):
     count_non_longest_isoforms = len(non_longest_isoforms)
     count_allocated = count_longest_isoforms + count_non_longest_isoforms
     count_not_allocated = len(annotationCollection.fas_protein_ids_not_in_gff)
-    fraction_fas_protein_ids_longest_isoform = count_longest_isoforms/proteinCollection.protein_count
-    fraction_fas_protein_ids_non_longest_isoform = count_non_longest_isoforms/proteinCollection.protein_count
-    fraction_fas_protein_ids_allocated = count_allocated/proteinCollection.protein_count
-    fraction_fas_protein_ids_not_allocated = count_not_allocated/proteinCollection.protein_count
+    fraction_fas_protein_ids_longest_isoform = count_longest_isoforms / proteinCollection.protein_count
+    fraction_fas_protein_ids_non_longest_isoform = count_non_longest_isoforms / proteinCollection.protein_count
+    fraction_fas_protein_ids_allocated = count_allocated / proteinCollection.protein_count
+    fraction_fas_protein_ids_not_allocated = count_not_allocated / proteinCollection.protein_count
 
+    if all_isoforms:
+        print "[+] Writing %s all isoforms to %s ..." % (len(all_isoforms), out_all_isoforms_by_gene_f)
+        with open(out_all_isoforms_by_gene_f, 'w') as out_all_isoforms_by_gene_fh:
+            out_all_isoforms_by_gene_fh.write("\n".join(all_isoforms) + "\n")
     if longest_isoforms:
         print "[+] Writing %s (%s) proteinIDs to %s ..." % (count_longest_isoforms, "{:.1%}".format(fraction_fas_protein_ids_longest_isoform), out_longest_isoforms_f)
         with open(out_longest_isoforms_f, 'w') as out_longest_isoforms_fh:
