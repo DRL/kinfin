@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-src/kinfin.py "$@"
+$0/src/kinfin.py "$@"
