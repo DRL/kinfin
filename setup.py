@@ -34,7 +34,7 @@ setup(
     packages=find_packages(exclude=['docs', 'tests*']),
     include_package_data=True,
     author='Dominik R Laetsch',
-    setup_requires=['numpy>=1.10'],
+    setup_requires=['matplotlib>=2.0.2'],
     install_requires=install_requires,
     dependency_links=dependency_links,
     author_email='dominik.laetsch@gmail.com'
