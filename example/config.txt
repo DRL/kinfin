@@ -1,9 +1,7 @@
-#IDX,TAXON,OUT,label1,label2,label3
-0,A,0,blue,this,x
-1,B,0,blue,this,y
-2,C,0,red,that,z
-3,D,0,yellow,that,z
-4,E,1,red,then,y
-5,F,0,yellow,then,x
-#6,G,0,yellow,then,x
-#7,H,0,yellow,then,x
+#IDX,TAXON,TAXID,OUT,label1,label2,label3
+0,A,232323,0,blue,this,x
+1,B,232323,0,blue,this,y
+2,C,232323,0,red,that,z
+3,D,947166,0,yellow,that,z
+4,E,947166,1,red,then,y
+5,F,947166,0,yellow,then,x

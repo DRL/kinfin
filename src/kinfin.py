@@ -4,13 +4,10 @@
 """
 usage: kinfin-d.py      -g <FILE> -c <FILE> -s <FILE> [-t <FILE>] [-o <PREFIX>]
                         [--infer_singletons] [--plot_tree]
-                        [-p <FILE>] [-a <DIR>]
-                        [--functional_annotation <FILE>]
-                        [--nodesdb <FILE>] [--taxranks <STRING>]
-                        [-f <FLOAT>] [-n <INT>] [--min <INT>] [--max <INT>]
-                        [-r <INT>] [--min_proteomes <INT>]
-                        [--fontsize <INT>] [--plotsize INT,INT]
-                        [--plotfmt <PLOTFORMAT>]
+                        [-p <FILE>] [-a <DIR>] [-f <FILE>] [-r <STRING>]
+                        [-x <FLOAT>] [-n <INT>] [--min <INT>] [--max <INT>]
+                        [--repetitions <INT>] [--min_proteomes <INT>]
+                        [--fontsize <INT>] [--plotsize INT,INT] [--plotfmt <PLOTFORMAT>]
                         [-h|--help]
 
     Options:
@@ -22,9 +19,8 @@ usage: kinfin-d.py      -g <FILE> -c <FILE> -s <FILE> [-t <FILE>] [-o <PREFIX>]
             -s, --sequence_ids_file <FILE>      SequenceIDs.txt used in OrthoFinder
 
             -p, --species_ids_file <FILE>       SpeciesIDs.txt used in OrthoFinder
-            --functional_annotation <FILE>      Mapping of ProteinIDs to GO/IPRS/SignalP/Pfam/... (can be generated through 'iprs_to_table.py')
+            -f, --functional_annotation <FILE>  Mapping of ProteinIDs to GO/IPRS/SignalP/Pfam/... (can be generated through 'iprs_to_table.py')
             -a, --fasta_dir <DIR>               Directory of FASTA files
-            --nodesdb <FILE>                    nodesdb file (in data/ folder, has to be uncompressed)
             -t, --tree_file <FILE>              Tree file (on which ALOs are defined)
         General options
             -o, --outprefix <STR>               Output prefix
@@ -32,10 +28,10 @@ usage: kinfin-d.py      -g <FILE> -c <FILE> -s <FILE> [-t <FILE>] [-o <PREFIX>]
             --plot_tree                         Plot annotated phylogenetic tree (requires full ETE3 installation and X-server/xvfb-run)
             --min_proteomes <INT>               Required number of proteomes in a taxon-set to be used
                                                     in rarefaction/representation-test computations [default: 2]
-            --taxranks <STRING>                 Taxonomic ranks to be inferred from TaxID [default: phylum,order,genus]
-            -r, --repetitions <INT>             Number of repetitions for rarefaction curves [default: 30]
+            -r, --taxranks <STRING>                 Taxonomic ranks to be inferred from TaxID [default: phylum,order,genus]
+            --repetitions <INT>                 Number of repetitions for rarefaction curves [default: 30]
         "Fuzzy"-Orthology-groups
-            -f, --target_fraction <FLOAT>       Minimum proportion of proteomes with target protein count [default: 0.75].
+            -x, --target_fraction <FLOAT>       Minimum proportion of proteomes with target protein count [default: 0.75].
             -n, --target_count <INT>            Target protein count by proteome in (100*F)% of cluster [default: 1]
             --min <INT>                         Min count of proteins by proteome in (100*(1-F))% of cluster [default: 0]
             --max <INT>                         Max count of proteins by proteome in (100*(1-F))% of cluster [default: 100]
@@ -58,6 +54,7 @@ from os import getcwd, mkdir, remove, environ
 import shutil
 import random
 import time
+import gzip
 from urllib2 import urlopen
 from decimal import Decimal
 
@@ -78,7 +75,10 @@ try:
     import scipy
 except ImportError:
     import_errors.append("[ERROR] : Module \'SciPy\' was not found. Please install \'SciPy\' using \'pip install scipy\'")
-
+try:
+    import ete3
+except ImportError:
+    import_errors.append("[ERROR] : Module \'ete3\' was not found. Please install \'ete3\' using \'pip install ete3\'\n/tPlotting of trees requires additional dependencies:\n\t- PyQt4\n\t")
 if import_errors:
     sys.exit("\n".join(import_errors))
 
@@ -174,10 +174,15 @@ def parse_nodesdb(nodesdb_f):
     for line in read_file(nodesdb_f):
         if line.startswith("#"):
             nodesdb_count = int(line.lstrip("# nodes_count = ").rstrip("\n"))
+        elif not line.strip():
+            pass
         else:
             nodes_count += 1
-            node, rank, name, parent = line.rstrip("\n").split("\t")
-            nodesdb[node] = {'rank': rank, 'name': name, 'parent': parent}
+            try:
+                node, rank, name, parent = line.rstrip("\n").split("\t")
+                nodesdb[node] = {'rank': rank, 'name': name, 'parent': parent}
+            except:
+                pass
             if nodesdb_count:
                 progress(nodes_count, 1000, nodesdb_count)
     return nodesdb
@@ -328,9 +333,10 @@ def read_file(infile):
     if not infile or not exists(infile):
         sys.exit("[ERROR] - File '%s' does not exist." % (infile))
     if infile.endswith(".gz"):
-        import gzip
-        with gzip.open(infile) as fh:
+        with gzip.open(infile, 'rb') as fh:
             for line in fh:
+                if line.startswith("nodesDB.txt"):
+                    line = "#%s" % line.split("#")[1]
                 yield line.rstrip("\n")
     else:
         with open(infile) as fh:
@@ -352,8 +358,8 @@ class DataFactory():
 
     def build_AloCollection(self):
         config_f = inputObj.config_f
-        nodesdb_f = inputObj.nodesdb_f
         tree_f = inputObj.tree_f
+        nodesdb_f = inputObj.nodesdb_f
         proteomes, proteome_id_by_species_id, attributes, level_by_attribute_by_proteome_id = self.parse_attributes(config_f)
         # Add taxonomy if needed
         if 'TAXID' in set(attributes):
@@ -414,10 +420,6 @@ class DataFactory():
     ###############################
 
     def add_taxid_attributes(self, nodesdb_f, attributes, level_by_attribute_by_proteome_id):
-        if nodesdb_f:
-            check_file(nodesdb_f)
-        else:
-            sys.exit("[ERROR] - Please provide a nodesDB file or remove the 'TAXID' attribute")
         print "[STATUS] - Parsing nodesDB %s" % (nodesdb_f)
         NODESDB = parse_nodesdb(nodesdb_f)
         for proteome_id in level_by_attribute_by_proteome_id:
@@ -2011,7 +2013,6 @@ class InputObj():
         self.species_ids_f = args['--species_ids_file']
         self.tree_f = args['--tree_file']
         self.render_tree = args['--plot_tree']
-        self.nodesdb_f = args['--nodesdb']
         self.functional_annotation_f = args['--functional_annotation']
         self.pfam_mapping = True
         self.pfam_mapping_f = None
@@ -2084,7 +2085,19 @@ class InputObj():
         check_file(self.functional_annotation_f)
         check_file(self.sequence_ids_f)
         check_file(self.tree_f)
-        check_file(self.nodesdb_f)
+        nodesdb_f = join(dirname(realpath(__file__)), "../data/nodesDB.txt")
+        nodesdb_gz = join(dirname(realpath(__file__)), "../data/nodesDB.txt.gz")
+        if not isfile(nodesdb_f):
+            if not isfile(nodesdb_gz):
+                sys.exit("[ERROR] : nodesDB.txt.gz could not be found in kinfin/data/ folder. Please download KinFin again..")
+            else:
+                print "[STATUS] - Uncompressing %s" % (nodesdb_gz)
+                nodesdb = []
+                for line in read_file(nodesdb_gz):
+                    nodesdb.append(line)
+                with open(nodesdb_f, 'w') as nodesdb_fh:
+                    nodesdb_fh.write("%s\n" % "\n".join(nodesdb))
+        self.nodesdb_f = nodesdb_f
         if self.pfam_mapping:
             pfam_mapping_f = join(dirname(realpath(__file__)), "../data/Pfam-A.clans.tsv.gz")
             if not isfile(pfam_mapping_f):
@@ -2164,11 +2177,6 @@ if __name__ == "__main__":
     welcome_screen()
     args = docopt(__doc__)
     inputObj = InputObj(args)
-    if inputObj.tree_f:
-        try:
-            import ete3
-        except ImportError:
-            sys.exit("[ERROR] : Module \'ete3\' was not found. Please install \'ete3\' using \'pip install ete3\'\n/tPlotting of trees requires additional dependencies:\n\t- PyQt4\n\t")
     # Input sane ... now we start
     print "[STATUS] - Starting analysis ..."
     overall_start = time.time()
