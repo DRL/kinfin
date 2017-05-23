@@ -14,8 +14,19 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 with open(path.join(here, 'requirements.txt'), encoding='utf-8') as f:
     all_reqs = f.read().split('\n')
 
+try:
+    import matplotlib
+except ImportError:  # We do not have numpy installed
+    build_requires = ['matplotlib>=2.0.2']
+else:
+    # If we're building a wheel, assume there already exist numpy wheels
+    # for this platform, so it is safe to add numpy to build requirements.
+    # See gh-5184.
+    build_requires = (['matplotlib>=2.0.2'] if 'bdist_wheel' in sys.argv[1:] else [])
+
 install_requires = [x.strip() for x in all_reqs if 'git+' not in x]
 dependency_links = [x.strip().replace('git+', '') for x in all_reqs if x.startswith('git+')]
+
 
 setup(
     name='kinfin',
@@ -24,7 +35,7 @@ setup(
     long_description=long_description,
     url='https://github.com/DRL/kinfin',
     download_url='https://github.com/DRL/kinfin/tarball/' + __version__,
-    license='BSD',
+    license='GnuGPL3',
     classifiers=[
       'Development Status :: 3 - Alpha',
       'Intended Audience :: Developers',
@@ -34,7 +45,7 @@ setup(
     packages=find_packages(exclude=['docs', 'tests*']),
     include_package_data=True,
     author='Dominik R Laetsch',
-    setup_requires=['matplotlib>=2.0.2'],
+    build_requires=build_requires,
     install_requires=install_requires,
     dependency_links=dependency_links,
     author_email='dominik.laetsch@gmail.com'
