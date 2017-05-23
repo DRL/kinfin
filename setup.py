@@ -28,9 +28,9 @@ setup(
     classifiers=[
       'Development Status :: 3 - Alpha',
       'Intended Audience :: Developers',
-      'Programming Language :: Python :: 3',
+      'Programming Language :: Python :: 2.7',
     ],
-    keywords='',
+    keywords='Comparative genomics',
     packages=find_packages(exclude=['docs', 'tests*']),
     include_package_data=True,
     author='Dominik R Laetsch',
