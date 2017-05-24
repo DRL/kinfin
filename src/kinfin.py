@@ -752,7 +752,7 @@ class DataFactory():
             return "\t".join(cluster_metrics_domains_detailed_header)
         elif filetype == "cafe":
             cafe_header = []
-            cafe_header.append("ID")
+            cafe_header.append("#ID")
             for level in sorted(aloCollection.ALO_by_level_by_attribute['TAXON']):
                 cafe_header.append(level)
             return "\t".join(cafe_header)
@@ -809,7 +809,7 @@ class DataFactory():
         return "\t".join([str(field) for field in attribute_metrics])
 
     def write_cluster_metrics(self):
-        cafe_f = join(self.dirs['main'], "clusters_counts_by_taxon.txt")
+        cafe_f = join(self.dirs['main'], "cluster_counts_by_taxon.txt")
         cafe_output = []
         cafe_output.append(self.get_header_line('cafe', "TAXON"))
 

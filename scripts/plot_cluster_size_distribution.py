@@ -7,8 +7,8 @@ usage: plot_cluster_sizes.py                  -i <FILE> [-o <STRING>] [-p <STRIN
 
     Options:
         -h --help                           show this
-        -i, --infile <FILE>                 PROTEOME.cluster_metrics.txt
-        -o, --out_prefix <STRING>           Outprefix [default: frequency_of_cluster_sizes]
+        -i, --infile <FILE>                 cluster_counts_by_taxon.txt from KinFin analysis
+        -o, --out_prefix <STRING>           Outprefix [default: cluster_size_distribution]
         -c, --colormap <STRING>             Matplotlib colormap name [default: Paired]
         -x, --xlim <INT>                    xlim for "loglin", "logbar" and "barperc" plot [default: 200]
         -p, --plot_fmt <STRING>             Plot format [default: png]
@@ -17,9 +17,7 @@ usage: plot_cluster_sizes.py                  -i <FILE> [-o <STRING>] [-p <STRIN
 from __future__ import division
 import re
 import sys
-import operator
 import powerlaw
-from scipy import optimize
 from docopt import docopt
 from collections import OrderedDict
 from os.path import isfile, join, exists, realpath, dirname, basename
@@ -74,10 +72,10 @@ class DataObj():
 
     def parse_data(self, infile):
         for line in read_file(infile):
-            if not line.startswith("#"):
+            if not line.startswith("#") and not line.startswith("ID"):
                 temp = line.split("\t")
-                cluster_size = int(temp[1])
-                proteome_count = int(temp[3])
+                cluster_size = sum([int(count) for count in temp[1:]])
+                proteome_count = sum([1 for count in temp[1:] if not count == '0'])
                 self.add_cluster(proteome_count, cluster_size)
         self.homogenise_counts()
 
@@ -127,11 +125,12 @@ class DataObj():
         return x, y
 
     def plot_cluster_sizes(self, plot_type):
-        f, ax = plt.subplots(figsize=(24,12))
+        f, ax = plt.subplots(figsize=(12,6))
+        out_f = ''
         ax.set_facecolor('white')
         print "[+] Plotting \"%s\" ..." % (plot_type)
-        if plot_type in PROTEROMEPLOTS:
-            if plot_type == "loglog" or plot_type == "loglin":
+        if plot_type in PLOTS:
+            if plot_type == "loglog" or plot_type == "loglin" or plot_type == "loglogpowerlaw":
                 ax.set_yscale('log')
                 for proteome_count, x, y, y_bottom, colour in self.yield_counts_by_proteome_count('absolute'):
                     ax.plot(x, y, c='None')
@@ -169,7 +168,27 @@ class DataObj():
                 plt.gca().set_ylim(bottom=0.8, top=100)
                 plt.gca().set_xlim(left=-2, right=self.xlim)
             else:
-                pass
+                if plot_type == "powerlaw" or plot_type == "loglogpowerlaw":
+                    x, y = self.get_cluster_size_and_count()
+                    x_log_array = np.log10(np.array(x))
+                    y_log_array = np.log10(np.array(y))
+                    x_array = np.array(x)
+                    y_array = np.array(y)
+                    fit = np.polyfit(x_log_array, y_log_array, 1)
+                    powerlaw = lambda x, amp, index: amp * (x**index)
+                    powerlaw_y = powerlaw(x_array, fit[1]*y[1], fit[0])
+                    ax.plot(x_array, powerlaw_y, '--', c='grey', alpha=0.8, ms=5, label="Power-Law")
+                    #################
+                    ax.plot(x_array, y_array, 'o', c='black', ms=2, alpha=0.5, label="Clustering")
+                    if plot_type == "powerlaw":
+                        out_f = "%s.powerlaw.%s" % (self.out_prefix, self.plot_fmt)
+                    else:
+                        out_f = "%s.loglogpowerlaw.%s" % (self.out_prefix, self.plot_fmt)
+                    #ax.legend()
+                    plt.gca().set_ylim(bottom=0.8, top=self.cluster_count_max * 2)
+                    plt.gca().set_xlim(left=0.8, right=self.cluster_size_max * 2)
+                    ax.set_yscale('log')
+                    ax.set_xscale('log')
             legend_handles = []
             for colour, proteomes in self.proteome_counts_by_colour.items():
                 if len(proteomes) > 1:
@@ -178,43 +197,20 @@ class DataObj():
                     legend_handles.append(mpatches.Patch(label="%s" % (proteomes[0]), color=colour))
             legend = ax.legend(handles=legend_handles, ncol=2, loc='best', numpoints=1, frameon=True, title="Number of proteomes in cluster")
             legend.get_frame().set_facecolor('white')
-        else:
-            if plot_type == "powerlaw":
-                x, y = self.get_cluster_size_and_count()
-                x_log_array = np.log10(np.array(x))
-                y_log_array = np.log10(np.array(y))
-                x_array = np.array(x)
-                y_array = np.array(y)
-                #fit = np.polyfit(x_log_array[1:], y_log_array[1:], 1)
-                fit = np.polyfit(x_log_array, y_log_array, 1)
-                #ax.plot(x_array, [fit[0] * x + fit[1] for x in x_log_array], '--', c='orange', alpha=0.8, ms=5)
-
-                powerlaw = lambda x, amp, index: amp * (x**index)
-                powerlaw_y = powerlaw(x_array, fit[1]*y[1], fit[0])
-
-                ax.plot(x_array, powerlaw_y, '--', c='red', alpha=0.8, ms=5, label="Power-Law")
-                #################
-                ax.plot(x_array, y_array, 'o', c='black', alpha=0.8, ms=5, label="Clustering")
-                out_f = "%s.powerlaw.%s" % (self.out_prefix, self.plot_fmt)
-                #ax.legend()
-                plt.gca().set_ylim(bottom=0.8, top=self.cluster_count_max * 2)
-                plt.gca().set_xlim(left=0.8, right=self.cluster_size_max * 2)
-                ax.set_yscale('log')
-                ax.set_xscale('log')
-        plt.margins(0.8)
-        ax.xaxis.set_major_formatter(FormatStrFormatter('%.0f'))
-        ax.yaxis.set_major_formatter(FormatStrFormatter('%.0f'))
-        ax.grid(True, linewidth=0.5, which="minor", color="lightgrey")
-        ax.grid(True, linewidth=1, which="major", color="lightgrey")
-        if plot_type == "barperc":
-            ax.set_xlabel('Cluster size')
-            ax.set_ylabel('Number of proteomes in cluster (%)')
-        else:
-            ax.set_xlabel('Cluster size')
-            ax.set_ylabel('Count')
-        f.tight_layout()
-        f.savefig(out_f, format=self.plot_fmt)
-        plt.close()
+            plt.margins(0.8)
+            ax.xaxis.set_major_formatter(FormatStrFormatter('%.0f'))
+            ax.yaxis.set_major_formatter(FormatStrFormatter('%.0f'))
+            ax.grid(True, linewidth=0.5, which="minor", color="lightgrey")
+            ax.grid(True, linewidth=1, which="major", color="lightgrey")
+            if plot_type == "barperc":
+                ax.set_xlabel('Cluster size')
+                ax.set_ylabel('Number of proteomes in cluster (%)')
+            else:
+                ax.set_xlabel('Cluster size')
+                ax.set_ylabel('Count')
+            f.tight_layout()
+            f.savefig(out_f, format=self.plot_fmt)
+            plt.close()
 
 
 if __name__ == "__main__":
@@ -227,7 +223,7 @@ if __name__ == "__main__":
     plot_fmt = args['--plot_fmt']
     xlim = int(args['--xlim'])
 
-    PROTEROMEPLOTS = set(['loglog', 'loglin', 'logbar', 'barperc'])
+    PLOTS = set(['loglog', 'loglin', 'logbar', 'barperc', 'loglogpowerlaw'])
     print "[+] Start ..."
     dataObj = DataObj(out_prefix, plot_fmt, cmap, xlim)
     dataObj.parse_data(input_f)
@@ -236,3 +232,4 @@ if __name__ == "__main__":
     dataObj.plot_cluster_sizes('logbar')
     dataObj.plot_cluster_sizes('barperc')
     dataObj.plot_cluster_sizes('powerlaw')
+    dataObj.plot_cluster_sizes('loglogpowerlaw')

@@ -2,17 +2,17 @@
 # -*- coding: utf-8 -*-
 
 """
-usage: get_protein_ids_from_cluster.py     -g <FILE> [--header <FILE>]
-                                            [-c <STRING>] [--clusters <FILE>] [-s]
+usage: get_protein_ids_from_cluster.py     -g <FILE> [--protein_ids <FILE>]
+                                            [-c <STRING>] [--cluster_ids <FILE>] [-s]
                                             [-o <STR>]
                                             [-h|--help]
 
     Options:
         -h --help                       show this
         -g, --groups <FILE>             OrthologousGroups.txt produced by OrthoFinder
-        --header <FILE>                 Filter based on sequence IDs in file
+        --protein_ids <FILE>                 Filter based on sequence IDs in file
         -c, --cluster <STRING>          Filter based on cluster ID
-        --clusters <FILE>               Filter based on cluster IDs in file
+        --cluster_ids <FILE>            Filter based on cluster IDs in file
         -o, --outprefix <STR>           Outprefix
         -s, --single_out_file           Write all proteins to a single file
 
@@ -111,9 +111,9 @@ if __name__ == "__main__":
     __version__ = 0.2
     args = docopt(__doc__)
     groups_f = args['--groups']
-    header_f = args['--header']
+    header_f = args['--protein_ids']
     cluster_id = args['--cluster']
-    cluster_f = args['--clusters']
+    cluster_f = args['--cluster_ids']
     single_out_file = args['--single_out_file']
     outprefix = args['--outprefix']
 

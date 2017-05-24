@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 
 """
-usage: generate_network.py      -c <FILE> -s <FILE> [-o <STR>]
+usage: generate_network.py      -m <FILE> -c <FILE> [-o <STR>]
                                 [-h|--help]
 
     Options:
         -h --help                               show this
-        -c, --cluster_stats <FILE>              Kinfin cluster_stats.txt output (i.e. PROTEOME.cluster_metrics.txt)
-        -s, --config_file <FILE>                config.txt used in Kinfin analysis
+        -m, --cluster_metrics <FILE>            *.cluster_metrics.txt file (i.e. TAXON.cluster_metrics.txt) from KinFin output
+        -c, --config_file <FILE>                config.txt used in Kinfin analysis
         -o, --out_prefix <STR>                  Outprefix (default: graph)
 
 """
@@ -114,7 +114,7 @@ def construct_graphs(weighted_edges, proteomeObj_by_proteome_id, attributes):
 
 def santisise_args(args):
     sane_args = {}
-    sane_args['--cluster_stats'] = check_file(args['--cluster_stats'])
+    sane_args['--cluster_metrics'] = check_file(args['--cluster_metrics'])
     sane_args['--config_file'] = check_file(args['--config_file'])
     sane_args['--out_prefix'] = args['--out_prefix']
     return sane_args
@@ -127,8 +127,8 @@ def parse_classification_f(species_classification_f):
         if line.startswith("#"):
             if not attributes:
                 attributes = [x.strip() for x in line.lstrip("#").split(",")]
-                if not 'IDX' == attributes[0] or not 'PROTEOME' == attributes[1]:
-                    sys.exit("[-] First/second element have to be IDX/PROTEOME.\n\t%s" % (attributes))
+                if not 'IDX' == attributes[0] or not 'TAXON' == attributes[1]:
+                    sys.exit("[-] First/second element have to be IDX/TAXON.\n\t%s" % (attributes))
                 else:
                     pass # accounts for SpeciesIDs that are commented out for Orthifinder
         elif line.strip():
@@ -170,7 +170,7 @@ if __name__ == "__main__":
 
     args = docopt(__doc__)
     sane_args = santisise_args(args)
-    cluster_stats_f = sane_args['--cluster_stats']
+    cluster_stats_f = sane_args['--cluster_metrics']
     species_classification_f = sane_args['--config_file']
     out_prefix = sane_args['--out_prefix']
 
