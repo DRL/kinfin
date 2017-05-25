@@ -466,16 +466,17 @@ class DataFactory():
             tree_path = join(result_path, "tree")
             node_chart_path = join(tree_path, "charts")
             node_header_path = join(tree_path, "headers")
-            self.dirs["tree"] = tree_path
-            self.dirs["tree_charts"] = node_chart_path
-            self.dirs["tree_headers"] = node_header_path
             if not exists(tree_path):
                 print "\t%s" % (tree_path)
                 mkdir(tree_path)
+                self.dirs["tree"] = tree_path
                 print "\t%s" % (node_chart_path)
                 mkdir(node_chart_path)
-                print "\t%s" % (node_header_path)
-                mkdir(node_header_path)
+                self.dirs["tree_charts"] = node_chart_path
+                if inputObj.render_tree:
+                    print "\t%s" % (node_header_path)
+                    mkdir(node_header_path)
+                    self.dirs["tree_headers"] = node_header_path
 
     ###############################
     ### build_ProteinCollection
@@ -1507,7 +1508,17 @@ class AloCollection():
             with open(node_clusters_f, 'w') as node_clusters_fh:
                 node_clusters_fh.write("\n".join(node_clusters) + "\n")
             if inputObj.render_tree:
-                self.plot_tree()
+                self.plot_tree(header_f_by_node_name, charts_f_by_node_name)
+            else:
+                self.plot_text_tree()
+
+    def plot_text_tree(self):
+        tree_nwk_f = join(dataFactory.dirs['tree'], "tree.%s" % ('nwk'))
+        self.tree_ete.write(format=1, outfile=tree_nwk_f)
+        tree_txt_f = join(dataFactory.dirs['tree'], "tree.%s" % ('txt'))
+        with open(tree_txt_f, 'w') as tree_txt_fh:
+            tree_txt_fh.write(self.tree_ete.get_ascii(show_internal=True, compact=False))
+
 
     def plot_tree(self, header_f_by_node_name, charts_f_by_node_name):
         tree_f = join(dataFactory.dirs['tree'], "tree.%s" % ('pdf'))  # must be PDF! (otherwise it breaks)
@@ -1517,12 +1528,12 @@ class AloCollection():
         style["fgcolor"] = "darkgrey"
         for node in self.tree_ete.traverse("levelorder"):
             node.set_style(style)
-            #if header_f_by_node_name[node.name]:
-            #    node_header_face = ete3.faces.ImgFace(header_f_by_node_name[node.name])  # must be PNG! (ETE can't do PDF Faces)
-            #    node.add_face(node_header_face, column=0, position="branch-top")
-            #if charts_f_by_node_name[node.name]:
-            #    node_chart_face = ete3.faces.ImgFace(charts_f_by_node_name[node.name])  # must be PNG! (ETE can't do PDF Faces)
-            #    node.add_face(node_chart_face, column=0, position="branch-bottom")
+            if header_f_by_node_name[node.name]:
+                node_header_face = ete3.faces.ImgFace(header_f_by_node_name[node.name])  # must be PNG! (ETE can't do PDF Faces)
+                node.add_face(node_header_face, column=0, position="branch-top")
+            if charts_f_by_node_name[node.name]:
+                node_chart_face = ete3.faces.ImgFace(charts_f_by_node_name[node.name])  # must be PNG! (ETE can't do PDF Faces)
+                node.add_face(node_chart_face, column=0, position="branch-bottom")
             node_name_face = ete3.TextFace(node.name, fsize=64)
             node.img_style["size"] = 10
             node.img_style["shape"] = "sphere"
@@ -2121,10 +2132,10 @@ class InputObj():
 
     def check_that_ete_can_plot(self):
         if self.render_tree:
-            #try:
-            #    import PyQt4
-            #except ImportError:
-            #    sys.exit("[ERROR] : Plotting of trees requires additional ETE3 dependencies. PyQt4 is not installed. Please install PyQt4")
+            try:
+                import PyQt4
+            except ImportError:
+                sys.exit("[ERROR] : Plotting of trees requires additional ETE3 dependencies. PyQt4 is not installed. Please install PyQt4")
             if 'DISPLAY' in environ:
                 print "[STATUS] - X server seems to be present..."
                 test_tree_f = join(getcwd(), "this_is_a_test_tree.pdf")
