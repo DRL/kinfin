@@ -1483,7 +1483,7 @@ class AloCollection():
             node_clusters = []
             node_clusters.append("\t".join(node_clusters_header))
             # header_f_by_node_name
-            header_f_by_node_name = {}
+            #header_f_by_node_name = {}
             charts_f_by_node_name = {}
             for node in self.tree_ete.traverse("levelorder"):
                 for synapomorphic_cluster_string in node.synapomorphic_cluster_strings:
@@ -1497,8 +1497,8 @@ class AloCollection():
                 node_stats_line.append(node.synapomorphic_cluster_counts['stochastic_absence'])
                 node_stats_line.append(len(node.proteome_ids))
                 node_stats.append("\t".join([str(string) for string in node_stats_line]))
-                if inputObj.render_tree:
-                    header_f_by_node_name[node.name] = self.generate_header_for_node(node)
+                #if inputObj.render_tree:
+                    #header_f_by_node_name[node.name] = self.generate_header_for_node(node)
                 charts_f_by_node_name[node.name] = self.generate_chart_for_node(node)
             print "[STATUS] - Writing %s ... " % node_stats_f
             with open(node_stats_f, 'w') as node_stats_fh:
@@ -1507,7 +1507,7 @@ class AloCollection():
             with open(node_clusters_f, 'w') as node_clusters_fh:
                 node_clusters_fh.write("\n".join(node_clusters) + "\n")
             if inputObj.render_tree:
-                self.plot_tree(header_f_by_node_name, charts_f_by_node_name)
+                self.plot_tree()
 
     def plot_tree(self, header_f_by_node_name, charts_f_by_node_name):
         tree_f = join(dataFactory.dirs['tree'], "tree.%s" % ('pdf'))  # must be PDF! (otherwise it breaks)
@@ -1517,12 +1517,12 @@ class AloCollection():
         style["fgcolor"] = "darkgrey"
         for node in self.tree_ete.traverse("levelorder"):
             node.set_style(style)
-            if header_f_by_node_name[node.name]:
-                node_header_face = ete3.faces.ImgFace(header_f_by_node_name[node.name])  # must be PNG! (ETE can't do PDF Faces)
-                node.add_face(node_header_face, column=0, position="branch-top")
-            if charts_f_by_node_name[node.name]:
-                node_chart_face = ete3.faces.ImgFace(charts_f_by_node_name[node.name])  # must be PNG! (ETE can't do PDF Faces)
-                node.add_face(node_chart_face, column=0, position="branch-bottom")
+            #if header_f_by_node_name[node.name]:
+            #    node_header_face = ete3.faces.ImgFace(header_f_by_node_name[node.name])  # must be PNG! (ETE can't do PDF Faces)
+            #    node.add_face(node_header_face, column=0, position="branch-top")
+            #if charts_f_by_node_name[node.name]:
+            #    node_chart_face = ete3.faces.ImgFace(charts_f_by_node_name[node.name])  # must be PNG! (ETE can't do PDF Faces)
+            #    node.add_face(node_chart_face, column=0, position="branch-bottom")
             node_name_face = ete3.TextFace(node.name, fsize=64)
             node.img_style["size"] = 10
             node.img_style["shape"] = "sphere"
@@ -2121,10 +2121,10 @@ class InputObj():
 
     def check_that_ete_can_plot(self):
         if self.render_tree:
-            try:
-                import PyQt4
-            except ImportError:
-                sys.exit("[ERROR] : Plotting of trees requires additional ETE3 dependencies. PyQt4 is not installed. Please install PyQt4")
+            #try:
+            #    import PyQt4
+            #except ImportError:
+            #    sys.exit("[ERROR] : Plotting of trees requires additional ETE3 dependencies. PyQt4 is not installed. Please install PyQt4")
             if 'DISPLAY' in environ:
                 print "[STATUS] - X server seems to be present..."
                 test_tree_f = join(getcwd(), "this_is_a_test_tree.pdf")
