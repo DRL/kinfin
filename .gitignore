@@ -3,7 +3,7 @@ data/nodesDB.txt
 data/interpro2go
 data/entry.list
 data/Pfam-A.clans.tsv.gz
-data/interpro2go
+data/Pfam-A.clans.tsv
 example/test.*
 *.png
 *.eggs/

@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+echo "[+] Checking dependencies..."
+wget=$(which wget)
+if [ -x "$wget" ] ; then
+    echo "    [+] [wget] $wget"; else
+    echo "    [X] [wget] ... please install wget";
+fi
+pip=$(which pip)
+if [ -x "$pip" ] ; then
+    echo "    [+] [pip] $pip"; else
+    echo "    [X] [pip] ... please install pip";
+fi
+python=$(which python)
+if [ -x "$python" ] ; then
+    echo "    [+] [python] $python"; else
+    echo "    [X] [python] ... please install python2.7";
+fi
+
+# Download files
+echo "[+] Checking data files..."
+pfam_dest=$DIR/data/Pfam-A.clans.tsv.gz
+ipr_dest=$DIR/data/entry.list
+go_dest=$DIR/data/interpro2go
+
+if [ -f "$pfam_dest" ]; then
+    echo "    [+] $pfam_dest"
+else
+    echo -n "    [-] $pfam_dest. Downloading ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.clans.tsv.gz ..."
+    $wget -qN ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.clans.tsv.gz -P $DIR/data/
+    if [ $? -eq 0 ]; then
+        echo "done."
+    else
+        echo "FAIL."
+    fi
+fi
+
+if [ -f "$ipr_dest" ]; then
+    echo "    [+] $ipr_dest"
+else
+    echo -n "    [-] $ipr_dest. Downloading ftp://ftp.ebi.ac.uk/pub/databases/interpro/entry.list ..."
+    $wget -qN ftp://ftp.ebi.ac.uk/pub/databases/interpro/entry.list -P $DIR/data/
+    if [ $? -eq 0 ]; then
+        echo "done."
+    else
+        echo "FAIL."
+    fi
+fi
+
+if [ -f "$go_dest" ]; then
+    echo "    [+] $go_dest"
+else
+    echo -n "    [-] $go_dest. Downloading ftp://ftp.ebi.ac.uk/pub/databases/interpro/interpro2go ... "
+    $wget -qN ftp://ftp.ebi.ac.uk/pub/databases/interpro/interpro2go -P $DIR/data/
+    if [ $? -eq 0 ]; then
+        echo "done."
+    else
+        echo "FAIL."
+    fi
+fi
+
+# Install python dependencies
+echo "[+] Installing python dependencies..."
+$python setup.py install
+
+# Create executable
+echo "[+] Creating executable..."
+echo '#!/usr/bin/env bash
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+$DIR/src/kinfin.py "$@"' > $DIR/kinfin && chmod +x $DIR/kinfin
+
+# Done
+echo "[+] Kinfin was installed. Please run ./kinfin"
