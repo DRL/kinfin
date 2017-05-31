@@ -151,6 +151,7 @@ def statistic(count_1, count_2, test):
         mean_count_1 = mean(implicit_count_1)
         mean_count_2 = mean(implicit_count_2)
         log2_mean = log((mean(implicit_count_1)/mean(implicit_count_2)), 2)
+        print implicit_count_1, implicit_count_2, log2_mean
         if test == "welch":
             #try:
             pvalue = scipy.stats.ttest_ind(implicit_count_1, implicit_count_2, equal_var = False)[1] # Welch's t-test
