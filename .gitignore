@@ -4,6 +4,7 @@ data/interpro2go
 data/entry.list
 data/Pfam-A.clans.tsv.gz
 data/interpro2go
+example/test.*
 *.png
 *.eggs/
 build/

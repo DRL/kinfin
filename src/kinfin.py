@@ -147,10 +147,10 @@ def statistic(count_1, count_2, test):
     pvalue, log2_mean, mean_count_1, mean_count_2 = None, None, None, None
     implicit_count_1 = [count for count in count_1 if count > 0]
     implicit_count_2 = [count for count in count_2 if count > 0]
-    mean_count_1 = mean(implicit_count_1)
-    mean_count_2 = mean(implicit_count_2)
-    log2_mean = log((mean(implicit_count_1)/mean(implicit_count_2)), 2)
     if len(implicit_count_1) >= inputObj.min_proteomes and len(implicit_count_2) >= inputObj.min_proteomes:
+        mean_count_1 = mean(implicit_count_1)
+        mean_count_2 = mean(implicit_count_2)
+        log2_mean = log((mean(implicit_count_1)/mean(implicit_count_2)), 2)
         if test == "welch":
             try:
                 pvalue = scipy.stats.mannwhitneyu(implicit_count_1, implicit_count_2, alternative="two-sided")[1]
