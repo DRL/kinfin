@@ -1188,6 +1188,9 @@ class DataFactory():
                 log2fc_values = []
                 for data in pair_data:
                     log2fc_values.append(data[5])
+                    pvalue = data[6]
+                    if pvalue == 0.0:
+                        pvalue = 0.01 / pair_data_count + 1 # if value is 0.0 it gets set beyond the bonferroni corrected 0.01
                     p_values.append(data[6])
                 if p_values:
                     pairwise_representation_test_f = join(self.dirs[attribute], "%s.pairwise_representation_test.%s.%s" % (attribute, "_".join(pair_list), inputObj.plot_format))
@@ -1224,12 +1227,13 @@ class DataFactory():
                         x_max = 0.0 + abs(np.min(log2fc_array))
                     ax.set_xlim(x_min - 1, x_max + 1)
 
-                    ax.grid(True, linewidth=0.5, which="both", color="lightgrey")
-                    #ax.set_ylim(np.min(p_array) * 0.1, 1.1)
+                    ax.grid(True, linewidth=1, which="major", color="lightgrey")
+                    ax.grid(True, linewidth=0.5, which="minor", color="lightgrey")
+                    ax.set_ylim(np.min(p_array) * 0.1, 1.1)
                     ax.set_xlabel("log2(mean(%s)/mean(%s))" % (x_label, y_label), fontsize=inputObj.plot_font_size)
                     ax.set_ylabel("p-value", fontsize=inputObj.plot_font_size)
                     plt.gca().invert_yaxis()
-                    ax.set_yscale('symlog')
+                    ax.set_yscale('log')
                     print "[STATUS] - Plotting %s" % (pairwise_representation_test_f)
                     f.savefig(pairwise_representation_test_f, format=inputObj.plot_format)
                     plt.close()
