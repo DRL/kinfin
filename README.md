@@ -18,6 +18,7 @@ Installation
 ------------
 
     $ git clone https://github.com/DRL/kinfin.git
+    $ cd kinfin
     $ ./install
 
 Run example
