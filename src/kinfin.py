@@ -1233,7 +1233,7 @@ class DataFactory():
                     ax.set_xlabel("log2(mean(%s)/mean(%s))" % (x_label, y_label), fontsize=inputObj.plot_font_size)
                     ax.set_ylabel("p-value", fontsize=inputObj.plot_font_size)
                     plt.gca().invert_yaxis()
-                    ax.set_yscale('log')
+                    ax.set_yscale('symlog')
                     print "[STATUS] - Plotting %s" % (pairwise_representation_test_f)
                     f.savefig(pairwise_representation_test_f, format=inputObj.plot_format)
                     plt.close()
