@@ -1189,9 +1189,6 @@ class DataFactory():
                 for data in pair_data:
                     log2fc_values.append(data[5])
                     p_values.append(data[6])
-                print pair_list
-                print log2fc_values
-                print p_values
                 if p_values:
                     pairwise_representation_test_f = join(self.dirs[attribute], "%s.pairwise_representation_test.%s.%s" % (attribute, "_".join(pair_list), inputObj.plot_format))
                     f, ax = plt.subplots(figsize=inputObj.plot_size)
@@ -1229,7 +1226,7 @@ class DataFactory():
                         ax.set_xlim(x_min - 1, x_max + 1)
 
                     ax.grid(True, linewidth=1, which="major", color="lightgrey")
-                    ax.set_ylim(np.min(p_array) * 0.1, 1.1)
+                    #ax.set_ylim(np.min(p_array) * 0.1, 1.1)
                     ax.set_xlabel("log2(mean(%s)/mean(%s))" % (x_label, y_label), fontsize=inputObj.plot_font_size)
                     ax.set_ylabel("p-value", fontsize=inputObj.plot_font_size)
                     plt.gca().invert_yaxis()
