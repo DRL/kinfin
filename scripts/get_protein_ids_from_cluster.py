@@ -10,7 +10,7 @@ usage: get_protein_ids_from_cluster.py     -g <FILE> [--protein_ids <FILE>]
     Options:
         -h --help                       show this
         -g, --groups <FILE>             OrthologousGroups.txt produced by OrthoFinder
-        --protein_ids <FILE>                 Filter based on sequence IDs in file
+        --protein_ids <FILE>            Filter based on sequence IDs in file
         -c, --cluster <STRING>          Filter based on cluster ID
         --cluster_ids <FILE>            Filter based on cluster IDs in file
         -o, --outprefix <STR>           Outprefix

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-usage: generate_network.py      -m <FILE> -c <FILE> [-o <STR>]
+usage: generate_network.py      -m <FILE> -c <FILE> [-o <STR>] [exclude_universal]
                                 [-h|--help]
 
     Options:
@@ -10,6 +10,8 @@ usage: generate_network.py      -m <FILE> -c <FILE> [-o <STR>]
         -m, --cluster_metrics <FILE>            *.cluster_metrics.txt file (i.e. TAXON.cluster_metrics.txt) from KinFin output
         -c, --config_file <FILE>                config.txt used in Kinfin analysis
         -o, --out_prefix <STR>                  Outprefix (default: graph)
+        exclude_universal                       Excludes clusters in which all taxa are present from edge weights
+
 
 """
 
@@ -34,7 +36,7 @@ def read_file(f):
         for line in fh:
             yield line.rstrip("\n")
 
-def parse_cluster_stats_f(cluster_stats_f, proteomeObj_by_proteome_id, attribute):
+def parse_cluster_stats_f(cluster_stats_f, proteomeObj_by_proteome_id, attribute, exclude_universal):
     print "[+] Parsing %s ... " % cluster_stats_f
     proteome_id_by_idx = None
     cluster_type_idx = None
@@ -63,11 +65,15 @@ def parse_cluster_stats_f(cluster_stats_f, proteomeObj_by_proteome_id, attribute
                 proteomeObj_by_proteome_id[proteome_id].add_cluster(cluster_type, count)
             if cluster_type  == "shared":
                 # only clusters with more than one proteome
-                for combination in combinations(protein_counts_by_proteome_id.keys(), 2):
-                    edge_nodes = frozenset(combination)
-                    if not edge_nodes in edge_weights:
-                        edge_weights[edge_nodes] = 0
-                    edge_weights[edge_nodes] += 1
+                if exclude_universal and len(protein_counts_by_proteome_id) == len(proteome_id_by_idx):
+                    pass
+                else:
+                    for combination in combinations(protein_counts_by_proteome_id.keys(), 2):
+                        edge_nodes = frozenset(combination)
+                        if not edge_nodes in edge_weights:
+                            edge_weights[edge_nodes] = 0
+                        edge_weights[edge_nodes] += 1
+
     #print edge_weights
     weighted_edges = generate_edges(edge_weights)
     for proteome_id, proteomeObj in proteomeObj_by_proteome_id.items():
@@ -169,6 +175,7 @@ if __name__ == "__main__":
     __version__ = 0.3
 
     args = docopt(__doc__)
+    exclude_universal = args['exclude_universal']
     sane_args = santisise_args(args)
     cluster_stats_f = sane_args['--cluster_metrics']
     species_classification_f = sane_args['--config_file']
@@ -178,5 +185,5 @@ if __name__ == "__main__":
 
     proteomeObj_by_proteome_id, attributes = parse_classification_f(species_classification_f)
     outpath_by_name = generate_outpath_by_name(out_prefix)
-    weighted_edges, proteomeObj = parse_cluster_stats_f(cluster_stats_f, proteomeObj_by_proteome_id, attributes)
+    weighted_edges, proteomeObj = parse_cluster_stats_f(cluster_stats_f, proteomeObj_by_proteome_id, attributes, exclude_universal)
     construct_graphs(weighted_edges, proteomeObj_by_proteome_id, attributes)

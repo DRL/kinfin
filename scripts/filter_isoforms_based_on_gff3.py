@@ -103,8 +103,7 @@ def parse_custom_fasta(fasta_f, fs, fe, fdel):
                 longest_parsed = 1
             else:
                 non_longest_isoforms.append(protein_id)
-        if len(data[gene_id]) > 1:
-            all_isoforms.append("%s\t%s" % (gene_id, ",".join(str(protein_id) for (protein_id, length) in sorted(data[gene_id].items(), key=operator.itemgetter(1), reverse=True))))
+        all_isoforms.append("%s\t%s" % (gene_id, ",".join(str(protein_id) for (protein_id, length) in sorted(data[gene_id].items(), key=operator.itemgetter(1), reverse=True))))
     longest_isoforms = set(longest_isoforms)
     non_longest_isoforms = set(non_longest_isoforms)
     print "[+] %s proteinIDs in FASTA file" % (proteinCollection.protein_count)
@@ -341,8 +340,7 @@ def generate_output(out_prefix):
                     all_isoforms_line.append(protein_id)
                     if not protein_id == longest_gff_protein_id:
                         non_longest_isoforms.append("%s" % (annotationCollection.fas_protein_id_by_gff_protein_id[protein_id]))
-                if len(gff_protein_ids) > 1:
-                    all_isoforms.append("%s\t%s" % (gene_id, ",".join([annotationCollection.fas_protein_id_by_gff_protein_id[protein_id] for protein_id in gff_protein_ids])))
+        all_isoforms.append("%s\t%s" % (gene_id, ",".join([annotationCollection.fas_protein_id_by_gff_protein_id[protein_id] for protein_id in gff_protein_ids])))
     longest_isoforms = set(longest_isoforms)
     non_longest_isoforms = set(non_longest_isoforms)
     print "[+] %s proteinIDs in FASTA file" % (proteinCollection.protein_count)

@@ -3,11 +3,13 @@
 
 """
 usage: kinfin-d.py      -g <FILE> -c <FILE> -s <FILE> [-t <FILE>] [-o <PREFIX>]
-                        [--infer_singletons] [--plot_tree]
+                        [--infer_singletons]
                         [-p <FILE>] [-a <DIR>] [-f <FILE>] [-r <STRING>]
                         [-x <FLOAT>] [-n <INT>] [--min <INT>] [--max <INT>]
                         [--repetitions <INT>] [--min_proteomes <INT>]
                         [--fontsize <INT>] [--plotsize INT,INT] [--plotfmt <PLOTFORMAT>]
+                        [--test <STR>]
+                        [--plot_tree]
                         [-h|--help]
 
     Options:
@@ -25,10 +27,13 @@ usage: kinfin-d.py      -g <FILE> -c <FILE> -s <FILE> [-t <FILE>] [-o <PREFIX>]
         General options
             -o, --outprefix <STR>               Output prefix
             --infer_singletons                  Absence of proteins in clustering is interpreted as singleton (based on SequenceIDs.txt)
-            --plot_tree                         Plot annotated phylogenetic tree (requires full ETE3 installation and X-server/xvfb-run)
+            --plot_tree                         Plot PDF of annotated phylogenetic tree (requires full ETE3 installation and X-server/xvfb-run)
             --min_proteomes <INT>               Required number of proteomes in a taxon-set to be used
                                                     in rarefaction/representation-test computations [default: 2]
-            -r, --taxranks <STRING>                 Taxonomic ranks to be inferred from TaxID [default: phylum,order,genus]
+            --test <STR>                        Test to be used in representation-test computations [default: welch]
+                                                    - welch: Welch's t-test
+                                                    - mannwhitneyu: Mann-Whitney-U test
+            -r, --taxranks <STRING>             Taxonomic ranks to be inferred from TaxID [default: phylum,order,genus]
             --repetitions <INT>                 Number of repetitions for rarefaction curves [default: 30]
         "Fuzzy"-Orthology-groups
             -x, --target_fraction <FLOAT>       Minimum proportion of proteomes with target protein count [default: 0.75].
@@ -138,18 +143,26 @@ def get_ALO_cluster_cardinality(ALO_proteome_counts_in_cluster):
     return None
 
 
-def mannwhitneyu(count_1, count_2):
+def statistic(count_1, count_2, test):
     pvalue, log2_mean, mean_count_1, mean_count_2 = None, None, None, None
     implicit_count_1 = [count for count in count_1 if count > 0]
     implicit_count_2 = [count for count in count_2 if count > 0]
+    mean_count_1 = mean(implicit_count_1)
+    mean_count_2 = mean(implicit_count_2)
+    log2_mean = log((mean(implicit_count_1)/mean(implicit_count_2)), 2)
     if len(implicit_count_1) >= inputObj.min_proteomes and len(implicit_count_2) >= inputObj.min_proteomes:
-        try:
-            pvalue = scipy.stats.mannwhitneyu(implicit_count_1, implicit_count_2, alternative="two-sided")[1]
-        except:
-            pvalue = 1.0
-        mean_count_1 = mean(implicit_count_1)
-        mean_count_2 = mean(implicit_count_2)
-        log2_mean = log((mean(implicit_count_1)/mean(implicit_count_2)), 2)
+        if test == "welch":
+            try:
+                pvalue = scipy.stats.mannwhitneyu(implicit_count_1, implicit_count_2, alternative="two-sided")[1]
+            except:
+                pvalue = 1.0
+        elif test == "mannwhitneyu":
+            try:
+                pvalue = scipy.stats.ttest_ind(implicit_count_1, implicit_count_2, equal_var = False) # Welch's t-test
+            except:
+                pvalue = 1.0
+        else:
+            pass
     return pvalue, log2_mean, mean_count_1, mean_count_2
 
 
@@ -691,7 +704,7 @@ class DataFactory():
             attribute_metrics_header.append("absent_cluster_specific_count")
             attribute_metrics_header.append("absent_cluster_shared_count")
             attribute_metrics_header.append("TAXON_count")
-            attribute_metrics_header.append("TAXA")
+            attribute_metrics_header.append("TAXON_taxa")
             return "\t".join(attribute_metrics_header)
         elif filetype == "cluster_metrics_ALO":
             cluster_metrics_ALO_header = []
@@ -700,15 +713,17 @@ class DataFactory():
             cluster_metrics_ALO_header.append("cluster_type")
             cluster_metrics_ALO_header.append("cluster_protein_count")
             cluster_metrics_ALO_header.append("cluster_proteome_count")
-            cluster_metrics_ALO_header.append("taxon_protein_count")
-            cluster_metrics_ALO_header.append("taxon_mean_count")
+            cluster_metrics_ALO_header.append("TAXON_protein_count")
+            cluster_metrics_ALO_header.append("TAXON_mean_count")
             cluster_metrics_ALO_header.append("non_taxon_mean_count")
             cluster_metrics_ALO_header.append("representation")
             cluster_metrics_ALO_header.append("log2_mean(TAXON/others)")
             cluster_metrics_ALO_header.append("mwu_pvalue(TAXON vs. others)")
-            cluster_metrics_ALO_header.append("taxon_proteome_coverage")
-            cluster_metrics_ALO_header.append("taxon_proteomes_present_count")
-            cluster_metrics_ALO_header.append("taxon_proteomes_present")
+            cluster_metrics_ALO_header.append("TAXON_coverage")
+            cluster_metrics_ALO_header.append("TAXON_count")
+            cluster_metrics_ALO_header.append("non_TAXON_count")
+            cluster_metrics_ALO_header.append("TAXON_taxa")
+            cluster_metrics_ALO_header.append("non_TAXON_taxa")
             #for domain_source in clusterCollection.domain_sources:
             #    cluster_metrics_ALO_header.append(domain_source)
             return "\t".join(cluster_metrics_ALO_header)
@@ -1055,18 +1070,22 @@ class DataFactory():
                         cluster_metrics_ALO_line.append("N/A")
                         cluster_metrics_ALO_line.append("N/A")
                     cluster_metrics_ALO_line.append("{0:.2f}".format(clusterObj.proteome_coverage_by_level_by_attribute[attribute][level]))
-                    ALO_proteomes_present = []
-                    if ALO.cluster_status_by_cluster_id[clusterObj.cluster_id] == 'present':
-                        ALO_proteomes_present = clusterObj.proteome_ids.intersection(ALO.proteomes)
+                    ALO_proteomes_present = clusterObj.proteome_ids.intersection(ALO.proteomes)
+                    non_ALO_proteomes_present = clusterObj.proteome_ids.difference(ALO.proteomes)
                     cluster_metrics_ALO_line.append(len(ALO_proteomes_present))
+                    cluster_metrics_ALO_line.append(len(non_ALO_proteomes_present))
                     if ALO_proteomes_present:
                         cluster_metrics_ALO_line.append(",".join(sorted(list(ALO_proteomes_present))))
                     else:
                         cluster_metrics_ALO_line.append("N/A")
-                    if clusterObj.go_terms:
-                        cluster_metrics_ALO_line.append(";".join(sorted(list(clusterObj.go_terms))))
+                    if non_ALO_proteomes_present:
+                        cluster_metrics_ALO_line.append(",".join(sorted(list(non_ALO_proteomes_present))))
                     else:
                         cluster_metrics_ALO_line.append("N/A")
+                    #if clusterObj.go_terms:
+                    #    cluster_metrics_ALO_line.append(";".join(sorted(list(clusterObj.go_terms))))
+                    #else:
+                    #    cluster_metrics_ALO_line.append("N/A")
                     #for domain_source in clusterCollection.domain_sources:
                     #    if domain_source in clusterObj.domain_counter_by_domain_source:
                     #        cluster_metrics_ALO_line.append(";".join(["%s:%s" % (domain, count) for domain, count in clusterObj.domain_counter_by_domain_source[domain_source].most_common()]))
@@ -1221,15 +1240,17 @@ class DataFactory():
                     protein_counts_level = [count for count in clusterObj.protein_counts_of_proteomes_by_level_by_attribute[attribute][level] if count > 0]
                     protein_counts_other_level = [count for count in clusterObj.protein_counts_of_proteomes_by_level_by_attribute[attribute][other_level] if count > 0]
                     if protein_counts_level and protein_counts_other_level:
-                        pvalue = None
-                        try:
-                            pvalue = scipy.stats.mannwhitneyu(protein_counts_level, protein_counts_other_level, alternative="two-sided")[1]
-                        except:
-                            pvalue = 1.0
-                        mean_level = mean(protein_counts_level)
-                        mean_other_level = mean(protein_counts_other_level)
-                        log2fc_mean = log((mean_level/mean_other_level), 2)
-                        yield [clusterObj.cluster_id, level, other_level, mean_level, mean_other_level, log2fc_mean, pvalue]
+                        mwu_pvalue, mwu_log2_mean, mean_ALO_count, mean_non_ALO_count = statistic(protein_counts_level, protein_counts_other_level, inputObj.test)
+                        yield [clusterObj.cluster_id, level, other_level, mean_ALO_count, mean_non_ALO_count, mwu_log2_mean, mwu_pvalue]
+                        #pvalue = None
+                        #try:
+                        #    pvalue = scipy.stats.mannwhitneyu(protein_counts_level, protein_counts_other_level, alternative="two-sided")[1]
+                        #except:
+                        #    pvalue = 1.0
+                        #mean_level = mean(protein_counts_level)
+                        #mean_other_level = mean(protein_counts_other_level)
+                        #log2fc_mean = log((mean_level/mean_other_level), 2)
+                        #yield [clusterObj.cluster_id, level, other_level, mean_level, mean_other_level, log2fc_mean, pvalue]
 
 ########################################################################
 # CLASS : AloCollection
@@ -1437,7 +1458,7 @@ class AloCollection():
                             for non_ALO_level in non_ALO_levels:
                                 for proteome_id in explicit_protein_count_by_proteome_id_by_level[non_ALO_level]:
                                     non_ALO_proteome_counts_in_cluster.append(explicit_protein_count_by_proteome_id_by_level[non_ALO_level][proteome_id])
-                            mwu_pvalue, mwu_log2_mean, mean_ALO_count, mean_non_ALO_count = mannwhitneyu(ALO_proteome_counts_in_cluster, non_ALO_proteome_counts_in_cluster)
+                            mwu_pvalue, mwu_log2_mean, mean_ALO_count, mean_non_ALO_count = statistic(ALO_proteome_counts_in_cluster, non_ALO_proteome_counts_in_cluster, inputObj.test)
 
                 ALO.add_clusterObj(
                     clusterObj,
@@ -1463,7 +1484,7 @@ class AloCollection():
             # Node stats
             node_stats_f = join(dataFactory.dirs['tree'], "tree.node_metrics.txt")
             node_stats_header = []
-            node_stats_header.append('nodeID')
+            node_stats_header.append('#nodeID')
             node_stats_header.append('taxon_specific_apomorphies_[singletons]')
             node_stats_header.append('taxon_specific_apomorphies (non-singletons)')
             node_stats_header.append('node_specific_synapomorphies_total')
@@ -1475,12 +1496,12 @@ class AloCollection():
             # Cluster node stats
             node_clusters_f = join(dataFactory.dirs['tree'], "tree.cluster_metrics.txt")
             node_clusters_header = []
-            node_clusters_header.append('clusterID')
+            node_clusters_header.append('#clusterID')
             node_clusters_header.append('nodeID')
             node_clusters_header.append('synapomorphy_type')
-            node_clusters_header.append('node_proteomes_coverage')
+            node_clusters_header.append('node_taxon_coverage')
             node_clusters_header.append('children_coverage')
-            node_clusters_header.append('node_proteomes_present')
+            node_clusters_header.append('node_taxa_present')
             node_clusters = []
             node_clusters.append("\t".join(node_clusters_header))
             # header_f_by_node_name
@@ -1517,7 +1538,7 @@ class AloCollection():
         self.tree_ete.write(format=1, outfile=tree_nwk_f)
         tree_txt_f = join(dataFactory.dirs['tree'], "tree.%s" % ('txt'))
         with open(tree_txt_f, 'w') as tree_txt_fh:
-            tree_txt_fh.write(self.tree_ete.get_ascii(show_internal=True, compact=False))
+            tree_txt_fh.write("%s\n" % (self.tree_ete.get_ascii(show_internal=True, compact=False)))
 
 
     def plot_tree(self, header_f_by_node_name, charts_f_by_node_name):
@@ -2025,6 +2046,8 @@ class InputObj():
         self.tree_f = args['--tree_file']
         self.render_tree = args['--plot_tree']
         self.functional_annotation_f = args['--functional_annotation']
+        self.test = args['--test']
+        self.check_test()
         self.pfam_mapping = True
         self.pfam_mapping_f = None
         self.ipr_mapping = True
@@ -2047,7 +2070,7 @@ class InputObj():
         self.fuzzy_min = None
         self.fuzzy_max = None
         self.check_fuzzy_min_max(args['--min'], args['--max'])
-        self.fuzzy_range = set([x for x in xrange(self.fuzzy_min, self.fuzzy_max+1) if not x == self.fuzzy_count])
+        self.fuzzy_range = set([x for x in xrange(self.fuzzy_min, self.fuzzy_max + 1) if not x == self.fuzzy_count])
         # values: rarefaction
         self.repetitions = int(args['--repetitions']) + 1
         self.check_repetitions()
@@ -2059,13 +2082,18 @@ class InputObj():
         self.plot_size = tuple(int(x) for x in args['--plotsize'].split(","))
         self.plot_font_size = int(args['--fontsize'])
         # taxrank
-        self.taxranks = [taxrank.replace(" ","") for taxrank in args['--taxranks'].split(",")]
+        self.taxranks = [taxrank.replace(" ", "") for taxrank in args['--taxranks'].split(",")]
         self.check_taxranks()
+
+    def check_test(self):
+        SUPPORTED_TESTS = set(['welch', 'mannwhitneyu'])
+        if self.test not in SUPPORTED_TESTS:
+            sys.exit("[ERROR] : test %s is not supported (supported tests: %s)" % (self.test, ",".join(SUPPORTED_TESTS)))
 
     def check_plot_format(self):
         SUPPORTED_PLOT_FORMATS = set(['png', 'pdf', 'svg'])
         if self.plot_format not in SUPPORTED_PLOT_FORMATS:
-            sys.exit("[ERROR] : Plot format %s not part of supported plot formats (%s)" % (self.plot_format, SUPPORTED_PLOT_FORMATS))
+            sys.exit("[ERROR] : Plot format %s not part of supported plot formats (%s)" % (self.plot_format, ",".join(SUPPORTED_PLOT_FORMATS)))
 
     def check_repetitions(self):
         if not self.repetitions > 0:
