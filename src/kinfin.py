@@ -1191,7 +1191,7 @@ class DataFactory():
                     pvalue = data[6]
                     if pvalue == 0.0:
                         pvalue = 0.01 / (pair_data_count + 1) # if value is 0.0 it gets set beyond the bonferroni corrected 0.01
-                    p_values.append(data[6])
+                    p_values.append(pvalue)
                 if p_values:
                     pairwise_representation_test_f = join(self.dirs[attribute], "%s.pairwise_representation_test.%s.%s" % (attribute, "_".join(pair_list), inputObj.plot_format))
                     f, ax = plt.subplots(figsize=inputObj.plot_size)

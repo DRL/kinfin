@@ -7,6 +7,11 @@ if [ -x "$wget" ] ; then
     echo "    [+] [wget] $wget"; else
     echo "    [X] [wget] ... please install wget";
 fi
+gunzip=$(which gunzip)
+if [ -x "$gunzip" ] ; then
+    echo "    [+] [gunzip] $gunzip"; else
+    echo "    [X] [gunzip] ... please install gunzip";
+fi
 pip=$(which pip)
 if [ -x "$pip" ] ; then
     echo "    [+] [pip] $pip"; else
@@ -23,6 +28,25 @@ echo "[+] Checking data files..."
 pfam_dest=$DIR/data/Pfam-A.clans.tsv.gz
 ipr_dest=$DIR/data/entry.list
 go_dest=$DIR/data/interpro2go
+nodesdbgz=$DIR/data/nodesdb.txt.gz
+nodesdb=$DIR/data/nodesdb.txt
+if [ -f "$nodesdb" ]; then
+    echo "    [+] $nodesdb"
+else
+    if [ -f "$nodesdbgz" ]; then
+        echo -n "    [+] Extracting $nodesdbgz ..."
+        $gunzip $nodesdbgz
+        if [ $? -eq 0 ]; then
+            echo "done."
+        else
+            echo "FAIL... Please download kinfin again."
+            exit 1
+        fi
+    else
+        echo "[-] $nodesdbgz not found... Please download kinfin again."
+            exit 1
+    fi
+fi
 
 if [ -f "$pfam_dest" ]; then
     echo "    [+] $pfam_dest"
