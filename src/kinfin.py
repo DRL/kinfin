@@ -30,7 +30,7 @@ usage: kinfin-d.py      -g <FILE> -c <FILE> -s <FILE> [-t <FILE>] [-o <PREFIX>]
             --plot_tree                         Plot PDF of annotated phylogenetic tree (requires full ETE3 installation and X-server/xvfb-run)
             --min_proteomes <INT>               Required number of proteomes in a taxon-set to be used
                                                     in rarefaction/representation-test computations [default: 2]
-            --test <STR>                        Test to be used in representation-test computations [default: welch]
+            --test <STR>                        Test to be used in representation-test computations [default: mannwhitneyu]
                                                     - welch: Welch's t-test
                                                     - mannwhitneyu: Mann-Whitney-U test
             -r, --taxranks <STRING>             Taxonomic ranks to be inferred from TaxID [default: phylum,order,genus]
@@ -1219,13 +1219,12 @@ class DataFactory():
                     if abs(np.min(log2fc_array)) < abs(np.max(log2fc_array)):
                         x_min = 0.0 - abs(np.max(log2fc_array))
                         x_max = 0.0 + abs(np.max(log2fc_array))
-                        ax.set_xlim(x_min - 1, x_max + 1)
                     else:
                         x_min = 0.0 - abs(np.min(log2fc_array))
                         x_max = 0.0 + abs(np.min(log2fc_array))
-                        ax.set_xlim(x_min - 1, x_max + 1)
+                    ax.set_xlim(x_min - 1, x_max + 1)
 
-                    ax.grid(True, linewidth=1, which="major", color="lightgrey")
+                    ax.grid(True, linewidth=0.5, which="both", color="lightgrey")
                     #ax.set_ylim(np.min(p_array) * 0.1, 1.1)
                     ax.set_xlabel("log2(mean(%s)/mean(%s))" % (x_label, y_label), fontsize=inputObj.plot_font_size)
                     ax.set_ylabel("p-value", fontsize=inputObj.plot_font_size)
