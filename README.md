@@ -9,25 +9,32 @@ Overview
 
 Taxon-aware analysis of clustered protein data
 
-Installation / Usage
---------------------
+Dependencies
+------------
+bash, Python2.7+, wget, gunzip, pip
 
-To install use pip:
-
-    $ pip install kinfin
-
-
-Or clone the repo:
-
-    $ git clone https://github.com/DRL/kinfin.git
-    $ python setup.py install
-    
-Contributing
+Installation
 ------------
 
-TBD
+    $ git clone https://github.com/DRL/kinfin.git
+    $ ./install
+
+Run example
+-----------
+
+    $ ./test
+
+Usage
+-----
+
+    $ ./kinfin -h
 
 Example
 -------
 
-TBD
+    $ ./test
+
+Documentation
+-------------
+
+    TBD
