@@ -21,11 +21,6 @@ Installation
     $ cd kinfin
     $ ./install
 
-Run example
------------
-
-    $ ./test
-
 Usage
 -----
 
