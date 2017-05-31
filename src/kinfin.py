@@ -153,12 +153,12 @@ def statistic(count_1, count_2, test):
         log2_mean = log((mean(implicit_count_1)/mean(implicit_count_2)), 2)
         if test == "welch":
             try:
-                pvalue = scipy.stats.mannwhitneyu(implicit_count_1, implicit_count_2, alternative="two-sided")[1]
+                pvalue = scipy.stats.ttest_ind(implicit_count_1, implicit_count_2, equal_var = False)[1] # Welch's t-test
             except:
                 pvalue = 1.0
         elif test == "mannwhitneyu":
             try:
-                pvalue = scipy.stats.ttest_ind(implicit_count_1, implicit_count_2, equal_var = False) # Welch's t-test
+                pvalue = scipy.stats.mannwhitneyu(implicit_count_1, implicit_count_2, alternative="two-sided")[1]
             except:
                 pvalue = 1.0
         else:
