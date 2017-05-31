@@ -2,6 +2,7 @@ KinFin
 ===============================
 
 version number: 0.9
+
 author: Dominik R Laetsch
 
 Overview
