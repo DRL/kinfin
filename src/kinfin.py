@@ -164,6 +164,11 @@ def statistic(count_1, count_2, test):
                 pvalue = scipy.stats.mannwhitneyu(implicit_count_1, implicit_count_2, alternative="two-sided")[1]
             except ValueError: # throws ValueError when all numbers are equal
                 pvalue = 1.0
+        elif test == "ttest":
+            #try:
+            pvalue = scipy.stats.ttest_ind(implicit_count_1, implicit_count_2)[1] #  t-test
+            if pvalue != pvalue: # testing for "nan"
+                pvalue = 1.0
         else:
             pass
     return pvalue, log2_mean, mean_count_1, mean_count_2
