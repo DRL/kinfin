@@ -5,7 +5,6 @@ data/entry.list
 data/Pfam-A.clans.tsv.gz
 data/Pfam-A.clans.tsv
 example/test.*
-*.png
 *.eggs/
 build/
 dist/

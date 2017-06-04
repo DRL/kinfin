@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-usage: generate_network.py      -m <FILE> -c <FILE> [-o <STR>] [exclude_universal]
+usage: generate_network.py      -m <FILE> -c <FILE> [-o <STR>] [--exclude_universal]
                                 [-h|--help]
 
     Options:
@@ -10,7 +10,7 @@ usage: generate_network.py      -m <FILE> -c <FILE> [-o <STR>] [exclude_universa
         -m, --cluster_metrics <FILE>            *.cluster_metrics.txt file (i.e. TAXON.cluster_metrics.txt) from KinFin output
         -c, --config_file <FILE>                config.txt used in Kinfin analysis
         -o, --out_prefix <STR>                  Outprefix (default: graph)
-        exclude_universal                       Excludes clusters in which all taxa are present from edge weights
+        --exclude_universal                     Excludes clusters in which all taxa are present from edge weights (default: False)
 
 
 """
@@ -175,7 +175,7 @@ if __name__ == "__main__":
     __version__ = 0.3
 
     args = docopt(__doc__)
-    exclude_universal = args['exclude_universal']
+    exclude_universal = args['--exclude_universal']
     sane_args = santisise_args(args)
     cluster_stats_f = sane_args['--cluster_metrics']
     species_classification_f = sane_args['--config_file']
