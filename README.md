@@ -2,7 +2,11 @@
 
 Dependencies
 ------------
-bash, Python2.7+, wget, gunzip, pip
+* bash
+* wget
+* gunzip
+* Python2.7+
+* pip
 
 Installation
 ------------
