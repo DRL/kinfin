@@ -1,11 +1,5 @@
-<img src="https://cloud.githubusercontent.com/assets/167909/26763490/8f07758a-494b-11e7-8fb7-83b8153f4691.png" width="128"> 
-
-KinFin v0.9
+<img src="https://cloud.githubusercontent.com/assets/167909/26763490/8f07758a-494b-11e7-8fb7-83b8153f4691.png" width="256"> 
 ===============================
-
-Overview
---------
-
 Taxon-aware analysis of clustered protein data
 
 Dependencies
