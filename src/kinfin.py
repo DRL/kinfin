@@ -2150,8 +2150,8 @@ class InputObj():
         check_file(self.functional_annotation_f)
         check_file(self.sequence_ids_f)
         check_file(self.tree_f)
-        nodesdb_f = join(dirname(realpath(__file__)), "../data/nodesDB.txt")
-        nodesdb_gz = join(dirname(realpath(__file__)), "../data/nodesDB.txt.gz")
+        nodesdb_f = join(dirname(realpath(__file__)), "../data/nodesdb")
+        nodesdb_gz = join(dirname(realpath(__file__)), "../data/nodesdb.gz")
         if not isfile(nodesdb_f):
             if not isfile(nodesdb_gz):
                 sys.exit("[ERROR] : nodesDB.txt.gz could not be found in kinfin/data/ folder. Please download KinFin again..")
