@@ -31,6 +31,7 @@ usage: kinfin-d.py      -g <FILE> -c <FILE> -s <FILE> [-t <FILE>] [-o <PREFIX>]
             --min_proteomes <INT>               Required number of proteomes in a taxon-set to be used
                                                     in rarefaction/representation-test computations [default: 2]
             --test <STR>                        Test to be used in representation-test computations [default: mannwhitneyu]
+                                                    - ttest: Two sided t-test
                                                     - welch: Welch's t-test
                                                     - mannwhitneyu: Mann-Whitney-U test
             -r, --taxranks <STRING>             Taxonomic ranks to be inferred from TaxID [default: phylum,order,genus]
@@ -467,7 +468,10 @@ class DataFactory():
         outprefix = inputObj.outprefix
         self.dirs = {}
         if outprefix:
-            result_path = join(getcwd(), "%s.kinfin_results" % (outprefix))
+            if outprefix.endswith("/"):
+                result_path = "%skinfin_results" % (outprefix)
+            else:
+                result_path = "%s.kinfin_results" % (outprefix)
         else:
             result_path = join(getcwd(), "kinfin_results")
         self.dirs['main'] = result_path
@@ -1203,26 +1207,37 @@ class DataFactory():
                     ax.set_facecolor('white')
                     p_array = np.array(p_values)
                     log2fc_array = np.array(log2fc_values)
-                    ax.scatter(log2fc_array, p_array, alpha=0.8, edgecolors='none', s=25, c='grey')
 
                     ooFive = 0.05
                     ooOne = 0.01
                     ooFive_corrected = 0.05 / pair_data_count
                     ooOne_corrected = 0.01 / pair_data_count
 
+                    # plot h-lines
                     ax.axhline(y=ooFive, linewidth=2, color='orange', linestyle="--")
                     ooFive_artist = plt.Line2D((0, 1), (0, 0), color='orange', linestyle='--')
                     ax.axhline(y=ooOne, linewidth=2, color='red', linestyle="--")
                     ooOne_artist = plt.Line2D((0, 1), (0, 0), color='red', linestyle='--')
-                    ax.axhline(y=ooFive_corrected, linewidth=2, color='grey', linestyle="--")
-                    ooFive_corrected_artist = plt.Line2D((0, 1), (0, 0), color='grey', linestyle='--')
-                    ax.axhline(y=ooOne_corrected, linewidth=2, color='black', linestyle="--")
-                    ooOne_corrected_artist = plt.Line2D((0, 1), (0, 0), color='black', linestyle='--')
+                    # bonferroni
+                    #ax.axhline(y=ooFive_corrected, linewidth=2, color='grey', linestyle="--")
+                    #ooFive_corrected_artist = plt.Line2D((0, 1), (0, 0), color='grey', linestyle='--')
+                    #ax.axhline(y=ooOne_corrected, linewidth=2, color='black', linestyle="--")
+                    #ooOne_corrected_artist = plt.Line2D((0, 1), (0, 0), color='black', linestyle='--')
 
+                    # plot v-lines
+                    ax.axvline(x=1.0, linewidth=2, color='purple', linestyle="--")
+                    v1_artist = plt.Line2D((0, 1), (0, 0), color='purple', linestyle='--')
+                    v1_label = "|log2FC| = 1"
+                    ax.axvline(x=-1.0, linewidth=2, color='purple', linestyle="--")
+                    # plot dots
+                    ax.scatter(log2fc_array, p_array, alpha=0.8, edgecolors='none', s=25, c='grey')
                     # Create legend from custom artist/label lists
-                    legend = ax.legend([ooFive_artist, ooOne_artist, ooFive_corrected_artist, ooOne_corrected_artist],
-                              [ooFive, ooOne, "%s (0.05 corrected)" % '%.2E' % Decimal(ooFive_corrected), "%s (0.01 corrected)" % '%.2E' % Decimal(ooOne_corrected)],
-                              fontsize=inputObj.plot_font_size, frameon=True)
+                    #legend = ax.legend([ooFive_artist, ooOne_artist, ooFive_corrected_artist, ooOne_corrected_artist],
+                    #          [ooFive, ooOne, "%s (0.05 corrected)" % '%.2E' % Decimal(ooFive_corrected), "%s (0.01 corrected)" % '%.2E' % Decimal(ooOne_corrected)],
+                    #          fontsize=inputObj.plot_font_size, frameon=True)
+                    legend = ax.legend([ooFive_artist, ooOne_artist, v1_artist],
+                            [ooFive, ooOne, v1_label],
+                            fontsize=inputObj.plot_font_size, frameon=True)
                     legend.get_frame().set_facecolor('white')
                     if abs(np.min(log2fc_array)) < abs(np.max(log2fc_array)):
                         x_min = 0.0 - abs(np.max(log2fc_array))
@@ -2097,7 +2112,7 @@ class InputObj():
         self.check_taxranks()
 
     def check_test(self):
-        SUPPORTED_TESTS = set(['welch', 'mannwhitneyu'])
+        SUPPORTED_TESTS = set(['welch', 'mannwhitneyu', 'ttest'])
         if self.test not in SUPPORTED_TESTS:
             sys.exit("[ERROR] : test %s is not supported (supported tests: %s)" % (self.test, ",".join(SUPPORTED_TESTS)))
 
