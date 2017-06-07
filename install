@@ -28,7 +28,7 @@ echo "[+] Checking data files..."
 pfam_dest=$DIR/data/Pfam-A.clans.tsv.gz
 ipr_dest=$DIR/data/entry.list
 go_dest=$DIR/data/interpro2go
-nodesdbgz=$DIR/data/nodesdb.tgz
+nodesdbgz=$DIR/data/nodesdb.gz
 nodesdb=$DIR/data/nodesdb.txt
 if [ -f "$nodesdb" ]; then
     echo "    [+] $nodesdb"
