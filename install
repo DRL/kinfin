@@ -35,7 +35,7 @@ if [ -f "$nodesdb" ]; then
 else
     if [ -f "$nodesdbgz" ]; then
         echo -n "    [+] Extracting $nodesdbgz ..."
-        $gunzip $nodesdbgz
+        $gunzip -c $nodesdbgz > $nodesdb
         if [ $? -eq 0 ]; then
             echo "done."
         else
