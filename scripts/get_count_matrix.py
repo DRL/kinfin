@@ -240,7 +240,7 @@ class DataCollection():
         for line in read_file(self.sequence_id_f):
             col = line.split(": ")
             taxon_idx = col[0].split("_")[0]
-            protein_id = col[1]
+            protein_id = col[1].replace(":", "_").replace(",", "_").replace("(", "_").replace(")", "_") # behaviour like Orthofinder
             self.taxon_id_by_protein_id[protein_id] = self.taxon_id_by_idx[taxon_idx]
 
     def parse_target_id_f(self, arg):
@@ -307,35 +307,6 @@ class DataCollection():
             cluster_id = line
             self.cluster_ids.append(cluster_id)
             self.clusterObj_by_cluster_id[cluster_id] = {}
-
-    def write_output(self):
-        output = []
-        matrix_f = "matrix.txt"
-        if outprefix:
-            matrix_f = "%s.%s" % (outprefix, matrix_f)
-        output.append("cluster_id,protein_count,%s,Domains" % ",".join(self.taxon_order))
-        for cluster_id in self.cluster_ids:
-            outline = []
-            cluster_id = cluster_id
-            clusterObj = self.clusterObj_by_cluster_id[cluster_id]
-            outline.append(cluster_id)
-            outline.append(clusterObj.protein_count)
-            for taxon_id in self.taxon_order:
-                taxon_count = clusterObj.protein_count_by_taxon_id.get(taxon_id, 0)
-                outline.append(taxon_count)
-            domain_string = []
-            if cluster_id == "OG0001332":
-                for domainObj in clusterObj.domainObjs:
-                    print domainObj.__dict__
-            if clusterObj.domainObjs:
-                for domainObj in sorted(clusterObj.domainObjs, key=lambda x: x.domain_protein_cov, reverse=True):
-                    domain_string.append("%s=%s (%s)" % (domainObj.domain_id, domainObj.domain_description, "{:.1%}".format(domainObj.domain_protein_cov)))
-            else:
-                domain_string.append("None")
-            outline.append("%s" % ";".join(domain_string))
-            output.append("%s" % ",".join([str(field) for field in outline]))
-        with open(matrix_f, 'w') as matrix_fh:
-            matrix_fh.write("\n".join(output) + "\n")
 
 
 if __name__ == "__main__":

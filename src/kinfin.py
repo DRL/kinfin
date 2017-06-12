@@ -90,6 +90,7 @@ if import_errors:
 
 import numpy as np
 from matplotlib.ticker import FormatStrFormatter
+from matplotlib.ticker import NullFormatter
 import matplotlib.pyplot as plt
 plt.style.use('ggplot')
 mat.rc('ytick', labelsize=20)
@@ -1203,40 +1204,74 @@ class DataFactory():
                     p_values.append(pvalue)
                 if p_values:
                     pairwise_representation_test_f = join(self.dirs[attribute], "%s.pairwise_representation_test.%s.%s" % (attribute, "_".join(pair_list), inputObj.plot_format))
-                    f, ax = plt.subplots(figsize=inputObj.plot_size)
-                    ax.set_facecolor('white')
+                    plt.figure(1, figsize=inputObj.plot_size)
+                    #f, ax = plt.subplots(figsize=inputObj.plot_size)
+                    #ax.set_facecolor('white')
+                    # definitions for the axes
+                    left, width = 0.1, 0.65
+                    bottom, height = 0.1, 0.65
+                    bottom_h = left_h = left + width + 0.02
+                    rect_scatter = [left, bottom, width, height]
+                    rect_histx = [left, bottom_h, width, 0.2]
+                    #plt.set_facecolor('white')
+                    nullfmt = NullFormatter()
+
+                    axScatter = plt.axes(rect_scatter)
+                    axScatter.set_facecolor('white')
                     p_array = np.array(p_values)
                     log2fc_array = np.array(log2fc_values)
-
+                    log2fc_percentile = np.percentile(log2fc_array, 95)
                     ooFive = 0.05
                     ooOne = 0.01
-                    ooFive_corrected = 0.05 / pair_data_count
-                    ooOne_corrected = 0.01 / pair_data_count
 
+                    # distribution
+                    axHistx = plt.axes(rect_histx)
+                    axHistx.set_facecolor('white')
+                    axHistx.xaxis.set_major_formatter(nullfmt)
+                    axHistx.yaxis.set_major_formatter(nullfmt)
+                    binwidth = 0.05
+                    xymax = np.max([np.max(np.fabs(log2fc_array)), np.max(np.fabs(p_values))])
+                    lim = (int(xymax/binwidth) + 1) * binwidth
+                    bins = np.arange(-lim, lim + binwidth, binwidth)
+                    axHistx.hist(log2fc_array, bins=bins, histtype='stepfilled', color='grey')
                     # plot h-lines
-                    ax.axhline(y=ooFive, linewidth=2, color='orange', linestyle="--")
+                    #ax.axhline(y=ooFive, linewidth=2, color='orange', linestyle="--")
+                    axScatter.axhline(y=ooFive, linewidth=2, color='orange', linestyle="--")
                     ooFive_artist = plt.Line2D((0, 1), (0, 0), color='orange', linestyle='--')
-                    ax.axhline(y=ooOne, linewidth=2, color='red', linestyle="--")
+                    #ax.axhline(y=ooOne, linewidth=2, color='red', linestyle="--")
+                    axScatter.axhline(y=ooOne, linewidth=2, color='red', linestyle="--")
                     ooOne_artist = plt.Line2D((0, 1), (0, 0), color='red', linestyle='--')
                     # bonferroni
+                    #ooFive_corrected = 0.05 / pair_data_count
+                    #ooOne_corrected = 0.01 / pair_data_count
                     #ax.axhline(y=ooFive_corrected, linewidth=2, color='grey', linestyle="--")
                     #ooFive_corrected_artist = plt.Line2D((0, 1), (0, 0), color='grey', linestyle='--')
                     #ax.axhline(y=ooOne_corrected, linewidth=2, color='black', linestyle="--")
                     #ooOne_corrected_artist = plt.Line2D((0, 1), (0, 0), color='black', linestyle='--')
 
                     # plot v-lines
-                    ax.axvline(x=1.0, linewidth=2, color='purple', linestyle="--")
-                    v1_artist = plt.Line2D((0, 1), (0, 0), color='purple', linestyle='--')
+                    #ax.axvline(x=1.0, linewidth=2, color='purple', linestyle="--")
+                    #ax.axvline(x=log2fc_percentile, linewidth=2, color='pink', linestyle="--")
+                    axScatter.axvline(x=1.0, linewidth=2, color='purple', linestyle="--")
+                    axScatter.axvline(x=log2fc_percentile, linewidth=2, color='pink', linestyle="--")
                     v1_label = "|log2FC| = 1"
-                    ax.axvline(x=-1.0, linewidth=2, color='purple', linestyle="--")
+                    v1_artist = plt.Line2D((0, 1), (0, 0), color='purple', linestyle='--')
+                    nine_five_percentile_label = "log2FC-95-percentile"
+                    nine_five_percentile_artist = plt.Line2D((0, 1), (0, 0), color='pink', linestyle='--')
+                    #ax.axvline(x=-1.0, linewidth=2, color='purple', linestyle="--")
+                    #ax.axvline(x=-log2fc_percentile, linewidth=2, color='pink', linestyle="--")
+                    axScatter.axvline(x=-1.0, linewidth=2, color='purple', linestyle="--")
+                    axScatter.axvline(x=-log2fc_percentile, linewidth=2, color='pink', linestyle="--")
                     # plot dots
-                    ax.scatter(log2fc_array, p_array, alpha=0.8, edgecolors='none', s=25, c='grey')
+                    #ax.scatter(log2fc_array, p_array, alpha=0.8, edgecolors='none', s=25, c='grey')
+                    axScatter.scatter(log2fc_array, p_array, alpha=0.8, edgecolors='none', s=25, c='grey')
                     # Create legend from custom artist/label lists
                     #legend = ax.legend([ooFive_artist, ooOne_artist, ooFive_corrected_artist, ooOne_corrected_artist],
                     #          [ooFive, ooOne, "%s (0.05 corrected)" % '%.2E' % Decimal(ooFive_corrected), "%s (0.01 corrected)" % '%.2E' % Decimal(ooOne_corrected)],
                     #          fontsize=inputObj.plot_font_size, frameon=True)
-                    legend = ax.legend([ooFive_artist, ooOne_artist, v1_artist],
-                            [ooFive, ooOne, v1_label],
+                    #legend = ax.legend([ooFive_artist, ooOne_artist, v1_artist, nine_five_percentile_artist],
+                    legend = axScatter.legend([ooFive_artist, ooOne_artist, v1_artist, nine_five_percentile_artist],
+                            [ooFive, ooOne, v1_label, nine_five_percentile_label],
                             fontsize=inputObj.plot_font_size, frameon=True)
                     legend.get_frame().set_facecolor('white')
                     if abs(np.min(log2fc_array)) < abs(np.max(log2fc_array)):
@@ -1245,17 +1280,24 @@ class DataFactory():
                     else:
                         x_min = 0.0 - abs(np.min(log2fc_array))
                         x_max = 0.0 + abs(np.min(log2fc_array))
-                    ax.set_xlim(x_min - 1, x_max + 1)
-
-                    ax.grid(True, linewidth=1, which="major", color="lightgrey")
-                    ax.grid(True, linewidth=0.5, which="minor", color="lightgrey")
-                    ax.set_ylim(np.min(p_array) * 0.1, 1.1)
-                    ax.set_xlabel("log2(mean(%s)/mean(%s))" % (x_label, y_label), fontsize=inputObj.plot_font_size)
-                    ax.set_ylabel("p-value", fontsize=inputObj.plot_font_size)
-                    plt.gca().invert_yaxis()
-                    ax.set_yscale('log')
+                    #ax.set_xlim(x_min - 1, x_max + 1)
+                    #ax.grid(True, linewidth=1, which="major", color="lightgrey")
+                    #ax.grid(True, linewidth=0.5, which="minor", color="lightgrey")
+                    #ax.set_ylim(np.min(p_array) * 0.1, 1.1)
+                    #ax.set_xlabel("log2(mean(%s)/mean(%s))" % (x_label, y_label), fontsize=inputObj.plot_font_size)
+                    #ax.set_ylabel("p-value", fontsize=inputObj.plot_font_size)
+                    axScatter.set_xlim(x_min - 1, x_max + 1)
+                    axScatter.grid(True, linewidth=1, which="major", color="lightgrey")
+                    axScatter.grid(True, linewidth=0.5, which="minor", color="lightgrey")
+                    axScatter.set_ylim(1.1, np.min(p_array) * 0.1)
+                    axScatter.set_xlabel("log2(mean(%s)/mean(%s))" % (x_label, y_label), fontsize=inputObj.plot_font_size)
+                    axScatter.set_ylabel("p-value", fontsize=inputObj.plot_font_size)
+                    #ax.set_yscale('log')
+                    axScatter.set_yscale('log')
+                    axHistx.set_xlim(axScatter.get_xlim())
                     print "[STATUS] - Plotting %s" % (pairwise_representation_test_f)
-                    f.savefig(pairwise_representation_test_f, format=inputObj.plot_format)
+                    #plt.gca().invert_yaxis()
+                    plt.savefig(pairwise_representation_test_f, format=inputObj.plot_format)
                     plt.close()
 
     def pairwise_representation_test(self, clusterObj, attribute, level, levels_seen, levels):
@@ -2150,11 +2192,11 @@ class InputObj():
         check_file(self.functional_annotation_f)
         check_file(self.sequence_ids_f)
         check_file(self.tree_f)
-        nodesdb_f = join(dirname(realpath(__file__)), "../data/nodesdb")
+        nodesdb_f = join(dirname(realpath(__file__)), "../data/nodesdb.txt")
         nodesdb_gz = join(dirname(realpath(__file__)), "../data/nodesdb.gz")
         if not isfile(nodesdb_f):
             if not isfile(nodesdb_gz):
-                sys.exit("[ERROR] : nodesDB.txt.gz could not be found in kinfin/data/ folder. Please download KinFin again..")
+                sys.exit("[ERROR] : nodesdb.gz could not be found in kinfin/data/ folder. Please download KinFin again..")
             else:
                 print "[STATUS] - Uncompressing %s" % (nodesdb_gz)
                 nodesdb = []
