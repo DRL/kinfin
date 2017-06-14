@@ -24,13 +24,15 @@ from os import path
 
 class SeqObj():
     def __init__(self, header_l, seq, prefix):
-        self.header_l = ".".join(header_l).replace(":", "_").replace(",", "_").replace("(", "_").replace(")", "_").split(".") # orthofinder replaces chars
+        print header_l
+        self.header = header_l[0].replace(":", "_").replace(",", "_").replace("(", "_").replace(")", "_") # orthofinder replaces chars
+        print self.header
         self.seq = seq
         self.prefix = prefix
         self.length = len(seq)
 
     def print_fixed(self):
-        print ">%s.%s\n%s" % (self.prefix, self.header_l[0], self.seq)
+        print ">%s.%s\n%s" % (self.prefix, self.header, self.seq)
 
     def non_terminal_stops(self):
         non_terminal = self.seq.rstrip("*")
@@ -43,7 +45,7 @@ def readFasta(infile):
             if l[0] == '>':
                 if (header):
                     yield header, ''.join(seqs)
-                header, seqs = l[1:-1].split(), [] # Header is split at first whitespace
+                header, seqs = l[1:-1].split(" "), [] # Header is split at first whitespace
             else:
                 seqs.append(l[:-1])
         yield header, ''.join(seqs)
