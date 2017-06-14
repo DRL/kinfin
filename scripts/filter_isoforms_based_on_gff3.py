@@ -194,7 +194,7 @@ def parse_gff(gff_f, gff_type):
         for record_type, ninth_by_key in read_gff(gff_f):
             if record_type == 'CDS':
                 mRNA_id = ninth_by_key['Parent'].replace("transcript:", "").replace("Transcript:", "")
-                gff_protein_id = ninth_by_key['protein_id']
+                gff_protein_id = ninth_by_key.get('protein_id', None)
                 if not gff_protein_id in gene_id_by_protein_id:
                     if mRNA_id in gene_id_by_mRNA_id:  # mRNA has been seen before/protein is real
                         gene_id = gene_id_by_mRNA_id[mRNA_id]
