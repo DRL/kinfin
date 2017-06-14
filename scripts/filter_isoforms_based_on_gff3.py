@@ -195,21 +195,22 @@ def parse_gff(gff_f, gff_type):
             if record_type == 'CDS':
                 mRNA_id = ninth_by_key['Parent'].replace("transcript:", "").replace("Transcript:", "")
                 gff_protein_id = ninth_by_key.get('protein_id', None)
-                if not gff_protein_id in gene_id_by_protein_id:
-                    if mRNA_id in gene_id_by_mRNA_id:  # mRNA has been seen before/protein is real
-                        gene_id = gene_id_by_mRNA_id[mRNA_id]
-                        gene_id_by_protein_id[gff_protein_id] = gene_id
-                        rescue_gff_protein_id = eval(fdel).join(gff_protein_id.split(eval(fdel))[0:-1])
-                        if gff_protein_id in proteinCollection.fas_protein_id_by_gff_protein_id:
-                            annotationCollection.add_protein(gene_id, gff_protein_id)
-                            gff_protein_ids_in_fas.append(gff_protein_id)
-                        elif rescue_gff_protein_id in proteinCollection.fas_protein_id_by_gff_protein_id:
-                            print "# rescuing GFF-ID %s as %s" % (gff_protein_id, rescue_gff_protein_id)
-                            annotationCollection.add_protein(gene_id, rescue_gff_protein_id)
-                            gff_protein_ids_in_fas.append(rescue_gff_protein_id)
-                        else:
-                            gff_protein_ids_not_in_fas.append(gff_protein_id)
-                        gff_protein_ids_with_mRNA.append(gff_protein_id)
+                if gff_protein_id:
+                    if not gff_protein_id in gene_id_by_protein_id:
+                        if mRNA_id in gene_id_by_mRNA_id:  # mRNA has been seen before/protein is real
+                            gene_id = gene_id_by_mRNA_id[mRNA_id]
+                            gene_id_by_protein_id[gff_protein_id] = gene_id
+                            rescue_gff_protein_id = eval(fdel).join(gff_protein_id.split(eval(fdel))[0:-1])
+                            if gff_protein_id in proteinCollection.fas_protein_id_by_gff_protein_id:
+                                annotationCollection.add_protein(gene_id, gff_protein_id)
+                                gff_protein_ids_in_fas.append(gff_protein_id)
+                            elif rescue_gff_protein_id in proteinCollection.fas_protein_id_by_gff_protein_id:
+                                print "# rescuing GFF-ID %s as %s" % (gff_protein_id, rescue_gff_protein_id)
+                                annotationCollection.add_protein(gene_id, rescue_gff_protein_id)
+                                gff_protein_ids_in_fas.append(rescue_gff_protein_id)
+                            else:
+                                gff_protein_ids_not_in_fas.append(gff_protein_id)
+                            gff_protein_ids_with_mRNA.append(gff_protein_id)
             elif record_type == 'mRNA':
                 gene_id = ninth_by_key['Parent'].replace("gene:", "").replace("Gene:", "")
                 mRNA_id = ninth_by_key['ID'].replace("transcript:", "").replace("Transcript:", "")
