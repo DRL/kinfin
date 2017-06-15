@@ -24,9 +24,7 @@ from os import path
 
 class SeqObj():
     def __init__(self, header_l, seq, prefix):
-        print header_l
         self.header = header_l[0].replace(":", "_").replace(",", "_").replace("(", "_").replace(")", "_") # orthofinder replaces chars
-        print self.header
         self.seq = seq
         self.prefix = prefix
         self.length = len(seq)
