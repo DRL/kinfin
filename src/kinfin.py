@@ -1233,11 +1233,13 @@ class DataFactory():
                     xymax = np.max([np.max(np.fabs(log2fc_array)), np.max(np.fabs(p_values))])
                     lim = (int(xymax/binwidth) + 1) * binwidth
                     bins = np.arange(-lim, lim + binwidth, binwidth)
-                    axHistx.hist(log2fc_array, bins=bins, histtype='stepfilled', color='grey')
+                    axHistx.hist(log2fc_array, bins=bins, histtype='stepfilled', color='grey', align='mid')
                     # plot h-lines
                     #ax.axhline(y=ooFive, linewidth=2, color='orange', linestyle="--")
                     axScatter.axhline(y=ooFive, linewidth=2, color='orange', linestyle="--")
                     ooFive_artist = plt.Line2D((0, 1), (0, 0), color='orange', linestyle='--')
+                    ooFive_label = "p-value = %s" % (ooFive)
+                    ooOne_label =  "p-value = %s" % (ooOne)
                     #ax.axhline(y=ooOne, linewidth=2, color='red', linestyle="--")
                     axScatter.axhline(y=ooOne, linewidth=2, color='red', linestyle="--")
                     ooOne_artist = plt.Line2D((0, 1), (0, 0), color='red', linestyle='--')
@@ -1253,15 +1255,15 @@ class DataFactory():
                     #ax.axvline(x=1.0, linewidth=2, color='purple', linestyle="--")
                     #ax.axvline(x=log2fc_percentile, linewidth=2, color='pink', linestyle="--")
                     axScatter.axvline(x=1.0, linewidth=2, color='purple', linestyle="--")
-                    axScatter.axvline(x=log2fc_percentile, linewidth=2, color='pink', linestyle="--")
-                    v1_label = "|log2FC| = 1"
+                    axScatter.axvline(x=log2fc_percentile, linewidth=2, color='blue', linestyle="--")
+                    v1_label = "|log2FC| = 1" % ()
                     v1_artist = plt.Line2D((0, 1), (0, 0), color='purple', linestyle='--')
-                    nine_five_percentile_label = "log2FC-95-percentile"
-                    nine_five_percentile_artist = plt.Line2D((0, 1), (0, 0), color='pink', linestyle='--')
+                    nine_five_percentile_label = "|log2FC-95%%ile| = %s" % ("{0:.2f}".format(log2fc_percentile))
+                    nine_five_percentile_artist = plt.Line2D((0, 1), (0, 0), color='blue', linestyle='--')
                     #ax.axvline(x=-1.0, linewidth=2, color='purple', linestyle="--")
                     #ax.axvline(x=-log2fc_percentile, linewidth=2, color='pink', linestyle="--")
                     axScatter.axvline(x=-1.0, linewidth=2, color='purple', linestyle="--")
-                    axScatter.axvline(x=-log2fc_percentile, linewidth=2, color='pink', linestyle="--")
+                    axScatter.axvline(x=-log2fc_percentile, linewidth=2, color='blue', linestyle="--")
                     # plot dots
                     #ax.scatter(log2fc_array, p_array, alpha=0.8, edgecolors='none', s=25, c='grey')
                     axScatter.scatter(log2fc_array, p_array, alpha=0.8, edgecolors='none', s=25, c='grey')
@@ -1271,7 +1273,7 @@ class DataFactory():
                     #          fontsize=inputObj.plot_font_size, frameon=True)
                     #legend = ax.legend([ooFive_artist, ooOne_artist, v1_artist, nine_five_percentile_artist],
                     legend = axScatter.legend([ooFive_artist, ooOne_artist, v1_artist, nine_five_percentile_artist],
-                            [ooFive, ooOne, v1_label, nine_five_percentile_label],
+                            [ooFive_label, ooOne_label, v1_label, nine_five_percentile_label],
                             fontsize=inputObj.plot_font_size, frameon=True)
                     legend.get_frame().set_facecolor('white')
                     if abs(np.min(log2fc_array)) < abs(np.max(log2fc_array)):
