@@ -10,8 +10,8 @@ usage: find_isoforms.py                      -f <FILE> [-g <FILE>] -t <TYPE>
     Options:
         -h --help                                   show this
         -f, --fasta <FILE>                          FASTA file
-        --fs <INT>                                  first field of fasta header to use for GFF [default: 1]
-        --fe <INT>                                  last field of fasta header to use for GFF
+        --fs <INT>                                  first field of FASTA header to use for GFF3 parsing [default: 1]
+        --fe <INT>                                  last field of FASTA header to use for GFF3 parsing
         --fdel <STRING>                             delimiter for fields in fasta header to use for GFF (no quotes) [default: .]
         -g, --gff3 <FILE>                           GFF3 file
         -m, --mapping <FILE>                        Mapping file of IDs (Format: FASTA-ID,GFF-ID)

@@ -7,7 +7,7 @@ usage: generate_network.py      -m <FILE> -c <FILE> [-o <STR>] [--exclude_univer
 
     Options:
         -h --help                               show this
-        -m, --cluster_metrics <FILE>            *.cluster_metrics.txt file (i.e. TAXON.cluster_metrics.txt) from KinFin output
+        -m, --cluster_summary <FILE>            *.cluster_summary.txt file (e.g. TAXON.cluster_summary.txt) from KinFin output
         -c, --config_file <FILE>                config.txt used in Kinfin analysis
         -o, --out_prefix <STR>                  Outprefix (default: graph)
         --exclude_universal                     Excludes clusters in which all taxa are present from edge weights (default: False)

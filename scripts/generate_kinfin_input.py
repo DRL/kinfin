@@ -3,7 +3,7 @@
 
 """
 Usage:
-        generate_kinfin_files_from_fastas.py -f <DIR> [-o <STRING>] [orthofinder] [config]
+        generate_kinfin_input.py -f <DIR> [-o <STRING>] [orthofinder] [config]
 
 
 Options:

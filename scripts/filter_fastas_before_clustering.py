@@ -9,12 +9,13 @@
         -f, --fasta FILE                Fasta dir containing FASTA files
                                             - must have taxon prefix (separated by ".", beginning of filename)
                                             - must end in *.faa
-        -l, --minlen INT                Minimal length [default: 30]
+        -l, --minlen INT                Only print sequences which have at least this length [default: 30]
         -p, --prefix INT                Prefix field (split on ".", start at 0) [default: 0]
+        -s, --stops INT                 Only print sequences which do not exceed the number of stops [default: 0]
 
     Description:
         - Adds prefix from filename to each sequence
-        - prints sequence if longer than minimal length and contains no non-terminal stops (*)
+        - Prints single-line FASTA sequences, if longer than minimal length and not exceeding the number of stops (*)
 """
 
 from __future__ import division
@@ -52,7 +53,7 @@ def main(args):
     fasta_f = args['--fasta']
     prefix_idx = int(args['--prefix'])
     min_len = int(args['--minlen'])
-
+    min_stops = int(args['--stops'])
     fasta_filename = path.basename(fasta_f)
     prefix = fasta_filename.split(".")[prefix_idx]
     stats = {}
@@ -65,7 +66,7 @@ def main(args):
         seqObj = SeqObj(header, seq, prefix)
         stop_pass = 0
         length_pass = 0
-        if seqObj.non_terminal_stops() > 0:
+        if seqObj.non_terminal_stops() > min_stops:
             stats['stop_fail'] += 1
         else:
             stop_pass = 1

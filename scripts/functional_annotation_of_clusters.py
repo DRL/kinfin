@@ -3,13 +3,13 @@
 
 """
 usage:
-    filter_functional_annotation_of_clusters.py      all -f <FILE> -c <FILE> [-p <FLOAT>] [-x <FLOAT>] [-o <STRING>]
-    filter_functional_annotation_of_clusters.py      synapo -f <FILE> -c <FILE> -t <FILE> [-a <FILE>] [-n <FLOAT>] [-p <FLOAT>] [-x <FLOAT>] [-o <STRING>]
+    functional_annotation_of_clusters.py      all -f <FILE> -c <FILE> [-p <FLOAT>] [-x <FLOAT>] [-o <STRING>]
+    functional_annotation_of_clusters.py      synapo -f <FILE> -c <FILE> -t <FILE> [-a <FILE>] [-n <FLOAT>] [-p <FLOAT>] [-x <FLOAT>] [-o <STRING>]
                                                         [-h|--help]
 
     Options:
         -h, --help                              show this
-        -f, --cluster_metrics <FILE>            cluster_metrics_domains.*.txt file (* = IPR/Pfam/GO/SignalP_Euk)
+        -f, --cluster_domain_annotation <FILE>  cluster_domain_annotation.*.txt file (* = IPR/Pfam/GO/SignalP_Euk)
         -c, --cluster_counts_by_taxon <FILE>    Needed for getting number of proteins for clusters without domains
         -p, --domain_protein_cov <FLOAT>        Minimum protein coverage of domain in cluster [default: 0.75]
         -x, --domain_taxon_cov <FLOAT>          Minimum taxon coverage by proteins with domain in cluster [default: 0.75]
@@ -118,7 +118,7 @@ class DataCollection():
     def __init__(self, args):
         self.all_flag = args['all']
         self.synapo_flag = args['synapo']
-        self.cluster_metrics_f = args['--cluster_metrics']
+        self.cluster_metrics_f = args['--cluster_domain_annotation']
         self.cluster_counts_by_taxon_f = args['--cluster_counts_by_taxon']
         self.tree_cluster_metrics_f = args['--tree_cluster_metrics']
         self.node_names_f = args['--node_names']

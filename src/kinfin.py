@@ -21,13 +21,13 @@ usage: kinfin-d.py      -g <FILE> -c <FILE> -s <FILE> [-t <FILE>] [-o <PREFIX>]
             -s, --sequence_ids_file <FILE>      SequenceIDs.txt used in OrthoFinder
 
             -p, --species_ids_file <FILE>       SpeciesIDs.txt used in OrthoFinder
-            -f, --functional_annotation <FILE>  Mapping of ProteinIDs to GO/IPRS/SignalP/Pfam/... (can be generated through 'iprs_to_table.py')
+            -f, --functional_annotation <FILE>  Mapping of ProteinIDs to GO/IPRS/SignalP/Pfam (can be generated through 'iprs_to_table.py')
             -a, --fasta_dir <DIR>               Directory of FASTA files
-            -t, --tree_file <FILE>              Tree file (on which ALOs are defined)
+            -t, --tree_file <FILE>              Tree file in Newick format (taxon names must be the same as TAXON in config file)
         General options
             -o, --outprefix <STR>               Output prefix
             --infer_singletons                  Absence of proteins in clustering is interpreted as singleton (based on SequenceIDs.txt)
-            --plot_tree                         Plot PDF of annotated phylogenetic tree (requires full ETE3 installation and X-server/xvfb-run)
+            --plot_tree                         Plot PDF of annotated phylogenetic tree (requires -t, full ETE3 installation and X-server/xvfb-run)
             --min_proteomes <INT>               Required number of proteomes in a taxon-set to be used
                                                     in rarefaction/representation-test computations [default: 2]
             --test <STR>                        Test to be used in representation-test computations [default: mannwhitneyu]
@@ -37,10 +37,10 @@ usage: kinfin-d.py      -g <FILE> -c <FILE> -s <FILE> [-t <FILE>] [-o <PREFIX>]
             -r, --taxranks <STRING>             Taxonomic ranks to be inferred from TaxID [default: phylum,order,genus]
             --repetitions <INT>                 Number of repetitions for rarefaction curves [default: 30]
         "Fuzzy"-Orthology-groups
-            -x, --target_fraction <FLOAT>       Minimum proportion of proteomes with target protein count [default: 0.75].
-            -n, --target_count <INT>            Target protein count by proteome in (100*F)% of cluster [default: 1]
-            --min <INT>                         Min count of proteins by proteome in (100*(1-F))% of cluster [default: 0]
-            --max <INT>                         Max count of proteins by proteome in (100*(1-F))% of cluster [default: 100]
+            -n, --target_count <INT>            Target number of copies per proteome [default: 1]
+            -x, --target_fraction <FLOAT>       Min proportion of proteomes at target_count [default: 0.75].
+            --min <INT>                         Min count of proteins for proteomes outside of target_fraction [default: 0]
+            --max <INT>                         Max count of proteins for proteomes outside of target_fraction [default: 20]
         Plotting
             --fontsize <INT>                    Fontsize for plots [default: 18]
             --plotsize <INT,INT>                Size (WIDTH,HEIGHT) for plots [default: 24,12]
@@ -280,7 +280,7 @@ def parse_tree(tree_f, outgroups):
                 nodetype="node",
                 proteome_ids=proteome_ids,
                 apomorphic_cluster_counts={'singletons': 0, 'non_singletons': 0},
-                synapomorphic_cluster_counts={'complete_presence': 0, 'stochastic_absence': 0},
+                synapomorphic_cluster_counts={'complete_presence': 0, 'partial_absence': 0},
                 synapomorphic_cluster_strings=[],
                 counts={'specific': 0, 'shared': 0, "absent": 0, "singleton": 0})
         else:
@@ -288,7 +288,7 @@ def parse_tree(tree_f, outgroups):
                 nodetype="tip",
                 proteome_ids=proteome_ids,
                 apomorphic_cluster_counts={'singletons': 0, 'non_singletons': 0},
-                synapomorphic_cluster_counts={'complete_presence': 0, 'stochastic_absence': 0},
+                synapomorphic_cluster_counts={'complete_presence': 0, 'partial_absence': 0},
                 synapomorphic_cluster_strings=[],
                 counts={'specific': 0, 'shared': 0, "absent": 0, "singleton": 0})
         node_idx_by_proteome_ids[proteome_ids] = node.name
@@ -851,7 +851,7 @@ class DataFactory():
         for domain_source in clusterCollection.domain_sources:
             cluster_metrics_domains_detailed_output_by_domain_source[domain_source] = []
             cluster_metrics_domains_detailed_output_by_domain_source[domain_source].append(self.get_header_line('cluster_metrics_domains_detailed', "TAXON"))
-            cluster_metrics_domains_detailed_f_by_domain_source[domain_source] = join(self.dirs['main'], "cluster_metrics_domains.%s.txt" % (domain_source))
+            cluster_metrics_domains_detailed_f_by_domain_source[domain_source] = join(self.dirs['main'], "cluster_domain_annotation.%s.txt" % (domain_source))
 
         for attribute in aloCollection.attributes:
 
@@ -869,7 +869,7 @@ class DataFactory():
             # cluster_metrics
             ###########################
 
-            cluster_metrics_f = join(self.dirs[attribute], "%s.cluster_metrics.txt" % (attribute))
+            cluster_metrics_f = join(self.dirs[attribute], "%s.cluster_summary.txt" % (attribute))
             cluster_metrics_output = []
             cluster_metrics_output.append(self.get_header_line('cluster_metrics', attribute))
 
@@ -1467,7 +1467,7 @@ class AloCollection():
                                 if node_proteome_coverage == 1.0:
                                     node_cluster_type = 'complete_presence'
                                 else:
-                                    node_cluster_type = 'stochastic_absence'
+                                    node_cluster_type = 'partial_absence'
                                 node.synapomorphic_cluster_counts[node_cluster_type] += 1
                                 node.synapomorphic_cluster_strings.append(\
                                         (clusterObj.cluster_id, \
@@ -1559,7 +1559,7 @@ class AloCollection():
             node_stats_header.append('taxon_specific_apomorphies (non-singletons)')
             node_stats_header.append('node_specific_synapomorphies_total')
             node_stats_header.append('node_specific_synapomorphies_all')
-            node_stats_header.append('node_specific_synapomorphies_stochastic_absence')
+            node_stats_header.append('node_specific_synapomorphies_partial_absence')
             node_stats_header.append('proteome_count')
             node_stats = []
             node_stats.append("\t".join(node_stats_header))
@@ -1584,9 +1584,9 @@ class AloCollection():
                 node_stats_line.append(node.name)
                 node_stats_line.append(node.apomorphic_cluster_counts['singletons'])
                 node_stats_line.append(node.apomorphic_cluster_counts['non_singletons'])
-                node_stats_line.append(node.synapomorphic_cluster_counts['complete_presence'] + node.synapomorphic_cluster_counts['stochastic_absence'])
+                node_stats_line.append(node.synapomorphic_cluster_counts['complete_presence'] + node.synapomorphic_cluster_counts['partial_absence'])
                 node_stats_line.append(node.synapomorphic_cluster_counts['complete_presence'])
-                node_stats_line.append(node.synapomorphic_cluster_counts['stochastic_absence'])
+                node_stats_line.append(node.synapomorphic_cluster_counts['partial_absence'])
                 node_stats_line.append(len(node.proteome_ids))
                 node_stats.append("\t".join([str(string) for string in node_stats_line]))
                 #if inputObj.render_tree:
@@ -1646,9 +1646,9 @@ class AloCollection():
         data = []
         data.append(("Apomorphies (size=1)", "{:,}".format(node.apomorphic_cluster_counts['singletons'])))
         data.append(("Apomorphies (size>1)", "{:,}".format(node.apomorphic_cluster_counts['non_singletons'])))
-        data.append(("Synapomorphies (all)", "{:,}".format(node.synapomorphic_cluster_counts['complete_presence'] + node.synapomorphic_cluster_counts['stochastic_absence'])))
+        data.append(("Synapomorphies (all)", "{:,}".format(node.synapomorphic_cluster_counts['complete_presence'] + node.synapomorphic_cluster_counts['partial_absence'])))
         data.append(("Synapomorphies (cov=100%)", "{:,}".format(node.synapomorphic_cluster_counts['complete_presence'])))
-        data.append(("Synapomorphies (cov<100%)", "{:,}".format(node.synapomorphic_cluster_counts['stochastic_absence'])))
+        data.append(("Synapomorphies (cov<100%)", "{:,}".format(node.synapomorphic_cluster_counts['partial_absence'])))
         col_labels = ('Type', 'Count')
         fig, ax = plt.subplots(figsize=(2, 0.5))
         ax.set_facecolor('white')
