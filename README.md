@@ -28,4 +28,4 @@ Example
 Documentation
 -------------
 
-    TBD
+    (kinfin.readme.io)[https://kinfin.readme.io] (work in progress)
