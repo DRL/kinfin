@@ -802,7 +802,7 @@ class DataFactory():
             cluster_1to1s_ALO_header = []
             cluster_1to1s_ALO_header.append("#cluster_id")
             cluster_1to1s_ALO_header.append("cluster_type")
-            cluster_1to1s_ALO_header.append("cardinality")
+            cluster_1to1s_ALO_header.append("1to1_type")
             cluster_1to1s_ALO_header.append("proteome_count")
             cluster_1to1s_ALO_header.append("percentage_at_target_count")
             return "\t".join(cluster_1to1s_ALO_header)
@@ -1555,10 +1555,10 @@ class AloCollection():
             node_stats_f = join(dataFactory.dirs['tree'], "tree.node_metrics.txt")
             node_stats_header = []
             node_stats_header.append('#nodeID')
-            node_stats_header.append('taxon_specific_apomorphies_[singletons]')
-            node_stats_header.append('taxon_specific_apomorphies (non-singletons)')
+            node_stats_header.append('taxon_specific_apomorphies_singletons')
+            node_stats_header.append('taxon_specific_apomorphies_non_singletons')
             node_stats_header.append('node_specific_synapomorphies_total')
-            node_stats_header.append('node_specific_synapomorphies_all')
+            node_stats_header.append('node_specific_synapomorphies_complete_presence')
             node_stats_header.append('node_specific_synapomorphies_partial_absence')
             node_stats_header.append('proteome_count')
             node_stats = []
@@ -2282,7 +2282,7 @@ def welcome_screen():
 
 
 if __name__ == "__main__":
-    __version__ = "0.9"
+    __version__ = "1.0"
     welcome_screen()
     args = docopt(__doc__)
     inputObj = InputObj(args)

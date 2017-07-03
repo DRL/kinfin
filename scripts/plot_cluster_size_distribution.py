@@ -108,7 +108,9 @@ class DataObj():
             self.proteome_counts_by_colour[colour].append(proteome_count)
             if count_type == "absolute":
                 y = [self.counts_by_cluster_size_by_proteome_counts[proteome_count][cluster_size] + y_b for cluster_size, y_b in zip(sorted(self.counts_by_cluster_size_by_proteome_counts[proteome_count]), y_bottom)]
+                #filled = self.interpolate_gaps(y, 1)
                 yield proteome_count, x, y, y_bottom, colour
+                #y_bottom = [_y if _y >= 1 else 0.01 for _y in y]
                 y_bottom = y
             elif count_type == "relative":
                 y = [self.counts_by_cluster_size_by_proteome_counts[proteome_count][cluster_size] for cluster_size in sorted(self.counts_by_cluster_size_by_proteome_counts[proteome_count])]
@@ -131,10 +133,10 @@ class DataObj():
         print "[+] Plotting \"%s\" ..." % (plot_type)
         if plot_type in PLOTS:
             if plot_type == "loglog" or plot_type == "loglin" or plot_type == "loglogpowerlaw":
-                ax.set_yscale('log')
                 for proteome_count, x, y, y_bottom, colour in self.yield_counts_by_proteome_count('absolute'):
                     ax.plot(x, y, c='None')
-                    ax.fill_between(x, y, y_bottom, facecolor=colour)
+                    mask = np.where(y >= 1, y, "nan")
+                    ax.fill_between(x, y, y_bottom, facecolor=colour, interpolate = True, where = mask)
                     progress(proteome_count, 1, self.proteome_count_max)
                 ax.plot
             elif plot_type == "logbar":
@@ -185,9 +187,9 @@ class DataObj():
                     else:
                         out_f = "%s.loglogpowerlaw.%s" % (self.out_prefix, self.plot_fmt)
                     #ax.legend()
-                    plt.gca().set_ylim(bottom=0.8, top=self.cluster_count_max * 2)
+                    plt.gca().set_ylim(bottom=0.9, top=self.cluster_count_max * 2)
                     plt.gca().set_xlim(left=0.8, right=self.cluster_size_max * 2)
-                    ax.set_yscale('log')
+                    ax.set_yscale('symlog', linthreshy=1.0)
                     ax.set_xscale('log')
             legend_handles = []
             for colour, proteomes in self.proteome_counts_by_colour.items():
@@ -197,7 +199,7 @@ class DataObj():
                     legend_handles.append(mpatches.Patch(label="%s" % (proteomes[0]), color=colour))
             legend = ax.legend(handles=legend_handles, ncol=2, loc='best', numpoints=1, frameon=True, title="Number of proteomes in cluster")
             legend.get_frame().set_facecolor('white')
-            plt.margins(0.8)
+            plt.margins(1)
             ax.xaxis.set_major_formatter(FormatStrFormatter('%.0f'))
             ax.yaxis.set_major_formatter(FormatStrFormatter('%.0f'))
             ax.grid(True, linewidth=0.5, which="minor", color="lightgrey")
@@ -227,9 +229,9 @@ if __name__ == "__main__":
     print "[+] Start ..."
     dataObj = DataObj(out_prefix, plot_fmt, cmap, xlim)
     dataObj.parse_data(input_f)
-    dataObj.plot_cluster_sizes('loglog')
-    dataObj.plot_cluster_sizes('loglin')
-    dataObj.plot_cluster_sizes('logbar')
-    dataObj.plot_cluster_sizes('barperc')
-    dataObj.plot_cluster_sizes('powerlaw')
+    #dataObj.plot_cluster_sizes('loglog')
+    #dataObj.plot_cluster_sizes('loglin')
+    #dataObj.plot_cluster_sizes('logbar')
+    #dataObj.plot_cluster_sizes('barperc')
+    #dataObj.plot_cluster_sizes('powerlaw')
     dataObj.plot_cluster_sizes('loglogpowerlaw')
