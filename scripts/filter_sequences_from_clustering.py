@@ -7,11 +7,10 @@ usage: filter_sequences_from_clustering.py      -c <FILE> [-o <STR>] [-i <FILE>]
 
     Options:
         -h --help                           show this
-        -o, --out_prefix <STR>              Output prefix for filtered BLAST files
-        -c, --cluster_f <FILE>              Orthogroups
+        -o, --out_prefix <STR>              Output prefix for filtered clustering
+        -c, --cluster_f <FILE>              Orthogroups.txt
         -i, --include_id_f <FILE>           File containing headers of sequences to be included
-        -e, --exclude_id_f <FILE>           File containing headers of sequences to be included
-        -v, --verbose                       Verbose output
+        -e, --exclude_id_f <FILE>           File containing headers of sequences to be excluded
 """
 
 from __future__ import division
@@ -130,7 +129,6 @@ if __name__ == "__main__":
     cluster_f = args['--cluster_f']
     include_id_f = args['--include_id_f']
     exclude_id_f = args['--exclude_id_f']
-    verbose_flag = args['--verbose']
 
     # include/exclude
     include_ids, exclude_ids = get_ids(include_id_f, exclude_id_f)

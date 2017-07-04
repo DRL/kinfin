@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 """
-usage: plot_cluster_sizes.py                  -i <FILE> [-o <STRING>] [-p <STRING>] [-c <STRING>] [-x <INT>]
-                                              [-h|--help]
+usage: plot_cluster_size_distribution.py    -i <FILE> [-o <STRING>] [-p <STRING>] [-c <STRING>] [-x <INT>]
+                                            [-h|--help]
 
     Options:
         -h --help                           show this

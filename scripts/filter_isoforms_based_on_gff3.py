@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-usage: find_isoforms.py                      -f <FILE> [-g <FILE>] -t <TYPE>
+usage: filter_isoforms_based_on_gff3.py         -f <FILE> [-g <FILE>] -t <TYPE>
                                                 [--fs <INT>] [--fe <INT>] [--fdel <STRING>]
                                                 [-m <FILE>] [-o <STRING>]
                                                 [-h|--help]

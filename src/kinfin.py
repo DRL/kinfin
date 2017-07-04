@@ -24,6 +24,7 @@ usage: kinfin-d.py      -g <FILE> -c <FILE> -s <FILE> [-t <FILE>] [-o <PREFIX>]
             -f, --functional_annotation <FILE>  Mapping of ProteinIDs to GO/IPRS/SignalP/Pfam (can be generated through 'iprs_to_table.py')
             -a, --fasta_dir <DIR>               Directory of FASTA files
             -t, --tree_file <FILE>              Tree file in Newick format (taxon names must be the same as TAXON in config file)
+
         General options
             -o, --outprefix <STR>               Output prefix
             --infer_singletons                  Absence of proteins in clustering is interpreted as singleton (based on SequenceIDs.txt)
@@ -34,13 +35,15 @@ usage: kinfin-d.py      -g <FILE> -c <FILE> -s <FILE> [-t <FILE>] [-o <PREFIX>]
                                                     - ttest: Two sided t-test
                                                     - welch: Welch's t-test
                                                     - mannwhitneyu: Mann-Whitney-U test
-            -r, --taxranks <STRING>             Taxonomic ranks to be inferred from TaxID [default: phylum,order,genus]
+            -r, --taxranks <STRING>             Taxonomic ranks to be inferred from TaxIDs in config file [default: phylum,order,genus]
             --repetitions <INT>                 Number of repetitions for rarefaction curves [default: 30]
+
         "Fuzzy"-Orthology-groups
             -n, --target_count <INT>            Target number of copies per proteome [default: 1]
             -x, --target_fraction <FLOAT>       Min proportion of proteomes at target_count [default: 0.75].
             --min <INT>                         Min count of proteins for proteomes outside of target_fraction [default: 0]
             --max <INT>                         Max count of proteins for proteomes outside of target_fraction [default: 20]
+
         Plotting
             --fontsize <INT>                    Fontsize for plots [default: 18]
             --plotsize <INT,INT>                Size (WIDTH,HEIGHT) for plots [default: 24,12]
