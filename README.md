@@ -24,7 +24,7 @@ Example
 Documentation
 -------------
 
-[kinfin.readme.io](https://kinfin.readme.io) (work in progress)
+[kinfin.readme.io](https://kinfin.readme.io)
 
 Citing KinFin
 -------------
