@@ -7,7 +7,7 @@ usage: generate_network.py      -m <FILE> -c <FILE> [-o <STR>] [--exclude_univer
 
     Options:
         -h --help                               show this
-        -m, --cluster_metrics <FILE>            *.cluster_metrics.txt file (e.g. TAXON.cluster_metrics.txt) from KinFin output
+        -m, --cluster_summary <FILE>            *.cluster_summary.txt file (e.g. TAXON.cluster_summary.txt) from KinFin output
         -c, --config_file <FILE>                config.txt used in Kinfin analysis
         -o, --out_prefix <STR>                  Outprefix (default: graph)
         --exclude_universal                     Excludes clusters in which all taxa are present from edge weights (default: False)
@@ -120,7 +120,7 @@ def construct_graphs(weighted_edges, proteomeObj_by_proteome_id, attributes):
 
 def santisise_args(args):
     sane_args = {}
-    sane_args['--cluster_metrics'] = check_file(args['--cluster_metrics'])
+    sane_args['--cluster_summary'] = check_file(args['--cluster_summary'])
     sane_args['--config_file'] = check_file(args['--config_file'])
     sane_args['--out_prefix'] = args['--out_prefix']
     return sane_args
@@ -177,7 +177,7 @@ if __name__ == "__main__":
     args = docopt(__doc__)
     exclude_universal = args['--exclude_universal']
     sane_args = santisise_args(args)
-    cluster_stats_f = sane_args['--cluster_metrics']
+    cluster_stats_f = sane_args['--cluster_summary']
     species_classification_f = sane_args['--config_file']
     out_prefix = sane_args['--out_prefix']
 

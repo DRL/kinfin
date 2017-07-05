@@ -734,7 +734,7 @@ class DataFactory():
             cluster_metrics_ALO_header.append("non_taxon_mean_count")
             cluster_metrics_ALO_header.append("representation")
             cluster_metrics_ALO_header.append("log2_mean(TAXON/others)")
-            cluster_metrics_ALO_header.append("mwu_pvalue(TAXON vs. others)")
+            cluster_metrics_ALO_header.append("pvalue(TAXON vs. others)")
             cluster_metrics_ALO_header.append("TAXON_coverage")
             cluster_metrics_ALO_header.append("TAXON_count")
             cluster_metrics_ALO_header.append("non_TAXON_count")
