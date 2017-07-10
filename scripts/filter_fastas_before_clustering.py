@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""usage: filter_fastas_before_clustering.py            -f FILE [-p INT] [-l INT]
+"""usage: filter_fastas_before_clustering.py            -f FILE [-p INT] [-l INT] [-s INT]
                                                         [-h|--help]
 
     Options:
