@@ -7,7 +7,7 @@ usage: generate_network.py      -m <FILE> -c <FILE> [-o <STR>] [--exclude_univer
 
     Options:
         -h --help                               show this
-        -m, --cluster_summary <FILE>            *.cluster_summary.txt file (e.g. TAXON.cluster_summary.txt) from KinFin output
+        -m, --cluster_summary <FILE>            TAXON.cluster_summary.txt file from KinFin output
         -c, --config_file <FILE>                config.txt used in Kinfin analysis
         -o, --out_prefix <STR>                  Outprefix (default: graph)
         --exclude_universal                     Excludes clusters in which all taxa are present from edge weights (default: False)
@@ -49,12 +49,12 @@ def parse_cluster_stats_f(cluster_stats_f, proteomeObj_by_proteome_id, attribute
             #proteome_id_idx = [idx for idx, column in enumerate(temp) if column.replace("_count", "") in proteomeObj_by_proteome_id]
             #proteome_id_by_idx = {idx : proteome_id for idx, proteome_id in zip(proteome_id_idx, sorted(proteome_id_fields))}
             if not proteome_id_by_idx:
-                sys.exit("[-] No column header ending in '_count' found in %s" % (",".join(temp)))
+                sys.exit("[-] No column header ending in '_count' found in %s. Please use TAXON.cluster_summary.txt" % (",".join(temp)))
             for idx, col in enumerate(temp):
                 if col == "attribute_cluster_type":
                     cluster_type_idx = idx
             if not cluster_type_idx:
-                sys.exit("[-] No column header 'cluster_type' found in %s" % (",".join(temp)))
+                sys.exit("[-] No column header 'cluster_type' found in %s. Please use TAXON.cluster_summary.txt" % (",".join(temp)))
         else:
             protein_counts_by_proteome_id = {}
             for idx, proteome_id in proteome_id_by_idx.items():
