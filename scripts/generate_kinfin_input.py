@@ -76,13 +76,13 @@ class DataCollection():
 
     def parse_fasta_f(self, fasta_f, species_idx):
         seq_count = 0
-        for seq_idx, line in enumerate(read_file(fasta_f)):
+        for line in read_file(fasta_f):
             if line and line[0] == '>':
-                seq_count += 1
                 header = line[1:].split()[0]
                 if self.orthofinder_flag:
                     header = header.replace(":", "_").replace(",", "_").replace("(", "_").replace(")", "_")
-                self.sequence_id_lines.append("%s_%s: %s" % (species_idx, seq_idx, header))
+                self.sequence_id_lines.append("%s_%s: %s" % (species_idx, seq_count, header))
+                seq_count += 1
         print "[+] \t %s sequences parsed" % (seq_count)
 
     def write_files(self):
