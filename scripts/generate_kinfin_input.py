@@ -77,7 +77,7 @@ class DataCollection():
     def parse_fasta_f(self, fasta_f, species_idx):
         seq_count = 0
         for seq_idx, line in enumerate(read_file(fasta_f)):
-            if line[0] == '>':
+            if line and line[0] == '>':
                 seq_count += 1
                 header = line[1:].split()[0]
                 if self.orthofinder_flag:
