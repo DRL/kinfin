@@ -35,6 +35,8 @@ usage: kinfin-d.py      -g <FILE> -c <FILE> -s <FILE> [-t <FILE>] [-o <PREFIX>]
                                                     - ttest: Two sided t-test
                                                     - welch: Welch's t-test
                                                     - mannwhitneyu: Mann-Whitney-U test
+                                                    - ks: Kolmogorov-Smirnov statistic
+                                                    - kruskal: Kruskal-Wallis H-test
             -r, --taxranks <STRING>             Taxonomic ranks to be inferred from TaxIDs in config file [default: phylum,order,genus]
             --repetitions <INT>                 Number of repetitions for rarefaction curves [default: 30]
 
@@ -172,6 +174,14 @@ def statistic(count_1, count_2, test):
         elif test == "ttest":
             #try:
             pvalue = scipy.stats.ttest_ind(implicit_count_1, implicit_count_2)[1] #  t-test
+            if pvalue != pvalue: # testing for "nan"
+                pvalue = 1.0
+        elif test == 'ks':
+            pvalue = scipy.stats.ks_2samp(implicit_count_1, implicit_count_2)[1] # H0 that they are drawn from the same distribution
+            if pvalue != pvalue: # testing for "nan"
+                pvalue = 1.0
+        elif test == 'kruskal':
+            pvalue = scipy.stats.kruskal(implicit_count_1, implicit_count_2)[1] #  H0 is that population median is equal
             if pvalue != pvalue: # testing for "nan"
                 pvalue = 1.0
         else:
@@ -2159,7 +2169,7 @@ class InputObj():
         self.check_taxranks()
 
     def check_test(self):
-        SUPPORTED_TESTS = set(['welch', 'mannwhitneyu', 'ttest'])
+        SUPPORTED_TESTS = set(['welch', 'mannwhitneyu', 'ttest', 'ks', 'kruskal'])
         if self.test not in SUPPORTED_TESTS:
             sys.exit("[ERROR] : test %s is not supported (supported tests: %s)" % (self.test, ",".join(SUPPORTED_TESTS)))
 
