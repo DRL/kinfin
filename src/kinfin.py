@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-usage: kinfin-d.py      -g <FILE> -c <FILE> -s <FILE> [-t <FILE>] [-o <PREFIX>]
+usage: kinfin.py      -g <FILE> -c <FILE> -s <FILE> [-t <FILE>] [-o <PREFIX>]
                         [--infer_singletons]
                         [-p <FILE>] [-a <DIR>] [-f <FILE>] [-r <STRING>]
                         [-x <FLOAT>] [-n <INT>] [--min <INT>] [--max <INT>]
