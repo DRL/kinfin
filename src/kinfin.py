@@ -418,7 +418,7 @@ class DataFactory():
     ###############################
 
     def parse_attributes(self, config_f):
-        print "[STATUS] - Parsing SpeciesClassification file: %s ..." % (config_f)
+        print "[STATUS] - Parsing config file file: %s ..." % (config_f)
         attributes = []
         level_by_attribute_by_proteome_id = {}
         proteomes = set()
@@ -2034,7 +2034,7 @@ class ClusterObj():
         self.protein_ids = set(protein_ids)
         self.protein_count = len(protein_ids)
         try:
-            self.proteomes_by_protein_id = {protein_id : proteinCollection.proteinObjs_by_protein_id[protein_id].proteome_id for protein_id in protein_ids}
+            self.proteomes_by_protein_id = {protein_id: proteinCollection.proteinObjs_by_protein_id[protein_id].proteome_id for protein_id in protein_ids}
         except KeyError as e:
             sys.exit("[ERROR] - Protein %s in clustering belongs to proteomes that are not present in the config-file. Please add those proteomes or recluster by omitting these proteomes." % (e.args[0]))
 
