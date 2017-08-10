@@ -21,7 +21,7 @@ usage:
         -o, --outprefix <STRING>                Output prefix
 
 """
-
+from __future__ import division
 import re
 import sys
 import operator
@@ -184,13 +184,20 @@ class DataCollection():
             domain_description = col[3]
             protein_count = int(col[4])
             protein_count_with_domain = int(col[5])
-            domain_protein_cov = protein_count / protein_count_with_domain
+            domain_protein_cov = protein_count_with_domain / protein_count
             domain_proteome_cov = float(col[6])
+            # print cluster_id, domain_id, protein_count, protein_count_with_domain, domain_protein_cov, domain_protein_cov
             if self.clusterObjs_by_cluster_id[cluster_id].is_valid():
                 if domain_proteome_cov >= self.DOMAIN_TAXON_COV:
+                    # print cluster_id, "PASS proteome_cov %s >= %s" % (domain_proteome_cov, self.DOMAIN_TAXON_COV)
                     if domain_protein_cov >= self.DOMAIN_PROTEIN_COV:
+                        # print cluster_id, "PASS protein_cov %s >= %s" % (domain_protein_cov, self.DOMAIN_PROTEIN_COV)
                         domainObj = DomainObj(domain_id, domain_description, domain_proteome_cov, domain_protein_cov)
                         self.add_domainObj(cluster_id, domainObj)
+                    # else:
+                        # print cluster_id, "FAIL protein_cov %s < %s" % (domain_protein_cov, self.DOMAIN_PROTEIN_COV)
+                # else:
+                    # print cluster_id, "FAIL proteome_cov %s < %s" % (domain_proteome_cov, self.DOMAIN_TAXON_COV)
 
     def parse_cluster_counts(self, boolean):
         for line in read_file(self.cluster_counts_by_taxon_f):
@@ -236,7 +243,7 @@ class DataCollection():
         write_file(out_f, self.outprefix, header, output)
 
 if __name__ == "__main__":
-    __version__ = 0.1
+    __version__ = 0.2
     args = docopt(__doc__)
     print "[+] Start ..."
     dataCollection = DataCollection(args)
