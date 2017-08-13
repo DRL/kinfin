@@ -10,7 +10,7 @@ usage: plot_cluster_size_distribution.py    -i <FILE> [-o <STRING>] [-p <STRING>
         -i, --infile <FILE>                 cluster_counts_by_taxon.txt from KinFin analysis
         -o, --out_prefix <STRING>           Outprefix [default: cluster_size_distribution]
         -c, --colormap <STRING>             Matplotlib colormap name [default: Paired]
-        -x, --xlim <INT>                    xlim for "loglin", "logbar" and "barperc" plot [default: 200]
+        -x, --xlim <INT>                    xlim for plot [default: 200]
         -p, --plot_fmt <STRING>             Plot format [default: png]
 
 """
@@ -188,7 +188,7 @@ class DataObj():
                         out_f = "%s.loglogpowerlaw.%s" % (self.out_prefix, self.plot_fmt)
                     #ax.legend()
                     plt.gca().set_ylim(bottom=0.9, top=self.cluster_count_max * 2)
-                    plt.gca().set_xlim(left=0.8, right=self.cluster_size_max * 2)
+                    plt.gca().set_xlim(left=0.8, right=self.xlim)
                     ax.set_yscale('symlog', linthreshy=1.0)
                     ax.set_xscale('log')
             legend_handles = []
