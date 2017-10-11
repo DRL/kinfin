@@ -2,7 +2,9 @@
 
 Dependencies
 ------------
-* functional UNIX installation (bash, wget, gunzip, Python2.7+, pip)
+- UNIX system (bash, wget, tar, gunzip) 
+- Python 2.7
+- ```pip```
 
 Installation
 ------------
