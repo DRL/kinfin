@@ -6,9 +6,8 @@
 
     Options:
         -h --help                       show this
-        -f, --fasta FILE                Fasta dir containing FASTA files
+        -f, --fasta FILE                FASTA files
                                             - must have taxon prefix (separated by ".", beginning of filename)
-                                            - must end in *.faa
         -l, --minlen INT                Only print sequences which have at least this length [default: 30]
         -p, --prefix INT                Prefix field (split on ".", start at 0) [default: 0]
         -s, --stops INT                 Only print sequences which do not exceed the number of stops [default: 0]
