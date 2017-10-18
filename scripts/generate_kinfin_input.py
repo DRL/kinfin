@@ -8,7 +8,7 @@ Usage:
 
 Options:
         -h --help                       show this
-        -f, --fasta_dir <DIR>           Directory containing FASTA files ("*.fasta", "*.fas", "*.faa")
+        -f, --fasta_dir <DIR>           Directory containing FASTA files ("*.fasta", "*.fas", "*.faa", "*.fa")
         -o, --outprefix <STRING>        Output prefix
         orthofinder                     Formats sequence header as would OrthoFinder
                                            ([:,()] are replaced with "_")
@@ -60,7 +60,7 @@ class DataCollection():
 
     def parse_fasta_dir(self):
         species_idx = 0
-        allowed_extensions = set(["fasta", "fas", "faa"])
+        allowed_extensions = set(["fasta", "fas", "faa", "fa"])
         fasta_dir = self.fasta_dir
         for f in os.listdir(fasta_dir):
             if f.split(".")[-1] in allowed_extensions:
