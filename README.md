@@ -7,26 +7,41 @@ Citing KinFin
 
 Dependencies
 ------------
-- UNIX system (bash, wget, tar, gunzip) 
-- Python 2.7
-- ```pip```
+- UNIX system 
 
 Installation
 ------------
 
-    $ git clone https://github.com/DRL/kinfin.git
-    $ cd kinfin
-    $ ./install
+- Create [Conda](https://conda.io/en/latest/miniconda.html) environment
+    
+```
+$ conda create -n kinfin -c conda-forge docopt==0.6.2 scipy==0.19.0 matplotlib networkx==1.11 ete3
+$ conda activate kinfin
+```
+
+- Clone github repo
+
+```
+$ git clone https://github.com/DRL/kinfin.git
+```
+
+- Run install script for fetching databases
+
+```
+$ cd kinfin
+$ ./install
+```
+
+- Test kinfin 
+
+```
+$ ./test
+```
 
 Usage
 -----
 
     $ ./kinfin -h
-
-Example
--------
-
-    $ ./test
 
 Documentation
 -------------
