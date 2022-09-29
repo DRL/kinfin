@@ -53,7 +53,7 @@ fi
 if [ -f "$ipr_dest" ]; then
     echo "    [+] $ipr_dest"
 else
-    echo -n "    [-] $ipr_dest. Downloading ftp://ftp.ebi.ac.uk/pub/databases/interpro/entry.list ..."
+    echo -n "    [-] $ipr_dest. Downloading ftp://ftp.ebi.ac.uk/pub/databases/interpro/current_release/entry.list ..."
     $wget -qN ftp://ftp.ebi.ac.uk/pub/databases/interpro/current_release/entry.list -P $DIR/data/
     if [ $? -eq 0 ]; then
         echo "done."
@@ -65,7 +65,7 @@ fi
 if [ -f "$go_dest" ]; then
     echo "    [+] $go_dest"
 else
-    echo -n "    [-] $go_dest. Downloading ftp://ftp.ebi.ac.uk/pub/databases/interpro/interpro2go ... "
+    echo -n "    [-] $go_dest. Downloading ftp://ftp.ebi.ac.uk/pub/databases/interpro/current_release/interpro2go ... "
     $wget -qN ftp://ftp.ebi.ac.uk/pub/databases/interpro/current_release/interpro2go -P $DIR/data/
     if [ $? -eq 0 ]; then
         echo "done."
