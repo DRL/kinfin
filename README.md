@@ -7,47 +7,41 @@ Citing KinFin
 
 Dependencies
 ------------
-- UNIX system (bash, wget, tar, gunzip) 
-- Python 2.7
-- ```pip```
+- UNIX system 
 
 Installation
 ------------
 
-Create Conda environment
+- Create [Conda](https://conda.io/en/latest/miniconda.html) environment
+    
+```
+$ conda create -n kinfin -c conda-forge docopt==0.6.2 scipy==0.19.0 matplotlib networkx==1.11 ete3
+$ conda activate kinfin
+```
 
-    $ conda create -n kinfin -c conda-forge docopt==0.6.2 scipy==0.19.0 matplotlib networkx==1.11 ete3
-    $ conda activate blobtools
-    $ conda install -c anaconda matplotlib docopt tqdm wget pyyaml git
-    $ conda install -c bioconda pysam --update-deps
+- Clone github repo
 
-    $ git clone https://github.com/DRL/kinfin.git
+```
+$ git clone https://github.com/DRL/kinfin.git
+```
 
+- Run install script for fetching databases
 
-Option A: Create Conda environment
+```
+$ cd kinfin
+$ ./install
+```
 
-conda create -n blobtools
-conda activate blobtools
-conda install -c anaconda matplotlib docopt tqdm wget pyyaml git
-conda install -c bioconda pysam --update-deps
+- Test kinfin 
 
-Tip: Check if samtools exists by executing the command 'samtools' in the commandline. If samtools complains about dependencies, simply run the pysam install twice.
-
-Option B: Install dependencies via PIP
-
-python setup.py install --user
-
-    $ ./install
+```
+$ ./test
+```
 
 Usage
 -----
 
     $ ./kinfin -h
-
-Example
--------
-
-    $ ./test
 
 Documentation
 -------------
