@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
@@ -55,10 +55,10 @@ usage: kinfin.py      -g <FILE> -c <FILE> -s <FILE> [-t <FILE>] [-o <PREFIX>]
 
 
 ########################################################################
-# Imports
+#  conda create -n kinfin3 -c conda-forge docopt scipy matplotlib ete3 
 ########################################################################
 
-from __future__ import division
+
 import sys
 from os.path import isfile, join, exists, realpath, dirname
 from os import getcwd, mkdir, remove, environ
@@ -66,7 +66,7 @@ import shutil
 import random
 import time
 import gzip
-from urllib2 import urlopen
+from urllib.request import urlopen
 from decimal import Decimal
 
 from collections import Counter, defaultdict
@@ -89,7 +89,7 @@ except ImportError:
 try:
     import ete3
 except ImportError:
-    import_errors.append("[ERROR] : Module \'ete3\' was not found. Please install \'ete3\' using \'pip install ete3\'\n/tPlotting of trees requires additional dependencies:\n\t- PyQt4\n\t")
+    import_errors.append("[ERROR] : Module \'ete3\' was not found. Please install \'ete3\' using \'pip install ete3\'\nPlotting of trees requires additional dependencies:\n\t- PyQt4\n\t")
 if import_errors:
     sys.exit("\n".join(import_errors))
 
@@ -110,7 +110,7 @@ mat.rcParams.update({'font.size': 22})
 
 def retrieve_ftp(remote_f, local_f):
     try:
-        print "[STATUS] - Downloading '%s' to '%s'." % (remote_f, local_f)
+        print("[STATUS] - Downloading '%s' to '%s'." % (remote_f, local_f))
         req = urlopen(remote_f)
         with open(local_f, 'wb') as local_fh:
             shutil.copyfileobj(req, local_fh)
@@ -227,10 +227,10 @@ def parse_nodesdb(nodesdb_f):
 def parse_mapping(mapping_file_by_domain_source):
     domain_description_by_domain_id_by_domain_source = {}
     if mapping_file_by_domain_source:
-        for domain_source, mapping_f in mapping_file_by_domain_source.items():
+        for domain_source, mapping_f in list(mapping_file_by_domain_source.items()):
             if domain_source == 'Pfam':
                 domain_description_by_domain_id_by_domain_source[domain_source] = {}
-                print "[STATUS] - Parsing %s ... " % (mapping_f)
+                print("[STATUS] - Parsing %s ... " % (mapping_f))
                 for line in read_file(mapping_f):
                     temp = line.split("\t")
                     domain_id = temp[0]
@@ -242,7 +242,7 @@ def parse_mapping(mapping_file_by_domain_source):
                             sys.exit("[ERROR] : Conflicting descriptions for %s" % (domain_id))
             elif domain_source == 'GO':
                 domain_description_by_domain_id_by_domain_source['GO'] = {}
-                print "[STATUS] - Parsing %s ... " % (mapping_f)
+                print("[STATUS] - Parsing %s ... " % (mapping_f))
                 for line in read_file(mapping_f):
                     if not line.startswith("!"):
                         temp = line.replace(" > ", "|").split("|")
@@ -255,7 +255,7 @@ def parse_mapping(mapping_file_by_domain_source):
                                 sys.exit("[ERROR] : Conflicting descriptions for %s" % (go_id))
             elif domain_source == 'IPR':
                 domain_description_by_domain_id_by_domain_source['IPR'] = {}
-                print "[STATUS] - Parsing %s ... " % (mapping_f)
+                print("[STATUS] - Parsing %s ... " % (mapping_f))
                 for line in read_file(mapping_f):
                     if not line.startswith("Active_site"):
                         temp = line.split()
@@ -271,19 +271,19 @@ def parse_mapping(mapping_file_by_domain_source):
 
 def parse_tree(tree_f, outgroups):
     check_file(tree_f)
-    print "[STATUS] - Parsing Tree file : %s ..." % (tree_f)
+    print("[STATUS] - Parsing Tree file : %s ..." % (tree_f))
     tree_ete = ete3.Tree(tree_f)
     if len(outgroups) > 1:
         outgroup_node = tree_ete.get_common_ancestor(outgroups)
         try:
             tree_ete.set_outgroup(outgroup_node)
-            print "[STATUS] - Setting LCA of %s as outgroup : ..." % (",".join(outgroups))
+            print("[STATUS] - Setting LCA of %s as outgroup : ..." % (",".join(outgroups)))
         except ete3.coretype.tree.TreeError:
-            print "[STATUS] - Tree seems to be rooted already : ..."
+            print("[STATUS] - Tree seems to be rooted already : ...")
     else:
-        print "[STATUS] - Setting %s as outgroup : ..." % (",".join(outgroups))
+        print("[STATUS] - Setting %s as outgroup : ..." % (",".join(outgroups)))
         tree_ete.set_outgroup(outgroups[0])
-    print tree_ete
+    print(tree_ete)
     node_idx_by_proteome_ids = {}
     for idx, node in enumerate(tree_ete.traverse("levelorder")):
         proteome_ids = frozenset([leaf.name for leaf in node])
@@ -356,10 +356,10 @@ def sd(lst, population=True):
 def progress(iteration, steps, max_value):
     if int(iteration) == int(max_value):
         sys.stdout.write('\r')
-        print "[PROGRESS] \t- %d%%" % (100)
+        print("[PROGRESS] \t- %d%%" % (100))
     elif int(iteration) % int(steps + 1) == 0:
         sys.stdout.write('\r')
-        print "[PROGRESS] \t- %d%%" % (float(int(iteration) / int(max_value)) * 100),
+        print("[PROGRESS] \t- %d%%" % (float(int(iteration) / int(max_value)) * 100), end=' ')
         sys.stdout.flush()
     else:
         pass
@@ -371,6 +371,7 @@ def read_file(infile):
     if infile.endswith(".gz"):
         with gzip.open(infile, 'rb') as fh:
             for line in fh:
+                line = line.decode("utf-8") 
                 if line.startswith("nodesDB.txt"):
                     line = "#%s" % line.split("#")[1]
                 yield line.rstrip("\n")
@@ -399,7 +400,7 @@ class DataFactory():
         proteomes, proteome_id_by_species_id, attributes, level_by_attribute_by_proteome_id = self.parse_attributes(config_f)
         # Add taxonomy if needed
         if 'TAXID' in set(attributes):
-            print "[STATUS] - Attribute 'TAXID' found, inferring taxonomic ranks from nodesDB..."
+            print("[STATUS] - Attribute 'TAXID' found, inferring taxonomic ranks from nodesDB...")
             attributes, level_by_attribute_by_proteome_id = self.add_taxid_attributes(nodesdb_f, attributes, level_by_attribute_by_proteome_id)
         # Add ALOs from tree if provided
         tree_ete = None
@@ -410,7 +411,7 @@ class DataFactory():
                 sys.exit("[ERROR] - Please specify one of more outgroup taxa in the config file.")
             outgroups = [proteome_id for proteome_id in proteomes if level_by_attribute_by_proteome_id[proteome_id]["OUT"] == "1"]
             tree_ete, node_idx_by_proteome_ids = parse_tree(tree_f, outgroups)
-        print "[STATUS] - Building AloCollection ..."
+        print("[STATUS] - Building AloCollection ...")
         return AloCollection(proteomes, proteome_id_by_species_id, attributes, level_by_attribute_by_proteome_id, tree_ete, node_idx_by_proteome_ids)
 
     ###############################
@@ -418,7 +419,7 @@ class DataFactory():
     ###############################
 
     def parse_attributes(self, config_f):
-        print "[STATUS] - Parsing config file file: %s ..." % (config_f)
+        print("[STATUS] - Parsing config file file: %s ..." % (config_f))
         attributes = []
         level_by_attribute_by_proteome_id = {}
         proteomes = set()
@@ -456,7 +457,7 @@ class DataFactory():
     ###############################
 
     def add_taxid_attributes(self, nodesdb_f, attributes, level_by_attribute_by_proteome_id):
-        print "[STATUS] - Parsing nodesDB %s" % (nodesdb_f)
+        print("[STATUS] - Parsing nodesDB %s" % (nodesdb_f))
         NODESDB = parse_nodesdb(nodesdb_f)
         for proteome_id in level_by_attribute_by_proteome_id:
             taxid = level_by_attribute_by_proteome_id[proteome_id]['TAXID']
@@ -489,31 +490,31 @@ class DataFactory():
         else:
             result_path = join(getcwd(), "kinfin_results")
         self.dirs['main'] = result_path
-        print "[STATUS] - Output directories in \n\t%s" % (result_path)
+        print("[STATUS] - Output directories in \n\t%s" % (result_path))
         if exists(result_path):
-            print "[STATUS] - Directory exists. Deleting directory ..."
+            print("[STATUS] - Directory exists. Deleting directory ...")
             shutil.rmtree(result_path)
-        print "[STATUS] - Creating directories ..."
+        print("[STATUS] - Creating directories ...")
         mkdir(result_path)
         for attribute in aloCollection.attributes:
             attribute_path = join(result_path, attribute)
             self.dirs[attribute] = attribute_path
             if not exists(attribute_path):
-                print "\t%s" % (attribute_path)
+                print("\t%s" % (attribute_path))
                 mkdir(attribute_path)
         if aloCollection.tree_ete:
             tree_path = join(result_path, "tree")
             node_chart_path = join(tree_path, "charts")
             node_header_path = join(tree_path, "headers")
             if not exists(tree_path):
-                print "\t%s" % (tree_path)
+                print("\t%s" % (tree_path))
                 mkdir(tree_path)
                 self.dirs["tree"] = tree_path
-                print "\t%s" % (node_chart_path)
+                print("\t%s" % (node_chart_path))
                 mkdir(node_chart_path)
                 self.dirs["tree_charts"] = node_chart_path
                 if inputObj.render_tree:
-                    print "\t%s" % (node_header_path)
+                    print("\t%s" % (node_header_path))
                     mkdir(node_header_path)
                     self.dirs["tree_headers"] = node_header_path
 
@@ -525,7 +526,7 @@ class DataFactory():
         # PARSE PROTEINS
         proteinObjs = []
         sequence_ids_f = inputObj.sequence_ids_f
-        print "[STATUS] - Parsing sequence IDs: %s ..." % sequence_ids_f
+        print("[STATUS] - Parsing sequence IDs: %s ..." % sequence_ids_f)
         for line in read_file(sequence_ids_f):
             temp = line.split(": ")
             sequence_id = temp[0]
@@ -538,16 +539,16 @@ class DataFactory():
             #else:
             #    sys.exit("[ERROR] - Offending SequenceID : %s (unknown species_id %s)" % (line, species_id))
         proteinCollection = ProteinCollection(proteinObjs)
-        print "[STATUS]\t - Proteins found = %s" % (proteinCollection.protein_count)
+        print("[STATUS]\t - Proteins found = %s" % (proteinCollection.protein_count))
 
         # PARSE FASTA DIR
         fasta_dir = inputObj.fasta_dir
         species_ids_f = inputObj.species_ids_f
         if fasta_dir:
-            print "[STATUS] - Parsing FASTAs ..."
+            print("[STATUS] - Parsing FASTAs ...")
             fasta_file_by_species_id = self.parse_species_ids(species_ids_f)
             fasta_len_by_protein_id = self.parse_fasta_dir(fasta_dir, fasta_file_by_species_id)
-            print "[STATUS] - Adding FASTAs to ProteinCollection ..."
+            print("[STATUS] - Adding FASTAs to ProteinCollection ...")
             parse_steps = proteinCollection.protein_count/100
             for idx, proteinObj in enumerate(proteinCollection.proteinObjs):
                 proteinObj.add_length(fasta_len_by_protein_id[proteinObj.protein_id])
@@ -555,13 +556,13 @@ class DataFactory():
             aloCollection.fastas_parsed = True
             proteinCollection.fastas_parsed = True
         else:
-            print "[STATUS] - No Fasta-Dir given, no AA-span information will be reported ..."
+            print("[STATUS] - No Fasta-Dir given, no AA-span information will be reported ...")
 
         # PARSE DOMAINS
         functional_annotation_f = inputObj.functional_annotation_f
         if functional_annotation_f:
             # PARSE DOMAINS
-            print "[STATUS] - Parsing %s ... this may take a while" % (functional_annotation_f)
+            print("[STATUS] - Parsing %s ... this may take a while" % (functional_annotation_f))
             for line in read_file(functional_annotation_f):
                 temp = line.split()
                 if temp[0].startswith("#"):
@@ -618,11 +619,11 @@ class DataFactory():
 
     def parse_fasta_dir(self, fasta_dir, fasta_file_by_species_id):
         fasta_len_by_protein_id = {}
-        for species_id, fasta_f in fasta_file_by_species_id.items():
+        for species_id, fasta_f in list(fasta_file_by_species_id.items()):
             fasta_path = join(fasta_dir, fasta_f)
             if not isfile(fasta_path):
                 sys.exit("[ERROR] - %s does not exist." % (fasta_path))
-            print "[STATUS]\t - Parsing FASTA %s" % (fasta_path)
+            print("[STATUS]\t - Parsing FASTA %s" % (fasta_path))
             for header, length in readFastaLen(fasta_path):
                 fasta_len_by_protein_id[header] = length
         self.fasta_dir = fasta_dir
@@ -634,7 +635,7 @@ class DataFactory():
 
     def build_ClusterCollection(self, inputObj):
         cluster_f = inputObj.cluster_f
-        print "[STATUS] - Parsing %s ... this may take a while" % (cluster_f)
+        print("[STATUS] - Parsing %s ... this may take a while" % (cluster_f))
         clusterObjs = []
         with open(cluster_f) as fh:
             for line in fh:
@@ -648,7 +649,7 @@ class DataFactory():
                 clusterObjs.append(clusterObj)
         inferred_singletons_count = 0
         if inputObj.infer_singletons:
-            print "[STATUS] - Inferring singletons ..."
+            print("[STATUS] - Inferring singletons ...")
             singleton_idx = 0
             for proteinObj in proteinCollection.proteinObjs:
                 if proteinObj.clustered == False:
@@ -681,7 +682,7 @@ class DataFactory():
         ax.set_facecolor('white')
         x_values = []
         y_values = []
-        for value, count in cluster_protein_counter.items():
+        for value, count in list(cluster_protein_counter.items()):
             x_values.append(value)
             y_values.append(count)
         x_array = np.array(x_values)
@@ -700,7 +701,7 @@ class DataFactory():
 
         ax.grid(True, linewidth=1, which="major", color="lightgrey")
         ax.grid(True, linewidth=0.5, which="minor", color="lightgrey")
-        print "[STATUS] - Plotting %s" % (count_plot_f)
+        print("[STATUS] - Plotting %s" % (count_plot_f))
         f.savefig(count_plot_f, format=inputObj.plot_format)
         plt.close()
 
@@ -925,7 +926,7 @@ class DataFactory():
                                 cluster_1to1_ALO_line.append(cluster_cardinality)
                                 cluster_1to1_ALO_line.append(clusterCollection.clusterObjs_by_cluster_id[cluster_id].proteome_count)
                                 cluster_1to1_ALO_line.append("{0:.2f}".format(
-                                    len([protein_count for proteome_id, protein_count in clusterCollection.clusterObjs_by_cluster_id[cluster_id].protein_count_by_proteome_id.items() if protein_count == inputObj.fuzzy_count]) / clusterCollection.clusterObjs_by_cluster_id[cluster_id].proteome_count)
+                                    len([protein_count for proteome_id, protein_count in list(clusterCollection.clusterObjs_by_cluster_id[cluster_id].protein_count_by_proteome_id.items()) if protein_count == inputObj.fuzzy_count]) / clusterCollection.clusterObjs_by_cluster_id[cluster_id].proteome_count)
                                 )
                                 cluster_1to1_ALO_output.append("\t".join([str(field) for field in cluster_1to1_ALO_line]))
 
@@ -1019,7 +1020,7 @@ class DataFactory():
                                     protein_with_domain_count_by_proteome_id = {}
                                     proteome_count_with_domain = 0
                                     protein_without_domain_count_by_proteome_id = {}
-                                    for proteome_id, protein_ids in clusterObj.protein_ids_by_proteome_id.items():
+                                    for proteome_id, protein_ids in list(clusterObj.protein_ids_by_proteome_id.items()):
                                         proteome_seen = False
                                         for protein_id in protein_ids:
                                             if domain_source in proteinCollection.proteinObjs_by_protein_id[protein_id].domain_counter_by_domain_source and domain_id in proteinCollection.proteinObjs_by_protein_id[protein_id].domain_counter_by_domain_source[domain_source]:
@@ -1029,8 +1030,8 @@ class DataFactory():
                                                     proteome_seen = True
                                             else:
                                                 protein_without_domain_count_by_proteome_id[proteome_id] = protein_without_domain_count_by_proteome_id.get(proteome_id, 0) + 1
-                                    proteomes_with_domain_count_string = ",".join(sorted(["%s:%s/%s" % (proteome_id, count, len(clusterObj.protein_ids_by_proteome_id[proteome_id])) for proteome_id, count in protein_with_domain_count_by_proteome_id.items()]))
-                                    proteomes_without_domain_count_string = ",".join(sorted(["%s:%s/%s" % (proteome_id, count, len(clusterObj.protein_ids_by_proteome_id[proteome_id])) for proteome_id, count in protein_without_domain_count_by_proteome_id.items()]))
+                                    proteomes_with_domain_count_string = ",".join(sorted(["%s:%s/%s" % (proteome_id, count, len(clusterObj.protein_ids_by_proteome_id[proteome_id])) for proteome_id, count in list(protein_with_domain_count_by_proteome_id.items())]))
+                                    proteomes_without_domain_count_string = ",".join(sorted(["%s:%s/%s" % (proteome_id, count, len(clusterObj.protein_ids_by_proteome_id[proteome_id])) for proteome_id, count in list(protein_without_domain_count_by_proteome_id.items())]))
                                     cluster_metrics_domains_detailed_output_line.append(sum(protein_with_domain_count_by_proteome_id.values()))
                                     cluster_metrics_domains_detailed_output_line.append("{0:.3f}".format(proteome_count_with_domain / clusterObj.proteome_count))
                                     if proteomes_with_domain_count_string:
@@ -1153,34 +1154,34 @@ class DataFactory():
 
                 if len(cafe_output) > 1:
                     with open(cafe_f, 'w') as cafe_fh:
-                        print "[STATUS] - Writing %s" % (cafe_f)
+                        print("[STATUS] - Writing %s" % (cafe_f))
                         cafe_fh.write("\n".join(cafe_output) + "\n")
                     cafe_output = []
                 if len(cluster_metrics_output) > 1:
                     with open(cluster_metrics_f, 'w') as cluster_metrics_fh:
-                        print "[STATUS] - Writing %s" % (cluster_metrics_f)
+                        print("[STATUS] - Writing %s" % (cluster_metrics_f))
                         cluster_metrics_fh.write("\n".join(cluster_metrics_output) + "\n")
                     cluster_metrics_output = []
                 if len(cluster_metrics_domains_output) > 1:
                     with open(cluster_metrics_domains_f, 'w') as cluster_metrics_domains_fh:
-                        print "[STATUS] - Writing %s" % (cluster_metrics_domains_f)
+                        print("[STATUS] - Writing %s" % (cluster_metrics_domains_f))
                         cluster_metrics_domains_fh.write("\n".join(cluster_metrics_domains_output) + "\n")
                     cluster_metrics_domains_output = []
                 for domain_source in cluster_metrics_domains_detailed_output_by_domain_source:
                     if len(cluster_metrics_domains_detailed_output_by_domain_source[domain_source]) > 1:
                         cluster_metrics_domains_detailed_f = cluster_metrics_domains_detailed_f_by_domain_source[domain_source]
                         with open(cluster_metrics_domains_detailed_f, 'w') as cluster_metrics_domains_detailed_fh:
-                            print "[STATUS] - Writing %s" % (cluster_metrics_domains_detailed_f)
+                            print("[STATUS] - Writing %s" % (cluster_metrics_domains_detailed_f))
                             cluster_metrics_domains_detailed_fh.write("\n".join(cluster_metrics_domains_detailed_output_by_domain_source[domain_source]) + "\n")
                         cluster_metrics_domains_detailed_output_by_domain_source[domain_source] = []
                 if len(cluster_metrics_ALO_output) > 1:
                     with open(cluster_metrics_ALO_f, 'w') as cluster_metrics_ALO_fh:
-                        print "[STATUS] - Writing %s" % (cluster_metrics_ALO_f)
+                        print("[STATUS] - Writing %s" % (cluster_metrics_ALO_f))
                         cluster_metrics_ALO_fh.write("\n".join(cluster_metrics_ALO_output) + "\n")
                     cluster_metrics_ALO_output = []
                 if len(cluster_1to1_ALO_output) > 1:
                     with open(cluster_1to1_ALO_f, 'w') as cluster_1to1_ALO_fh:
-                        print "[STATUS] - Writing %s" % (cluster_1to1_ALO_f)
+                        print("[STATUS] - Writing %s" % (cluster_1to1_ALO_f))
                         cluster_1to1_ALO_fh.write("\n".join(cluster_1to1_ALO_output) + "\n")
                     cluster_1to1_ALO_output = []
                 if background_representation_test_by_pair_by_attribute:
@@ -1189,11 +1190,11 @@ class DataFactory():
 
             if len(attribute_metrics_output) > 1:
                 with open(attribute_metrics_f, 'w') as attribute_metrics_fh:
-                    print "[STATUS] - Writing %s" % (attribute_metrics_f)
+                    print("[STATUS] - Writing %s" % (attribute_metrics_f))
                     attribute_metrics_fh.write("\n".join(attribute_metrics_output) + "\n")
             if len(pairwise_representation_test_output) > 1:
                 with open(pairwise_representation_test_f, 'w') as pairwise_representation_test_fh:
-                    print "[STATUS] - Writing %s" % (pairwise_representation_test_f)
+                    print("[STATUS] - Writing %s" % (pairwise_representation_test_f))
                     pairwise_representation_test_fh.write("\n".join(pairwise_representation_test_output) + "\n")
             if pairwise_representation_test_by_pair_by_attribute:
                 self.plot_count_comparisons_vulcano(pairwise_representation_test_by_pair_by_attribute)
@@ -1310,7 +1311,7 @@ class DataFactory():
                     #ax.set_yscale('log')
                     axScatter.set_yscale('log')
                     axHistx.set_xlim(axScatter.get_xlim())
-                    print "[STATUS] - Plotting %s" % (pairwise_representation_test_f)
+                    print("[STATUS] - Plotting %s" % (pairwise_representation_test_f))
                     #plt.gca().invert_yaxis()
                     plt.savefig(pairwise_representation_test_f, format=inputObj.plot_format)
                     plt.close()
@@ -1410,18 +1411,18 @@ class AloCollection():
 
     def analyse_clusters(self):
         if clusterCollection.inferred_singletons_count:
-            print "[STATUS]\t - Clusters found = %s (of which %s were inferred singletons)" % (clusterCollection.cluster_count, clusterCollection.inferred_singletons_count)
+            print("[STATUS]\t - Clusters found = %s (of which %s were inferred singletons)" % (clusterCollection.cluster_count, clusterCollection.inferred_singletons_count))
         else:
-            print "[STATUS]\t - Clusters found = %s" % (clusterCollection.cluster_count)
+            print("[STATUS]\t - Clusters found = %s" % (clusterCollection.cluster_count))
         parse_steps = clusterCollection.cluster_count/100
-        print "[STATUS] - Analysing clusters ..."
+        print("[STATUS] - Analysing clusters ...")
         analyse_clusters_start = time.time()
         for idx, clusterObj in enumerate(clusterCollection.clusterObjs):
             self.analyse_cluster(clusterObj)
             progress(idx+1, parse_steps, clusterCollection.cluster_count)
         analyse_clusters_end = time.time()
         analyse_clusters_elapsed = analyse_clusters_end - analyse_clusters_start
-        print "[STATUS] - Took %ss to analyse clusters" % (analyse_clusters_elapsed)
+        print("[STATUS] - Took %ss to analyse clusters" % (analyse_clusters_elapsed))
 
  ###############################
     ### analyse_clusters : analyse_cluster
@@ -1516,7 +1517,7 @@ class AloCollection():
                     implicit_protein_ids_by_proteome_id_by_level_by_attribute[attribute][level] = protein_ids_by_proteome_id
                 explicit_protein_count_by_proteome_id_by_level[level] = protein_count_by_proteome_id
                 protein_length_stats_by_level[level] = proteinCollection.get_protein_length_stats(protein_ids_by_level[level])
-                protein_counts_of_proteomes_by_level_by_attribute[attribute][level] = [protein_count for proteome_id, protein_count in protein_count_by_proteome_id.items()]
+                protein_counts_of_proteomes_by_level_by_attribute[attribute][level] = [protein_count for proteome_id, protein_count in list(protein_count_by_proteome_id.items())]
             cluster_type_by_attribute[attribute] = get_attribute_cluster_type(clusterObj.singleton, implicit_protein_ids_by_proteome_id_by_level_by_attribute[attribute])
 
             for level in self.ALO_by_level_by_attribute[attribute]:
@@ -1533,7 +1534,7 @@ class AloCollection():
                 else:
                     ALO_cluster_status = 'present'
                     if not cluster_type_by_attribute[attribute] == 'singleton':
-                        ALO_proteome_counts_in_cluster = [count for proteome_id, count in explicit_protein_count_by_proteome_id_by_level[level].items()]
+                        ALO_proteome_counts_in_cluster = [count for proteome_id, count in list(explicit_protein_count_by_proteome_id_by_level[level].items())]
                         ALO_cluster_cardinality = get_ALO_cluster_cardinality(ALO_proteome_counts_in_cluster)
                         if cluster_type_by_attribute[attribute] == 'shared':
                             non_ALO_levels = [non_ALO_level for non_ALO_level in explicit_protein_count_by_proteome_id_by_level if not non_ALO_level == level]
@@ -1563,7 +1564,7 @@ class AloCollection():
 
     def write_tree(self):
         if self.tree_ete:
-            print "[STATUS] - Writing data for tree ... "
+            print("[STATUS] - Writing data for tree ... ")
             # Node stats
             node_stats_f = join(dataFactory.dirs['tree'], "tree.node_metrics.txt")
             node_stats_header = []
@@ -1605,10 +1606,10 @@ class AloCollection():
                 #if inputObj.render_tree:
                     #header_f_by_node_name[node.name] = self.generate_header_for_node(node)
                 charts_f_by_node_name[node.name] = self.generate_chart_for_node(node)
-            print "[STATUS] - Writing %s ... " % node_stats_f
+            print("[STATUS] - Writing %s ... " % node_stats_f)
             with open(node_stats_f, 'w') as node_stats_fh:
                 node_stats_fh.write("\n".join(node_stats) + "\n")
-            print "[STATUS] - Writing %s ... " % node_clusters_f
+            print("[STATUS] - Writing %s ... " % node_clusters_f)
             with open(node_clusters_f, 'w') as node_clusters_fh:
                 node_clusters_fh.write("\n".join(node_clusters) + "\n")
             if inputObj.render_tree:
@@ -1651,7 +1652,7 @@ class AloCollection():
         ts.show_leaf_name = False
         ts.allow_face_overlap = True
         ts.guiding_lines_color = "lightgrey"
-        print "[STATUS] - Writing tree %s ... " % (tree_f)
+        print("[STATUS] - Writing tree %s ... " % (tree_f))
         self.tree_ete.render(tree_f, dpi=600, h=1189, units="mm", tree_style=ts)
 
     def generate_header_for_node(self, node):
@@ -1672,7 +1673,7 @@ class AloCollection():
         )
         table.set_fontsize(24)
         table.scale(2, 1)
-        for key, cell in table.get_celld().items():
+        for key, cell in list(table.get_celld().items()):
             row, col = key
             cell._text.set_color('grey')
             if row > 0:
@@ -1686,7 +1687,7 @@ class AloCollection():
                 cell.visible_edges = "T"
         ax.axis('tight')
         ax.axis("off")
-        print "[STATUS]\t- Plotting %s" % (node_header_f)
+        print("[STATUS]\t- Plotting %s" % (node_header_f))
         fig.savefig(node_header_f, pad=0, bbox_inches='tight', format='png')
         plt.close()
         return node_header_f
@@ -1713,18 +1714,18 @@ class AloCollection():
             f.suptitle("Synapomorphies", y=1.1)
             ax.set_ylabel("Count", fontsize=inputObj.plot_font_size)
             ax.set_xlabel("Proteome coverage", fontsize=inputObj.plot_font_size)
-            print "[STATUS]\t- Plotting %s" % (chart_f)
+            print("[STATUS]\t- Plotting %s" % (chart_f))
             f.savefig(chart_f,  bbox_inches='tight', format='png')
             if inputObj.plot_format == 'pdf':
                 pdf_chart_f = join(dataFactory.dirs['tree_charts'], "%s.barchart.pdf" % (node.name))
-                print "[STATUS]\t- Plotting %s" % (pdf_chart_f)
+                print("[STATUS]\t- Plotting %s" % (pdf_chart_f))
                 f.savefig(pdf_chart_f,  bbox_inches='tight', format='pdf')
             plt.close()
             return chart_f
 
     def compute_rarefaction_data(self):
         rarefaction_by_samplesize_by_level_by_attribute = {}
-        print "[STATUS] - Generating rarefaction data ..."
+        print("[STATUS] - Generating rarefaction data ...")
         for attribute in self.attributes:
             for level in self.proteome_ids_by_level_by_attribute[attribute]:
                 proteome_ids = self.proteome_ids_by_level_by_attribute[attribute][level]
@@ -1734,7 +1735,7 @@ class AloCollection():
                         rarefaction_by_samplesize_by_level_by_attribute[attribute] = {}
                     if not level in rarefaction_by_samplesize_by_level_by_attribute[attribute]:
                         rarefaction_by_samplesize_by_level_by_attribute[attribute][level] = {}
-                    for repetition in xrange(0, inputObj.repetitions):
+                    for repetition in range(0, inputObj.repetitions):
                         seen_cluster_ids = set()
                         random_list_of_proteome_ids = [x for x in ALO.proteomes]
                         random.shuffle(random_list_of_proteome_ids)
@@ -1763,7 +1764,7 @@ class AloCollection():
                 y_maxs = []
                 median_y_values = []
                 median_x_values = []
-                for x, y_reps in rarefaction_by_samplesize_by_level[level].items():
+                for x, y_reps in list(rarefaction_by_samplesize_by_level[level].items()):
                     x_values.append(x)
                     y_mins.append(min(y_reps))
                     y_maxs.append(max(y_reps))
@@ -1781,7 +1782,7 @@ class AloCollection():
             ax.grid(True, linewidth=1, which="major", color="lightgrey")
             legend = ax.legend(ncol=1, numpoints=1, loc="lower right", frameon=True, fontsize=inputObj.plot_font_size)
             legend.get_frame().set_facecolor('white')
-            print "[STATUS]\t- Plotting %s" % (rarefaction_plot_f)
+            print("[STATUS]\t- Plotting %s" % (rarefaction_plot_f))
             f.savefig(rarefaction_plot_f, format=inputObj.plot_format)
             plt.close()
 
@@ -1830,7 +1831,7 @@ class AttributeLevelObj():
     ###############################
 
     def analyse_domains(self):
-        print "[STATUS] - Analysing domains (this may take a while) ... "
+        print("[STATUS] - Analysing domains (this may take a while) ... ")
         domain_counter_by_domain_source_by_cluster_type = {'singleton' : {}, 'specific' : {}, 'shared' : {}}
         protein_with_domain_count_by_domain_source_by_cluster_type = {'singleton' : {}, 'specific' : {}, 'shared' : {}}
         get_proteinObj_by_protein_id = proteinCollection.proteinObjs_by_protein_id.get
@@ -1895,7 +1896,7 @@ class AttributeLevelObj():
 
     def get_protein_count_by_cluster_type(self, cluster_type):
         if cluster_type == 'total':
-            return sum([len(protein_ids) for cluster_type, protein_ids in self.protein_ids_by_cluster_type.items()])
+            return sum([len(protein_ids) for cluster_type, protein_ids in list(self.protein_ids_by_cluster_type.items())])
         else:
             return len(self.protein_ids_by_cluster_type[cluster_type])
 
@@ -1906,7 +1907,7 @@ class AttributeLevelObj():
     def get_protein_span_by_cluster_type(self, cluster_type):
         span = 0
         if cluster_type == 'total':
-            span = sum([sum(protein_ids) for cluster_type, protein_ids in self.protein_span_by_cluster_type.items()])
+            span = sum([sum(protein_ids) for cluster_type, protein_ids in list(self.protein_span_by_cluster_type.items())])
         else:
             span = sum(self.protein_span_by_cluster_type[cluster_type])
         return span
@@ -1917,7 +1918,7 @@ class AttributeLevelObj():
 
     def get_cluster_count_by_cluster_status_by_cluster_type(self, cluster_status, cluster_type):
         if cluster_type == 'total':
-            return sum([len(cluster_ids) for cluster_type, cluster_ids in self.cluster_ids_by_cluster_type_by_cluster_status[cluster_status].items()])
+            return sum([len(cluster_ids) for cluster_type, cluster_ids in list(self.cluster_ids_by_cluster_type_by_cluster_status[cluster_status].items())])
         else:
             return len(self.cluster_ids_by_cluster_type_by_cluster_status[cluster_status][cluster_type])
 
@@ -2038,7 +2039,7 @@ class ClusterObj():
         except KeyError as e:
             sys.exit("[ERROR] - Protein %s in clustering belongs to proteomes that are not present in the config-file. Please add those proteomes or recluster by omitting these proteomes." % (e.args[0]))
 
-        self.proteome_ids_list = self.proteomes_by_protein_id.values()
+        self.proteome_ids_list = list(self.proteomes_by_protein_id.values())
         self.protein_count_by_proteome_id = Counter(self.proteome_ids_list)
         self.proteome_ids = frozenset(self.proteome_ids_list)
         self.proteome_count = len(self.proteome_ids)
@@ -2066,7 +2067,7 @@ class ClusterObj():
 
     def compute_protein_ids_by_proteome(self):
         protein_ids_by_proteome_id = defaultdict(set)
-        for protein_id, proteome_id in self.proteomes_by_protein_id.items():
+        for protein_id, proteome_id in list(self.proteomes_by_protein_id.items()):
             protein_ids_by_proteome_id[proteome_id].add(protein_id)
         return protein_ids_by_proteome_id
 
@@ -2091,7 +2092,7 @@ class ClusterObj():
         for protein_id in self.protein_ids:
             protein_domain_counter_by_domain_source = proteinCollection.proteinObjs_by_protein_id[protein_id].domain_counter_by_domain_source
             if protein_domain_counter_by_domain_source:
-                for domain_source, protein_domain_counter in protein_domain_counter_by_domain_source.items():
+                for domain_source, protein_domain_counter in list(protein_domain_counter_by_domain_source.items()):
                     if not domain_source in cluster_domain_counter_by_domain_source:
                         cluster_domain_counter_by_domain_source[domain_source] = Counter()
                     cluster_domain_counter_by_domain_source[domain_source] += protein_domain_counter
@@ -2099,9 +2100,9 @@ class ClusterObj():
 
     def compute_domain_entropy_by_domain_source(self):
         domain_entropy_by_domain_source = {}
-        for domain_source, domain_counter in self.domain_counter_by_domain_source.items():
+        for domain_source, domain_counter in list(self.domain_counter_by_domain_source.items()):
             total_count = len([domain for domain in domain_counter.elements()])
-            domain_entropy = -sum([i/total_count * log(i/total_count, 2) for i in domain_counter.values()])
+            domain_entropy = -sum([i/total_count * log(i/total_count, 2) for i in list(domain_counter.values())])
             if str(domain_entropy) == "-0.0":
                 domain_entropy_by_domain_source[domain_source] = 0.0
             else:
@@ -2153,7 +2154,7 @@ class InputObj():
         self.fuzzy_min = None
         self.fuzzy_max = None
         self.check_fuzzy_min_max(args['--min'], args['--max'])
-        self.fuzzy_range = set([x for x in xrange(self.fuzzy_min, self.fuzzy_max + 1) if not x == self.fuzzy_count])
+        self.fuzzy_range = set([x for x in range(self.fuzzy_min, self.fuzzy_max + 1) if not x == self.fuzzy_count])
         # values: rarefaction
         self.repetitions = int(args['--repetitions']) + 1
         self.check_repetitions()
@@ -2213,7 +2214,7 @@ class InputObj():
             if not isfile(nodesdb_gz):
                 sys.exit("[ERROR] : nodesdb.gz could not be found in kinfin/data/ folder. Please download KinFin again..")
             else:
-                print "[STATUS] - Uncompressing %s" % (nodesdb_gz)
+                print("[STATUS] - Uncompressing %s" % (nodesdb_gz))
                 nodesdb = []
                 for line in read_file(nodesdb_gz):
                     nodesdb.append(line)
@@ -2223,20 +2224,20 @@ class InputObj():
         if self.pfam_mapping:
             pfam_mapping_f = join(dirname(realpath(__file__)), "../data/Pfam-A.clans.tsv.gz")
             if not isfile(pfam_mapping_f):
-                print "[WARN] - PFAM-ID file 'data/Pfam-A.clans.tsv.gz' not found. Will be downloaded from ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.clans.tsv.gz"
+                print("[WARN] - PFAM-ID file 'data/Pfam-A.clans.tsv.gz' not found. Will be downloaded from ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.clans.tsv.gz")
                 remote_f = "ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.clans.tsv.gz"
                 retrieve_ftp(remote_f, pfam_mapping_f)
             self.pfam_mapping_f = pfam_mapping_f
         if self.ipr_mapping:
             ipr_mapping_f = join(dirname(realpath(__file__)), "../data/entry.list")
             if not isfile(ipr_mapping_f):
-                print "[WARN] - IPR-ID file 'data/entry.list' not found. Will be downloaded from ftp://ftp.ebi.ac.uk/pub/databases/interpro/entry.list"
+                print("[WARN] - IPR-ID file 'data/entry.list' not found. Will be downloaded from ftp://ftp.ebi.ac.uk/pub/databases/interpro/entry.list")
                 remote_f = "ftp://ftp.ebi.ac.uk/pub/databases/interpro/entry.list"
                 retrieve_ftp(remote_f, ipr_mapping_f)
             self.ipr_mapping_f = ipr_mapping_f
             go_mapping_f = join(dirname(realpath(__file__)), "../data/interpro2go")
             if not isfile(go_mapping_f):
-                print "[WARN] - GO-ID file, but 'data/interpro2go' not found. Will be downloaded from ftp://ftp.ebi.ac.uk/pub/databases/interpro/interpro2go"
+                print("[WARN] - GO-ID file, but 'data/interpro2go' not found. Will be downloaded from ftp://ftp.ebi.ac.uk/pub/databases/interpro/interpro2go")
                 remote_f = "ftp://ftp.ebi.ac.uk/pub/databases/interpro/interpro2go"
                 retrieve_ftp(remote_f, go_mapping_f)
             self.go_mapping_f = go_mapping_f
@@ -2248,18 +2249,18 @@ class InputObj():
             except ImportError:
                 sys.exit("[ERROR] : Plotting of trees requires additional ETE3 dependencies. PyQt4 is not installed. Please install PyQt4")
             if 'DISPLAY' in environ:
-                print "[STATUS] - X server seems to be present..."
+                print("[STATUS] - X server seems to be present...")
                 test_tree_f = join(getcwd(), "this_is_a_test_tree.pdf")
                 t = ete3.Tree( "((a,b),c);" )
                 try:
                     a = t.render(test_tree_f, w=40, units="mm")
-                    print "[STATUS] - ETE can connect to X server (X11). Tree will be rendered."
+                    print("[STATUS] - ETE can connect to X server (X11). Tree will be rendered.")
                 except:
                     self.render_tree = False
-                    print "[WARN] - ETE cannot connect to X server (X11). No tree will be rendered."
+                    print("[WARN] - ETE cannot connect to X server (X11). No tree will be rendered.")
                 remove(test_tree_f)
             else:
-                print "[STATUS] - No X server found. ETE can't render the tree. Consider using \'xvfb-run\' ..."
+                print("[STATUS] - No X server found. ETE can't render the tree. Consider using \'xvfb-run\' ...")
                 self.render_tree = False
 
     def check_fuzzy_count(self, target_count):
@@ -2272,35 +2273,35 @@ class InputObj():
         if 0 <= float(fuzzyness) <= 1:
             self.fuzzy_fraction = float(fuzzyness)
         else:
-            sys.exit("[ERROR] : --target_fraction %s is not between 0.0 and 1.0" (fuzzyness))
+            sys.exit("[ERROR] : --target_fraction %s is not between 0.0 and 1.0" % (fuzzyness))
 
     def check_fuzzy_min_max(self, fuzzy_min, fuzzy_max):
         if int(fuzzy_min) <= int(fuzzy_max):
             self.fuzzy_min = int(args['--min'])
             self.fuzzy_max = int(args['--max'])
         else:
-            sys.exit("[ERROR] : --min %s is greater than --max %s" (fuzzy_min, fuzzy_max))
+            sys.exit("[ERROR] : --min %s is greater than --max %s" % (fuzzy_min, fuzzy_max))
 
 
 def welcome_screen():
-    screen = "\
+    screen = """\
      _    _ _       _______ _        \n\
     | |  / |_)     (_______|_)       \n\
     | | / / _ ____  _____   _ ____   \n\
-    | |< < | |  _ \|  ___) | |  _ \  \n\
-    | | \ \| | | | | |     | | | | | \n\
-    |_|  \_)_|_| |_|_|     |_|_| |_| v%s\n\
-    " % (__version__)
-    print screen
+    | |< < | |  _ \\|  ___) | |  _ \\  \n\
+    | | \\ \\| | | | | |     | | | | | \n\
+    |_|  \\_)_|_| |_|_|     |_|_| |_| v%s\n\
+    """ % (__version__)
+    print(screen)
 
 
 if __name__ == "__main__":
-    __version__ = "1.0"
+    __version__ = "1.1"
     welcome_screen()
     args = docopt(__doc__)
     inputObj = InputObj(args)
     # Input sane ... now we start
-    print "[STATUS] - Starting analysis ..."
+    print("[STATUS] - Starting analysis ...")
     overall_start = time.time()
     # Initialise
     aloCollection = None
@@ -2322,7 +2323,7 @@ if __name__ == "__main__":
 
     overall_end = time.time()
     overall_elapsed = overall_end - overall_start
-    print "[STATUS] - Took %ss to run kinfin." % (overall_elapsed)
+    print("[STATUS] - Took %ss to run kinfin." % (overall_elapsed))
     del aloCollection
     del proteinCollection
     del domainCollection
