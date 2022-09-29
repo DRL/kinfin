@@ -74,10 +74,6 @@ else
     fi
 fi
 
-# Install python dependencies
-echo "[+] Installing python dependencies..."
-$python setup.py install
-
 # Create executable
 echo "[+] Creating executable..."
 echo '#!/usr/bin/env bash
