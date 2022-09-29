@@ -12,16 +12,6 @@ if [ -x "$gunzip" ] ; then
     echo "    [+] [gunzip] $gunzip"; else
     echo "    [X] [gunzip] ... please install gunzip";
 fi
-pip=$(which pip)
-if [ -x "$pip" ] ; then
-    echo "    [+] [pip] $pip"; else
-    echo "    [X] [pip] ... please install pip";
-fi
-python=$(which python)
-if [ -x "$python" ] ; then
-    echo "    [+] [python] $python"; else
-    echo "    [X] [python] ... please install python2.7";
-fi
 
 # Download files
 echo "[+] Checking data files..."

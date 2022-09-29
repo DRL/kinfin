@@ -55,7 +55,7 @@ usage: kinfin.py      -g <FILE> -c <FILE> -s <FILE> [-t <FILE>] [-o <PREFIX>]
 
 
 ########################################################################
-#  conda create -n kinfin3 -c conda-forge docopt scipy matplotlib ete3 
+#  
 ########################################################################
 
 
