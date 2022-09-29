@@ -583,7 +583,7 @@ class DataFactory():
                                 if domain_source == "GO":
                                     domain_id = domain_id_count
                                 else:
-                                    domain_id, domain_count = domain_id_count.split(":")
+                                    domain_id, domain_count = domain_id_count.rsplit(":", 2)
                                 domain_counts_by_domain_id[domain_id] = int(domain_count)
                             domain_counter = Counter(domain_counts_by_domain_id)
                             domain_counter_by_domain_source[domain_source] = domain_counter
