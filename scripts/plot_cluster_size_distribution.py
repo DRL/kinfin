@@ -14,33 +14,34 @@ usage: plot_cluster_size_distribution.py    -i <FILE> [-o <STRING>] [-p <STRING>
         -p, --plot_fmt <STRING>             Plot format [default: png]
 
 """
-from __future__ import division
-import re
 import sys
-import powerlaw
-from docopt import docopt
-from collections import OrderedDict
-from os.path import isfile, join, exists, realpath, dirname, basename
-import matplotlib as mat
-import matplotlib.patches as mpatches
-from matplotlib.lines import Line2D
-from matplotlib.ticker import FormatStrFormatter
-mat.use("agg")
 import numpy as np
 import matplotlib.pyplot as plt
+from docopt import docopt
+from collections import OrderedDict
+from os.path import exists
+import matplotlib as mat
+import matplotlib.patches as mpatches
+from matplotlib.ticker import FormatStrFormatter
+mat.use("agg")
 plt.style.use('ggplot')
+
+
+def powerlaw_function(x, amp, index):
+    return amp * (x ** index)
 
 
 def progress(iteration, steps, max_value):
     if int(iteration) == int(max_value):
         sys.stdout.write('\r')
-        print "\t[PROGRESS] \t- %d%%" % (100)
-    elif int(iteration) % int(steps+1) == 0:
+        print("\t[PROGRESS] \t- %d%%" % (100))
+    elif int(iteration) % int(steps + 1) == 0:
         sys.stdout.write('\r')
-        print "\t [PROGRESS] \t- %d%%" % (float(int(iteration)/int(max_value))*100),
+        print("\t [PROGRESS] \t- %d%%" % (float(int(iteration) / int(max_value)) * 100),)
         sys.stdout.flush()
     else:
         pass
+
 
 def read_file(infile):
     if not infile or not exists(infile):
@@ -54,6 +55,7 @@ def read_file(infile):
         with open(infile) as fh:
             for line in fh:
                 yield line.rstrip("\n")
+
 
 class DataObj():
     def __init__(self, out_prefix, plot_fmt, cmap, xlim):
@@ -80,7 +82,7 @@ class DataObj():
         self.homogenise_counts()
 
     def add_cluster(self, proteome_count, cluster_size):
-        if not proteome_count in self.counts_by_cluster_size_by_proteome_counts:
+        if proteome_count not in self.counts_by_cluster_size_by_proteome_counts:
             self.counts_by_cluster_size_by_proteome_counts[proteome_count] = {}
         self.counts_by_cluster_size_by_proteome_counts[proteome_count][cluster_size] = self.counts_by_cluster_size_by_proteome_counts[proteome_count].get(cluster_size, 0) + 1
         self.counts_by_cluster_size[cluster_size] = self.counts_by_cluster_size.get(cluster_size, 0) + 1
@@ -88,7 +90,7 @@ class DataObj():
     def homogenise_counts(self):
         for proteome_count in self.counts_by_cluster_size_by_proteome_counts:
             for cluster_size in self.counts_by_cluster_size:
-                if not cluster_size in self.counts_by_cluster_size_by_proteome_counts[proteome_count]:
+                if cluster_size not in self.counts_by_cluster_size_by_proteome_counts[proteome_count]:
                     self.counts_by_cluster_size_by_proteome_counts[proteome_count][cluster_size] = 0
         self.proteome_count_max = max(list(self.counts_by_cluster_size_by_proteome_counts.keys()))
         self.count_of_cluster_sizes = len(self.counts_by_cluster_size)
@@ -102,15 +104,15 @@ class DataObj():
         y_bottom = [0] * self.count_of_cluster_sizes
         x = self.cluster_sizes
         for proteome_count in sorted(self.counts_by_cluster_size_by_proteome_counts):
-            colour = cmap(1.*proteome_count/self.proteome_count_max)
-            if not colour in self.proteome_counts_by_colour:
+            colour = cmap(1. * proteome_count / self.proteome_count_max)
+            if colour not in self.proteome_counts_by_colour:
                 self.proteome_counts_by_colour[colour] = []
             self.proteome_counts_by_colour[colour].append(proteome_count)
             if count_type == "absolute":
                 y = [self.counts_by_cluster_size_by_proteome_counts[proteome_count][cluster_size] + y_b for cluster_size, y_b in zip(sorted(self.counts_by_cluster_size_by_proteome_counts[proteome_count]), y_bottom)]
-                #filled = self.interpolate_gaps(y, 1)
+                # filled = self.interpolate_gaps(y, 1)
                 yield proteome_count, x, y, y_bottom, colour
-                #y_bottom = [_y if _y >= 1 else 0.01 for _y in y]
+                # y_bottom = [_y if _y >= 1 else 0.01 for _y in y]
                 y_bottom = y
             elif count_type == "relative":
                 y = [self.counts_by_cluster_size_by_proteome_counts[proteome_count][cluster_size] for cluster_size in sorted(self.counts_by_cluster_size_by_proteome_counts[proteome_count])]
@@ -127,16 +129,16 @@ class DataObj():
         return x, y
 
     def plot_cluster_sizes(self, plot_type):
-        f, ax = plt.subplots(figsize=(12,6))
+        f, ax = plt.subplots(figsize=(12, 6))
         out_f = ''
         ax.set_facecolor('white')
-        print "[+] Plotting \"%s\" ..." % (plot_type)
+        print("[+] Plotting \"%s\" ..." % (plot_type))
         if plot_type in PLOTS:
             if plot_type == "loglog" or plot_type == "loglin" or plot_type == "loglogpowerlaw":
                 for proteome_count, x, y, y_bottom, colour in self.yield_counts_by_proteome_count('absolute'):
                     ax.plot(x, y, c='None')
                     mask = np.where(y >= 1, y, "nan")
-                    ax.fill_between(x, y, y_bottom, facecolor=colour, interpolate = True, where = mask)
+                    ax.fill_between(x, y, y_bottom, facecolor=colour, interpolate=True, where=mask)
                     progress(proteome_count, 1, self.proteome_count_max)
                 ax.plot
             elif plot_type == "logbar":
@@ -177,8 +179,7 @@ class DataObj():
                     x_array = np.array(x)
                     y_array = np.array(y)
                     fit = np.polyfit(x_log_array, y_log_array, 1)
-                    powerlaw = lambda x, amp, index: amp * (x**index)
-                    powerlaw_y = powerlaw(x_array, fit[1]*y[1], fit[0])
+                    powerlaw_y = powerlaw_function(x_array, fit[1] * y[1], fit[0])
                     ax.plot(x_array, powerlaw_y, '--', c='grey', alpha=0.8, ms=5, label="Power-Law")
                     #################
                     ax.plot(x_array, y_array, 'o', c='black', ms=2, alpha=0.5, label="Clustering")
@@ -186,7 +187,7 @@ class DataObj():
                         out_f = "%s.powerlaw.%s" % (self.out_prefix, self.plot_fmt)
                     else:
                         out_f = "%s.loglogpowerlaw.%s" % (self.out_prefix, self.plot_fmt)
-                    #ax.legend()
+                    # ax.legend()
                     plt.gca().set_ylim(bottom=0.9, top=self.cluster_count_max * 2)
                     plt.gca().set_xlim(left=0.8, right=self.xlim)
                     ax.set_yscale('symlog', linthreshy=1.0)
@@ -216,7 +217,7 @@ class DataObj():
 
 
 if __name__ == "__main__":
-    __version__ = 0.1
+    __version__ = 0.2
     args = docopt(__doc__)
 
     input_f = args['--infile']
@@ -226,12 +227,12 @@ if __name__ == "__main__":
     xlim = int(args['--xlim'])
 
     PLOTS = set(['loglog', 'loglin', 'logbar', 'barperc', 'loglogpowerlaw'])
-    print "[+] Start ..."
+    print("[+] Start ...")
     dataObj = DataObj(out_prefix, plot_fmt, cmap, xlim)
     dataObj.parse_data(input_f)
-    #dataObj.plot_cluster_sizes('loglog')
-    #dataObj.plot_cluster_sizes('loglin')
-    #dataObj.plot_cluster_sizes('logbar')
-    #dataObj.plot_cluster_sizes('barperc')
-    #dataObj.plot_cluster_sizes('powerlaw')
+    # dataObj.plot_cluster_sizes('loglog')
+    # dataObj.plot_cluster_sizes('loglin')
+    # dataObj.plot_cluster_sizes('logbar')
+    # dataObj.plot_cluster_sizes('barperc')
+    # dataObj.plot_cluster_sizes('powerlaw')
     dataObj.plot_cluster_sizes('loglogpowerlaw')

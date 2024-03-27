@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
@@ -21,17 +21,15 @@ usage:
         -o, --outprefix <STRING>                Output prefix
 
 """
-from __future__ import division
-import re
 import sys
-import operator
 from docopt import docopt
 import os
+
 
 def read_file(infile):
     if not infile or not os.path.exists(infile):
         sys.exit("[ERROR] - File '%s' does not exist." % (infile))
-    print "[+] Parsing %s ..." % (infile)
+    print("[+] Parsing %s ..." % (infile))
     with open(infile) as fh:
         for line in fh:
             line = line.replace(r'\r', '\n')
@@ -47,10 +45,11 @@ def write_file(out_f, outprefix, header, strings):
             out_f = "%s" % os.path.join(outprefix, out_f)
         else:
             out_f = "%s.%s" % (outprefix, out_f)
-    print "[+] \t Writing file %s ..." % (out_f)
+    print("[+] \t Writing file %s ..." % (out_f))
     with open(out_f, 'w') as out_fh:
         out_fh.write("%s\n" % (header))
         out_fh.write("%s\n" % "\n".join(strings))
+
 
 class DomainObj():
     def __init__(self, domain_id, domain_description, domain_proteome_cov, domain_protein_cov):
@@ -58,6 +57,7 @@ class DomainObj():
         self.domain_description = domain_description
         self.domain_proteome_cov = domain_proteome_cov
         self.domain_protein_cov = domain_protein_cov
+
 
 class ClusterObj():
     def __init__(self, cluster_id, protein_count, taxon_count, boolean):
@@ -242,8 +242,9 @@ class DataCollection():
                     output.append(line)
         write_file(out_f, self.outprefix, header, output)
 
+
 if __name__ == "__main__":
-    __version__ = 0.2
+    __version__ = 0.3
     args = docopt(__doc__)
-    print "[+] Start ..."
+    print("[+] Start ...")
     dataCollection = DataCollection(args)

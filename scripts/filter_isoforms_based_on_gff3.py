@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
@@ -19,12 +19,13 @@ usage: filter_isoforms_based_on_gff3.py         -f <FILE> [-g <FILE>] -t <TYPE>
         -o, --outprefix <STRING>                    Output prefix
 
 """
-from __future__ import division
+
 import re
 import sys
 import operator
 from docopt import docopt
 from os.path import isfile, join, exists, realpath, dirname, basename
+
 
 def read_gff(gff_f):
     with open(gff_f) as gff_fh:
@@ -40,45 +41,48 @@ def read_gff(gff_f):
                             ninth_by_key[key_value[0]] = key_value[1]
                     yield record_type, ninth_by_key
 
+
 def read_fasta_length(fasta_f):
     with open(fasta_f) as fasta_fh:
         header, seqs = '', []
-        for l in fasta_fh:
-            if l[0] == '>':
+        for line in fasta_fh:
+            if line[0] == '>':
                 if header:
                     yield header, len(''.join(seqs))
-                header, seqs = l[1:-1].split()[0], [] # Header is split at first whitespace
+                header, seqs = line[1:-1].split()[0], []  # Header is split at first whitespace
             else:
-                seqs.append(l[:-1])
+                seqs.append(line[:-1])
         yield header, len(''.join(seqs))
+
 
 def parse_mapping_dict(mapping_f):
     mapping_dict = {}
     with open(mapping_f) as mapping_fh:
-        for l in mapping_fh:
-            fasta_id, gff_id = l[0:-1].split(",")
+        for line in mapping_fh:
+            fasta_id, gff_id = line[0:-1].split(",")
             mapping_dict[fasta_id] = gff_id
     return mapping_dict
+
 
 def parse_custom_fasta(fasta_f, fs, fe, fdel):
     proteome_id = basename(fasta_f).split(".")[0]
     proteinCollection = ProteinCollection(proteome_id)
     data = {}
     i = 0
-    print "## Debug ..."
+    print("## Debug ...")
     for protein_id, protein_length in read_fasta_length(fasta_f):
         proteinCollection.protein_count += 1
         gene_id = ''
         if not fe:
-            gene_id = eval(fdel).join(protein_id.split(eval(fdel))[fs:]) # this is used for gff
+            gene_id = eval(fdel).join(protein_id.split(eval(fdel))[fs:])  # this is used for gff
         else:
-            gene_id = eval(fdel).join(protein_id.split(eval(fdel))[fs:fe]) # this is used for gff
-        if not gene_id in data:
+            gene_id = eval(fdel).join(protein_id.split(eval(fdel))[fs:fe])  # this is used for gff
+        if gene_id not in data:
             data[gene_id] = {}
         if i <= DEBUG_ENTRIES:
-            print "# FASTA-ID=%s, gene-ID=%s, LEN=%s" % (protein_id, gene_id, protein_length)
+            print("# FASTA-ID=%s, gene-ID=%s, LEN=%s" % (protein_id, gene_id, protein_length))
         elif i == DEBUG_ENTRIES + 1:
-            print "# ..."
+            print("# ...")
         else:
             pass
         i += 1
@@ -106,70 +110,68 @@ def parse_custom_fasta(fasta_f, fs, fe, fdel):
         all_isoforms.append("%s\t%s" % (gene_id, ",".join(str(protein_id) for (protein_id, length) in sorted(data[gene_id].items(), key=operator.itemgetter(1), reverse=True))))
     longest_isoforms = set(longest_isoforms)
     non_longest_isoforms = set(non_longest_isoforms)
-    print "[+] %s proteinIDs in FASTA file" % (proteinCollection.protein_count)
+    print("[+] %s proteinIDs in FASTA file" % (proteinCollection.protein_count))
     count_longest_isoforms = len(longest_isoforms)
     count_non_longest_isoforms = len(non_longest_isoforms)
     count_allocated = count_longest_isoforms + count_non_longest_isoforms
-    fraction_fas_protein_ids_longest_isoform = count_longest_isoforms/proteinCollection.protein_count
-    fraction_fas_protein_ids_non_longest_isoform = count_non_longest_isoforms/proteinCollection.protein_count
-    fraction_fas_protein_ids_allocated = count_allocated/proteinCollection.protein_count
+    fraction_fas_protein_ids_longest_isoform = count_longest_isoforms / proteinCollection.protein_count
+    fraction_fas_protein_ids_non_longest_isoform = count_non_longest_isoforms / proteinCollection.protein_count
+    fraction_fas_protein_ids_allocated = count_allocated / proteinCollection.protein_count
 
     if all_isoforms:
-        print "[+] Writing %s all isoforms to %s ..." % (len(all_isoforms), out_all_isoforms_by_gene_f)
+        print("[+] Writing %s all isoforms to %s ..." % (len(all_isoforms), out_all_isoforms_by_gene_f))
         with open(out_all_isoforms_by_gene_f, 'w') as out_all_isoforms_by_gene_fh:
             out_all_isoforms_by_gene_fh.write("\n".join(all_isoforms) + "\n")
     if longest_isoforms:
-        print "[+] Writing %s (%s) proteinIDs to %s ..." % (count_longest_isoforms, "{:.1%}".format(fraction_fas_protein_ids_longest_isoform), out_longest_isoforms_f)
+        print("[+] Writing %s (%s) proteinIDs to %s ..." % (count_longest_isoforms, "{:.1%}".format(fraction_fas_protein_ids_longest_isoform), out_longest_isoforms_f))
         with open(out_longest_isoforms_f, 'w') as out_longest_isoforms_fh:
             out_longest_isoforms_fh.write("\n".join(sorted(longest_isoforms)) + "\n")
     if non_longest_isoforms:
-        print "[+] Writing %s (%s) proteinIDs to %s ..." % (count_non_longest_isoforms, "{:.1%}".format(fraction_fas_protein_ids_non_longest_isoform), out_non_longest_isoforms_f)
+        print("[+] Writing %s (%s) proteinIDs to %s ..." % (count_non_longest_isoforms, "{:.1%}".format(fraction_fas_protein_ids_non_longest_isoform), out_non_longest_isoforms_f))
         with open(out_non_longest_isoforms_f, 'w') as out_non_longest_isoforms_fh:
             out_non_longest_isoforms_fh.write("\n".join(sorted(non_longest_isoforms)) + "\n")
 
     if fraction_fas_protein_ids_allocated == 1.0:
         if fraction_fas_protein_ids_longest_isoform == 1.0:
-            print "[+] %s of proteins from FASTA allocated to %s" % ("{:.1%}".format(fraction_fas_protein_ids_allocated), out_longest_isoforms_f)
+            print("[+] %s of proteins from FASTA allocated to %s" % ("{:.1%}".format(fraction_fas_protein_ids_allocated), out_longest_isoforms_f))
         else:
-            print "[+] %s of proteins from FASTA allocated to %s and %s" % ("{:.1%}".format(fraction_fas_protein_ids_allocated), out_longest_isoforms_f, out_non_longest_isoforms_f)
-        print "[+] Writing stats to %s ..." % (out_stats_f)
+            print("[+] %s of proteins from FASTA allocated to %s and %s" % ("{:.1%}".format(fraction_fas_protein_ids_allocated), out_longest_isoforms_f, out_non_longest_isoforms_f))
+        print("[+] Writing stats to %s ..." % (out_stats_f))
         with open(out_stats_f, 'w') as out_stats_fh:
             out_stats_fh.write("file=%s,total=%s,longest_isoforms=%s,longest_isoforms_perc=%s,non_longest_isoforms=%s,non_longest_isoforms_perc=%s,allocated_perc=%s,result=done\n" % (
-                    fasta_f,
-                    proteinCollection.protein_count,
-                    count_longest_isoforms,
-                    "{:.1%}".format(fraction_fas_protein_ids_longest_isoform),
-                    count_non_longest_isoforms,
-                    "{:.1%}".format(fraction_fas_protein_ids_non_longest_isoform),
-                    "{:.1%}".format(fraction_fas_protein_ids_allocated)))
-
-
+                fasta_f,
+                proteinCollection.protein_count,
+                count_longest_isoforms,
+                "{:.1%}".format(fraction_fas_protein_ids_longest_isoform),
+                count_non_longest_isoforms,
+                "{:.1%}".format(fraction_fas_protein_ids_non_longest_isoform),
+                "{:.1%}".format(fraction_fas_protein_ids_allocated)))
 
 
 def parse_fasta(fasta_f, mapping_f, fs, fe, fdel):
     proteome_id = basename(fasta_f).split(".")[0]
     proteinCollection = ProteinCollection(proteome_id)
     i = 0
-    print "## Debug ..."
+    print("## Debug ...")
     mapping_dict = {}
     if mapping_f:
         mapping_dict = parse_mapping_dict(mapping_f)
     for protein_id, protein_length in read_fasta_length(fasta_f):
-        fas_protein_id = protein_id # this is used for output
+        fas_protein_id = protein_id  # this is used for output
         gff_protein_id = ''
         if mapping_dict:
             if fas_protein_id in mapping_dict:
                 gff_protein_id = mapping_dict[fas_protein_id]
             else:
-                print "[-] protein-ID %s not in mapping file" % (fas_protein_id)
+                print("[-] protein-ID %s not in mapping file" % (fas_protein_id))
         elif not fe:
-            gff_protein_id = eval(fdel).join(protein_id.split(eval(fdel))[fs:]) # this is used for gff
+            gff_protein_id = eval(fdel).join(protein_id.split(eval(fdel))[fs:])  # this is used for gff
         else:
-            gff_protein_id = eval(fdel).join(protein_id.split(eval(fdel))[fs:fe]) # this is used for gff
+            gff_protein_id = eval(fdel).join(protein_id.split(eval(fdel))[fs:fe])  # this is used for gff
         if i <= DEBUG_ENTRIES:
-            print "# FASTA-ID=%s, GFF-ID=%s, LEN=%s" % (fas_protein_id, gff_protein_id, protein_length)
+            print("# FASTA-ID=%s, GFF-ID=%s, LEN=%s" % (fas_protein_id, gff_protein_id, protein_length))
         elif i == DEBUG_ENTRIES + 1:
-            print "# ..."
+            print("# ...")
         else:
             pass
         i += 1
@@ -177,8 +179,8 @@ def parse_fasta(fasta_f, mapping_f, fs, fe, fdel):
 
     return proteinCollection
 
-def parse_gff(gff_f, gff_type):
 
+def parse_gff(gff_f, gff_type):
     protein_id_in_CDS_based_gff_types = set(["NCBI", "NHGRI", "SchistoDB", "OIST", "HGC", "OIST_MGU", "JGI", "VectorBase", "BeeBase", "Gnomon", "HGC", "ensembl_havana", "ensembl", "Ensembl_Metazoa", "BeetleBase", "NasoniaBase", "AphidBase", "ORCAE", "FlyBase"])
     gene_based_gff_types = set(["AUGUSTUS", "WormBase", "WormBase_imported", "transdecoder"])
 
@@ -196,7 +198,7 @@ def parse_gff(gff_f, gff_type):
                 mRNA_id = ninth_by_key['Parent'].replace("transcript:", "").replace("Transcript:", "")
                 gff_protein_id = ninth_by_key.get('protein_id', None)
                 if gff_protein_id:
-                    if not gff_protein_id in gene_id_by_protein_id:
+                    if gff_protein_id not in gene_id_by_protein_id:
                         if mRNA_id in gene_id_by_mRNA_id:  # mRNA has been seen before/protein is real
                             gene_id = gene_id_by_mRNA_id[mRNA_id]
                             gene_id_by_protein_id[gff_protein_id] = gene_id
@@ -205,7 +207,7 @@ def parse_gff(gff_f, gff_type):
                                 annotationCollection.add_protein(gene_id, gff_protein_id)
                                 gff_protein_ids_in_fas.append(gff_protein_id)
                             elif rescue_gff_protein_id in proteinCollection.fas_protein_id_by_gff_protein_id:
-                                print "# rescuing GFF-ID %s as %s" % (gff_protein_id, rescue_gff_protein_id)
+                                print("# rescuing GFF-ID %s as %s" % (gff_protein_id, rescue_gff_protein_id))
                                 annotationCollection.add_protein(gene_id, rescue_gff_protein_id)
                                 gff_protein_ids_in_fas.append(rescue_gff_protein_id)
                             else:
@@ -221,7 +223,7 @@ def parse_gff(gff_f, gff_type):
                 pass
     elif gff_type in gene_based_gff_types:
         for record_type, ninth_by_key in read_gff(gff_f):
-            if record_type == 'mRNA' or record_type == "mrna": # don't ask ...
+            if record_type == 'mRNA' or record_type == "mrna":
                 gene_id = ninth_by_key['Parent'].replace("gene:", "").replace("Gene:", "")
                 gff_protein_id = ninth_by_key['ID'].replace("transcript:", "").replace("Transcript:", "")
                 rescue_gff_protein_id = eval(fdel).join(gff_protein_id.split(eval(fdel))[0:-1])
@@ -229,7 +231,7 @@ def parse_gff(gff_f, gff_type):
                     annotationCollection.add_protein(gene_id, gff_protein_id)
                     gff_protein_ids_in_fas.append(gff_protein_id)
                 elif rescue_gff_protein_id in proteinCollection.fas_protein_id_by_gff_protein_id:
-                    print "# rescuing GFF-ID %s as %s" % (gff_protein_id, rescue_gff_protein_id)
+                    print("# rescuing GFF-ID %s as %s" % (gff_protein_id, rescue_gff_protein_id))
                     annotationCollection.add_protein(gene_id, rescue_gff_protein_id)
                     gff_protein_ids_in_fas.append(rescue_gff_protein_id)
                 else:
@@ -247,6 +249,7 @@ def parse_gff(gff_f, gff_type):
     annotationCollection.gff_protein_ids_not_in_fas = set(gff_protein_ids_not_in_fas)
     return annotationCollection
 
+
 class ProteinCollection():
     def __init__(self, proteome_id):
         self.proteome_id = proteome_id
@@ -258,6 +261,7 @@ class ProteinCollection():
         self.fas_protein_id_by_gff_protein_id[gff_protein_id] = fas_protein_id
         self.protein_length_by_gff_protein_id[gff_protein_id] = protein_length
         self.protein_count += 1
+
 
 class AnnotationCollection():
     def __init__(self):
@@ -274,7 +278,6 @@ class AnnotationCollection():
         self.fas_protein_ids_in_gff_with_mRNA = set()
         self.fas_protein_ids_not_in_gff = set()
 
-
     def update(self, proteinCollection):
         for gff_protein_id, fas_protein_id in proteinCollection.fas_protein_id_by_gff_protein_id.items():
             if gff_protein_id in self.gff_protein_ids_with_mRNA:
@@ -286,12 +289,12 @@ class AnnotationCollection():
         self.protein_length_by_gff_protein_id = proteinCollection.protein_length_by_gff_protein_id
 
     def write_stats(self):
-        print "# gff_protein_ids_with_mRNA = %s" % (len(self.gff_protein_ids_with_mRNA))
-        print "# gff_protein_ids_in_fas = %s" % (len(self.gff_protein_ids_in_fas))
-        print "# gff_protein_ids_not_in_fas = %s" % (len(self.gff_protein_ids_not_in_fas))
-        print "# fas_protein_ids = %s" % (len(self.fas_protein_ids))
-        print "# fas_protein_ids_in_gff_with_mRNA = %s" % (len(self.fas_protein_ids_in_gff_with_mRNA))
-        print "# fas_protein_ids_not_in_gff = %s" % (len(self.fas_protein_ids_not_in_gff))
+        print("# gff_protein_ids_with_mRNA = %s" % (len(self.gff_protein_ids_with_mRNA)))
+        print("# gff_protein_ids_in_fas = %s" % (len(self.gff_protein_ids_in_fas)))
+        print("# gff_protein_ids_not_in_fas = %s" % (len(self.gff_protein_ids_not_in_fas)))
+        print("# fas_protein_ids = %s" % (len(self.fas_protein_ids)))
+        print("# fas_protein_ids_in_gff_with_mRNA = %s" % (len(self.fas_protein_ids_in_gff_with_mRNA)))
+        print("# fas_protein_ids_not_in_gff = %s" % (len(self.fas_protein_ids_not_in_gff)))
 
     def get_longest_gff_protein_id(self, gene_id):
         lengths = []
@@ -309,11 +312,12 @@ class AnnotationCollection():
             return None, None, None
 
     def add_protein(self, gene_id, protein_id):
-        if not gene_id in self.gff_protein_ids_by_gene_id:
+        if gene_id not in self.gff_protein_ids_by_gene_id:
             self.gff_protein_ids_by_gene_id[gene_id] = set()
             self.gene_count += 1
         self.gff_protein_ids_by_gene_id[gene_id].add(protein_id)
         self.protein_count += 1
+
 
 def generate_output(out_prefix):
     out_non_longest_isoforms_f = "%s.non_longest_isoforms.txt" % (proteinCollection.proteome_id)
@@ -344,7 +348,7 @@ def generate_output(out_prefix):
         all_isoforms.append("%s\t%s" % (gene_id, ",".join([annotationCollection.fas_protein_id_by_gff_protein_id[protein_id] for protein_id in gff_protein_ids])))
     longest_isoforms = set(longest_isoforms)
     non_longest_isoforms = set(non_longest_isoforms)
-    print "[+] %s proteinIDs in FASTA file" % (proteinCollection.protein_count)
+    print("[+] %s proteinIDs in FASTA file" % (proteinCollection.protein_count))
     count_longest_isoforms = len(longest_isoforms)
     count_non_longest_isoforms = len(non_longest_isoforms)
     count_allocated = count_longest_isoforms + count_non_longest_isoforms
@@ -355,49 +359,49 @@ def generate_output(out_prefix):
     fraction_fas_protein_ids_not_allocated = count_not_allocated / proteinCollection.protein_count
 
     if all_isoforms:
-        print "[+] Writing %s all isoforms to %s ..." % (len(all_isoforms), out_all_isoforms_by_gene_f)
+        print("[+] Writing %s all isoforms to %s ..." % (len(all_isoforms), out_all_isoforms_by_gene_f))
         with open(out_all_isoforms_by_gene_f, 'w') as out_all_isoforms_by_gene_fh:
             out_all_isoforms_by_gene_fh.write("\n".join(all_isoforms) + "\n")
     if longest_isoforms:
-        print "[+] Writing %s (%s) proteinIDs to %s ..." % (count_longest_isoforms, "{:.1%}".format(fraction_fas_protein_ids_longest_isoform), out_longest_isoforms_f)
+        print("[+] Writing %s (%s) proteinIDs to %s ..." % (count_longest_isoforms, "{:.1%}".format(fraction_fas_protein_ids_longest_isoform), out_longest_isoforms_f))
         with open(out_longest_isoforms_f, 'w') as out_longest_isoforms_fh:
             out_longest_isoforms_fh.write("\n".join(sorted(longest_isoforms)) + "\n")
     if non_longest_isoforms:
-        print "[+] Writing %s (%s) proteinIDs to %s ..." % (count_non_longest_isoforms, "{:.1%}".format(fraction_fas_protein_ids_non_longest_isoform), out_non_longest_isoforms_f)
+        print("[+] Writing %s (%s) proteinIDs to %s ..." % (count_non_longest_isoforms, "{:.1%}".format(fraction_fas_protein_ids_non_longest_isoform), out_non_longest_isoforms_f))
         with open(out_non_longest_isoforms_f, 'w') as out_non_longest_isoforms_fh:
             out_non_longest_isoforms_fh.write("\n".join(sorted(non_longest_isoforms)) + "\n")
 
     if fraction_fas_protein_ids_allocated == 1.0:
         if fraction_fas_protein_ids_longest_isoform == 1.0:
-            print "[+] %s of proteins from FASTA allocated to %s" % ("{:.1%}".format(fraction_fas_protein_ids_allocated), out_longest_isoforms_f)
+            print("[+] %s of proteins from FASTA allocated to %s" % ("{:.1%}".format(fraction_fas_protein_ids_allocated), out_longest_isoforms_f))
         else:
-            print "[+] %s of proteins from FASTA allocated to %s and %s" % ("{:.1%}".format(fraction_fas_protein_ids_allocated), out_longest_isoforms_f, out_non_longest_isoforms_f)
-        print "[+] Writing stats to %s ..." % (out_stats_f)
+            print("[+] %s of proteins from FASTA allocated to %s and %s" % ("{:.1%}".format(fraction_fas_protein_ids_allocated), out_longest_isoforms_f, out_non_longest_isoforms_f))
+        print("[+] Writing stats to %s ..." % (out_stats_f))
         with open(out_stats_f, 'w') as out_stats_fh:
             out_stats_fh.write("file=%s,total=%s,longest_isoforms=%s,longest_isoforms_perc=%s,non_longest_isoforms=%s,non_longest_isoforms_perc=%s,allocated_perc=%s,result=done\n" % (
-                    fasta_f,
-                    proteinCollection.protein_count,
-                    count_longest_isoforms,
-                    "{:.1%}".format(fraction_fas_protein_ids_longest_isoform),
-                    count_non_longest_isoforms,
-                    "{:.1%}".format(fraction_fas_protein_ids_non_longest_isoform),
-                    "{:.1%}".format(fraction_fas_protein_ids_allocated)))
+                fasta_f,
+                proteinCollection.protein_count,
+                count_longest_isoforms,
+                "{:.1%}".format(fraction_fas_protein_ids_longest_isoform),
+                count_non_longest_isoforms,
+                "{:.1%}".format(fraction_fas_protein_ids_non_longest_isoform),
+                "{:.1%}".format(fraction_fas_protein_ids_allocated)))
     else:
-        print "[-] Only %s of proteins in FASTA allocated to %s and %s" % ("{:.1%}".format(fraction_fas_protein_ids_allocated), out_longest_isoforms_f, out_non_longest_isoforms_f)
+        print("[-] Only %s of proteins in FASTA allocated to %s and %s" % ("{:.1%}".format(fraction_fas_protein_ids_allocated), out_longest_isoforms_f, out_non_longest_isoforms_f))
         if annotationCollection.fas_protein_ids_not_in_gff:
-            print "[+] Writing %s (%s) proteinIDs to %s ..." % (len(annotationCollection.fas_protein_ids_not_in_gff), "{:.1%}".format(fraction_fas_protein_ids_not_allocated), out_fas_protein_ids_not_in_gff_f)
+            print("[+] Writing %s (%s) proteinIDs to %s ..." % (len(annotationCollection.fas_protein_ids_not_in_gff), "{:.1%}".format(fraction_fas_protein_ids_not_allocated), out_fas_protein_ids_not_in_gff_f))
             with open(out_fas_protein_ids_not_in_gff_f, 'w') as out_fas_protein_ids_not_in_gff_fh:
                 out_fas_protein_ids_not_in_gff_fh.write("\n".join(annotationCollection.fas_protein_ids_not_in_gff) + "\n")
-        print "[+] Writing stats to %s ..." % (out_stats_f)
+        print("[+] Writing stats to %s ..." % (out_stats_f))
         with open(out_stats_f, 'w') as out_stats_fh:
             out_stats_fh.write("file=%s,total=%s,longest_isoforms=%s,longest_isoforms_perc=%s,non_longest_isoforms=%s,non_longest_isoforms_perc=%s,allocated_perc=%s,result=check\n" % (
-                    fasta_f,
-                    proteinCollection.protein_count,
-                    count_longest_isoforms,
-                    "{:.1%}".format(fraction_fas_protein_ids_longest_isoform),
-                    count_non_longest_isoforms,
-                    "{:.1%}".format(fraction_fas_protein_ids_non_longest_isoform),
-                    "{:.1%}".format(fraction_fas_protein_ids_allocated)))
+                fasta_f,
+                proteinCollection.protein_count,
+                count_longest_isoforms,
+                "{:.1%}".format(fraction_fas_protein_ids_longest_isoform),
+                count_non_longest_isoforms,
+                "{:.1%}".format(fraction_fas_protein_ids_non_longest_isoform),
+                "{:.1%}".format(fraction_fas_protein_ids_allocated)))
 
 
 if __name__ == "__main__":
@@ -411,28 +415,28 @@ if __name__ == "__main__":
     except TypeError:
         fe = 0
     fdel = repr(args['--fdel'])
-    print "# fs=%s, fe=%s, fdel=%s" % (fs, fe, fdel)
+    print("# fs=%s, fe=%s, fdel=%s" % (fs, fe, fdel))
     gff_f = args['--gff3']
     mapping_f = args['--mapping']
     gff_type = args['--type']
     out_prefix = args['--outprefix']
     DEBUG_ENTRIES = 10
     proteinCollection = None
-    print "[+] Start ..."
+    print("[+] Start ...")
 
     if fasta_f and gff_f:
-        print "[+] Parsing FASTA %s ..." % fasta_f
+        print("[+] Parsing FASTA %s ..." % fasta_f)
         proteinCollection = parse_fasta(fasta_f, mapping_f, fs, fe, fdel)
 
-        print "[+] Parsing GFF3 %s ..." % gff_f
+        print("[+] Parsing GFF3 %s ..." % gff_f)
         annotationCollection = parse_gff(gff_f, gff_type)
         annotationCollection.update(proteinCollection)
         annotationCollection.write_stats()
         generate_output(out_prefix)
     elif fasta_f and gff_type == "custom":
-        print "[+] Parsing FASTA %s ..." % fasta_f
+        print("[+] Parsing FASTA %s ..." % fasta_f)
         proteinCollection = parse_custom_fasta(fasta_f, fs, fe, fdel)
     else:
-        print "[-] No input files given."
+        print("[-] No input files given.")
         sys.exit(__doc__.strip())
 

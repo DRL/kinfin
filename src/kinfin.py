@@ -157,32 +157,32 @@ def statistic(count_1, count_2, test):
     if len(implicit_count_1) >= inputObj.min_proteomes and len(implicit_count_2) >= inputObj.min_proteomes:
         mean_count_1 = mean(implicit_count_1)
         mean_count_2 = mean(implicit_count_2)
-        log2_mean = log((mean(implicit_count_1)/mean(implicit_count_2)), 2)
-        #print implicit_count_1, implicit_count_2, log2_mean
-        if len(set(implicit_count_1)) == 1 and len(set(implicit_count_2)) == 1 and set(implicit_count_1) == set(implicit_count_2): # equal
+        log2_mean = log((mean(implicit_count_1) / mean(implicit_count_2)), 2)
+        # print implicit_count_1, implicit_count_2, log2_mean
+        if len(set(implicit_count_1)) == 1 and len(set(implicit_count_2)) == 1 and set(implicit_count_1) == set(implicit_count_2):  # equal
             pvalue = 1.0
         elif test == "welch":
-            #try:
-            pvalue = scipy.stats.ttest_ind(implicit_count_1, implicit_count_2, equal_var = False)[1] # Welch's t-test
-            if pvalue != pvalue: # testing for "nan"
+            # try:
+            pvalue = scipy.stats.ttest_ind(implicit_count_1, implicit_count_2, equal_var=False)[1]  # Welch's t-test
+            if pvalue != pvalue:  # testing for "nan"
                 pvalue = 1.0
         elif test == "mannwhitneyu":
             try:
                 pvalue = scipy.stats.mannwhitneyu(implicit_count_1, implicit_count_2, alternative="two-sided")[1]
-            except ValueError: # throws ValueError when all numbers are equal
+            except ValueError:  # throws ValueError when all numbers are equal
                 pvalue = 1.0
         elif test == "ttest":
-            #try:
-            pvalue = scipy.stats.ttest_ind(implicit_count_1, implicit_count_2)[1] #  t-test
-            if pvalue != pvalue: # testing for "nan"
+            # try:
+            pvalue = scipy.stats.ttest_ind(implicit_count_1, implicit_count_2)[1]  # t-test
+            if pvalue != pvalue:  # testing for "nan"
                 pvalue = 1.0
         elif test == 'ks':
-            pvalue = scipy.stats.ks_2samp(implicit_count_1, implicit_count_2)[1] # H0 that they are drawn from the same distribution
-            if pvalue != pvalue: # testing for "nan"
+            pvalue = scipy.stats.ks_2samp(implicit_count_1, implicit_count_2)[1]  # H0 that they are drawn from the same distribution
+            if pvalue != pvalue:  # testing for "nan"
                 pvalue = 1.0
         elif test == 'kruskal':
-            pvalue = scipy.stats.kruskal(implicit_count_1, implicit_count_2)[1] #  H0 is that population median is equal
-            if pvalue != pvalue: # testing for "nan"
+            pvalue = scipy.stats.kruskal(implicit_count_1, implicit_count_2)[1]  # H0 is that population median is equal
+            if pvalue != pvalue:  # testing for "nan"
                 pvalue = 1.0
         else:
             pass
@@ -217,7 +217,7 @@ def parse_nodesdb(nodesdb_f):
             try:
                 node, rank, name, parent = line.rstrip("\n").split("\t")
                 nodesdb[node] = {'rank': rank, 'name': name, 'parent': parent}
-            except:
+            except Exception:
                 pass
             if nodesdb_count:
                 progress(nodes_count, 1000, nodesdb_count)
@@ -311,14 +311,14 @@ def parse_tree(tree_f, outgroups):
 def readFastaLen(infile):
     with open(infile) as fh:
         header, seqs = '', []
-        for l in fh:
-            if l[0] == '>':
+        for line in fh:
+            if line[0] == '>':
                 if header:
                     header = header.replace(":", "_").replace(",", "_").replace("(", "_").replace(")", "_")  # orthofinder replaces chars
                     yield header, len(''.join(seqs))
-                header, seqs = l[1:-1].split()[0], [] # Header is split at first whitespace
+                header, seqs = line[1:-1].split()[0], []  # Header is split at first whitespace
             else:
-                seqs.append(l[:-1])
+                seqs.append(line[:-1])
         header = header.replace(":", "_").replace(",", "_").replace("(", "_").replace(")", "_")  # orthofinder replaces chars
         yield header, len(''.join(seqs))
 
@@ -328,9 +328,9 @@ def median(lst):
     list_length = len(lst)
     index = (list_length - 1) // 2
     if list_length % 2:
-        return list_sorted[index]/1.0
+        return list_sorted[index] / 1.0
     else:
-        return (list_sorted[index] + list_sorted[index + 1])/2.0
+        return (list_sorted[index] + list_sorted[index + 1]) / 2.0
 
 
 def mean(lst):
@@ -371,7 +371,7 @@ def read_file(infile):
     if infile.endswith(".gz"):
         with gzip.open(infile, 'rb') as fh:
             for line in fh:
-                line = line.decode("utf-8") 
+                line = line.decode("utf-8")
                 if line.startswith("nodesDB.txt"):
                     line = "#%s" % line.split("#")[1]
                 yield line.rstrip("\n")
@@ -390,7 +390,7 @@ class DataFactory():
         self.dirs = None
 
     ###############################
-    ### build_AloCollection
+    # build_AloCollection
     ###############################
 
     def build_AloCollection(self):
@@ -407,7 +407,7 @@ class DataFactory():
         node_idx_by_proteome_ids = None
         if tree_f:
             outgroups = []
-            if not "OUT" in attributes:
+            if "OUT" not in attributes:
                 sys.exit("[ERROR] - Please specify one of more outgroup taxa in the config file.")
             outgroups = [proteome_id for proteome_id in proteomes if level_by_attribute_by_proteome_id[proteome_id]["OUT"] == "1"]
             tree_ete, node_idx_by_proteome_ids = parse_tree(tree_f, outgroups)
@@ -415,7 +415,7 @@ class DataFactory():
         return AloCollection(proteomes, proteome_id_by_species_id, attributes, level_by_attribute_by_proteome_id, tree_ete, node_idx_by_proteome_ids)
 
     ###############################
-    ### build_AloCollection  parse_attributes
+    # build_AloCollection  parse_attributes
     ###############################
 
     def parse_attributes(self, config_f):
@@ -431,7 +431,7 @@ class DataFactory():
                     if not 'IDX' == attributes[0] or not 'TAXON' == attributes[1]:
                         sys.exit("[ERROR] - First/second element have to be IDX/TAXON.\n\t%s" % (attributes))
                 else:
-                    pass # accounts for SpeciesIDs that are commented out for Orthofinder
+                    pass  # accounts for SpeciesIDs that are commented out for Orthofinder
             elif line.strip():
                 temp = line.split(",")
                 if not len(temp) == len(attributes):
@@ -442,18 +442,18 @@ class DataFactory():
                 proteome_id = temp[1]
                 proteomes.add(proteome_id)
                 proteome_id_by_species_id[species_id] = proteome_id
-                level_by_attribute_by_proteome_id[proteome_id] = {x : '' for x in attributes}
+                level_by_attribute_by_proteome_id[proteome_id] = {x: '' for x in attributes}
                 for idx, level in enumerate(temp):
                     attribute = attributes[idx]
                     level_by_attribute_by_proteome_id[proteome_id][attribute] = level
                 level_by_attribute_by_proteome_id[proteome_id]['all'] = 'all'
             else:
                 pass
-        attributes.insert(0, "all") # append to front
+        attributes.insert(0, "all")  # append to front
         return proteomes, proteome_id_by_species_id, attributes, level_by_attribute_by_proteome_id
 
     ###############################
-    ### build_AloCollection  add_taxid_attributes
+    # build_AloCollection  add_taxid_attributes
     ###############################
 
     def add_taxid_attributes(self, nodesdb_f, attributes, level_by_attribute_by_proteome_id):
@@ -476,7 +476,7 @@ class DataFactory():
         return attributes, level_by_attribute_by_proteome_id
 
     ###############################
-    ### setup_dirs
+    # setup_dirs
     ###############################
 
     def setup_dirs(self, inputObj):
@@ -519,7 +519,7 @@ class DataFactory():
                     self.dirs["tree_headers"] = node_header_path
 
     ###############################
-    ### build_ProteinCollection
+    # build_ProteinCollection
     ###############################
 
     def build_ProteinCollection(self, inputObj):
@@ -530,13 +530,13 @@ class DataFactory():
         for line in read_file(sequence_ids_f):
             temp = line.split(": ")
             sequence_id = temp[0]
-            protein_id = temp[1].split(" ")[0].replace(":", "_").replace(",", "_").replace("(", "_").replace(")", "_") # orthofinder replaces characters
+            protein_id = temp[1].split(" ")[0].replace(":", "_").replace(",", "_").replace("(", "_").replace(")", "_")  # orthofinder replaces characters
             species_id = sequence_id.split("_")[0]
             proteome_id = aloCollection.proteome_id_by_species_id.get(species_id, None)
             if proteome_id:
                 proteinObj = ProteinObj(protein_id, proteome_id, species_id, sequence_id)
                 proteinObjs.append(proteinObj)
-            #else:
+            # else:
             #    sys.exit("[ERROR] - Offending SequenceID : %s (unknown species_id %s)" % (line, species_id))
         proteinCollection = ProteinCollection(proteinObjs)
         print("[STATUS]\t - Proteins found = %s" % (proteinCollection.protein_count))
@@ -549,10 +549,10 @@ class DataFactory():
             fasta_file_by_species_id = self.parse_species_ids(species_ids_f)
             fasta_len_by_protein_id = self.parse_fasta_dir(fasta_dir, fasta_file_by_species_id)
             print("[STATUS] - Adding FASTAs to ProteinCollection ...")
-            parse_steps = proteinCollection.protein_count/100
+            parse_steps = proteinCollection.protein_count / 100
             for idx, proteinObj in enumerate(proteinCollection.proteinObjs):
                 proteinObj.add_length(fasta_len_by_protein_id[proteinObj.protein_id])
-                progress(idx+1, parse_steps, proteinCollection.protein_count)
+                progress(idx + 1, parse_steps, proteinCollection.protein_count)
             aloCollection.fastas_parsed = True
             proteinCollection.fastas_parsed = True
         else:
@@ -601,7 +601,7 @@ class DataFactory():
         return proteinCollection
 
     ###############################
-    ### build_ProteinCollection : parse_species_ids
+    # build_ProteinCollection : parse_species_ids
     ###############################
 
     def parse_species_ids(self, species_ids_f):
@@ -614,7 +614,7 @@ class DataFactory():
         return fasta_by_ortho_id
 
     ###############################
-    ### build_ProteinCollection : parse_fasta_dir
+    # build_ProteinCollection : parse_fasta_dir
     ###############################
 
     def parse_fasta_dir(self, fasta_dir, fasta_file_by_species_id):
@@ -630,7 +630,7 @@ class DataFactory():
         return fasta_len_by_protein_id
 
     ###############################
-    ### build_ClusterCollection
+    # build_ClusterCollection
     ###############################
 
     def build_ClusterCollection(self, inputObj):
@@ -652,7 +652,7 @@ class DataFactory():
             print("[STATUS] - Inferring singletons ...")
             singleton_idx = 0
             for proteinObj in proteinCollection.proteinObjs:
-                if proteinObj.clustered == False:
+                if proteinObj.clustered is False:
                     cluster_id = "singleton_%s" % singleton_idx
                     clusterObj = ClusterObj(cluster_id, [proteinObj.protein_id])
                     clusterObjs.append(clusterObj)
@@ -661,7 +661,7 @@ class DataFactory():
         return ClusterCollection(clusterObjs, inferred_singletons_count, proteinCollection.functional_annotation_parsed, proteinCollection.fastas_parsed, proteinCollection.domain_sources)
 
     ###############################
-    ### write_output
+    # write_output
     ###############################
 
     def write_output(self):
@@ -669,7 +669,7 @@ class DataFactory():
         self.write_cluster_metrics()
 
     ###############################
-    ### write_output : write_ALO_stats
+    # write_output : write_ALO_stats
     ###############################
 
     def plot_cluster_sizes(self):
@@ -751,7 +751,7 @@ class DataFactory():
             cluster_metrics_ALO_header.append("non_TAXON_count")
             cluster_metrics_ALO_header.append("TAXON_taxa")
             cluster_metrics_ALO_header.append("non_TAXON_taxa")
-            #for domain_source in clusterCollection.domain_sources:
+            # for domain_source in clusterCollection.domain_sources:
             #    cluster_metrics_ALO_header.append(domain_source)
             return "\t".join(cluster_metrics_ALO_header)
         elif filetype == "cluster_metrics":
@@ -808,8 +808,8 @@ class DataFactory():
             pairwise_representation_test_header.append("TAXON_2_mean")
             pairwise_representation_test_header.append("log2_mean(TAXON_1/TAXON_2)")
             pairwise_representation_test_header.append("mwu_pvalue(TAXON_1 vs. TAXON_2)")
-            #pairwise_representation_test_header.append("go_terms")
-            #for domain_source in clusterCollection.domain_sources:
+            # pairwise_representation_test_header.append("go_terms")
+            # for domain_source in clusterCollection.domain_sources:
             #    pairwise_representation_test_header.append(domain_source)
             return "\t".join(pairwise_representation_test_header)
         elif filetype == 'cluster_1to1s_ALO':
@@ -965,7 +965,7 @@ class DataFactory():
 
                     if not levels_seen and attribute == "TAXON":
                         cafe_line = []
-                        #cafe_line.append("None")
+                        # cafe_line.append("None")
                         cafe_line.append(str(clusterObj.cluster_id))
                         for _level in levels:
                             cafe_line.append(sum(clusterObj.protein_counts_of_proteomes_by_level_by_attribute[attribute][_level]))
@@ -1109,11 +1109,11 @@ class DataFactory():
                         cluster_metrics_ALO_line.append(",".join(sorted(list(non_ALO_proteomes_present))))
                     else:
                         cluster_metrics_ALO_line.append("N/A")
-                    #if clusterObj.go_terms:
+                    # if clusterObj.go_terms:
                     #    cluster_metrics_ALO_line.append(";".join(sorted(list(clusterObj.go_terms))))
-                    #else:
+                    # else:
                     #    cluster_metrics_ALO_line.append("N/A")
-                    #for domain_source in clusterCollection.domain_sources:
+                    # for domain_source in clusterCollection.domain_sources:
                     #    if domain_source in clusterObj.domain_counter_by_domain_source:
                     #        cluster_metrics_ALO_line.append(";".join(["%s:%s" % (domain, count) for domain, count in clusterObj.domain_counter_by_domain_source[domain_source].most_common()]))
                     #    else:
@@ -1138,11 +1138,11 @@ class DataFactory():
                             pairwise_representation_test_line.append(result[4])
                             pairwise_representation_test_line.append(result[5])
                             pairwise_representation_test_line.append(result[6])
-                            #if clusterObj.go_terms:
+                            # if clusterObj.go_terms:
                             #    pairwise_representation_test_line.append(";".join(sorted(list(clusterObj.go_terms))))
-                            #else:
+                            # else:
                             #    pairwise_representation_test_line.append("N/A")
-                            #for domain_source in clusterCollection.domain_sources:
+                            # for domain_source in clusterCollection.domain_sources:
                             #    if domain_source in clusterObj.domain_counter_by_domain_source:
                             #        pairwise_representation_test_line.append(";".join(["%s:%s" % (domain, count) for domain, count in clusterObj.domain_counter_by_domain_source[domain_source].most_common()]))
                             #    else:
@@ -1187,7 +1187,6 @@ class DataFactory():
                 if background_representation_test_by_pair_by_attribute:
                     self.plot_count_comparisons_vulcano(background_representation_test_by_pair_by_attribute)
 
-
             if len(attribute_metrics_output) > 1:
                 with open(attribute_metrics_f, 'w') as attribute_metrics_fh:
                     print("[STATUS] - Writing %s" % (attribute_metrics_f))
@@ -1214,20 +1213,20 @@ class DataFactory():
                     log2fc_values.append(data[5])
                     pvalue = data[6]
                     if pvalue == 0.0:
-                        pvalue = 0.01 / (pair_data_count + 1) # if value is 0.0 it gets set beyond the bonferroni corrected 0.01
+                        pvalue = 0.01 / (pair_data_count + 1)  # if value is 0.0 it gets set beyond the bonferroni corrected 0.01
                     p_values.append(pvalue)
                 if p_values:
                     pairwise_representation_test_f = join(self.dirs[attribute], "%s.pairwise_representation_test.%s.%s" % (attribute, "_".join(pair_list), inputObj.plot_format))
                     plt.figure(1, figsize=inputObj.plot_size)
-                    #f, ax = plt.subplots(figsize=inputObj.plot_size)
-                    #ax.set_facecolor('white')
+                    # f, ax = plt.subplots(figsize=inputObj.plot_size)
+                    # ax.set_facecolor('white')
                     # definitions for the axes
                     left, width = 0.1, 0.65
                     bottom, height = 0.1, 0.65
-                    bottom_h = left_h = left + width + 0.02
+                    bottom_h = left + width + 0.02
                     rect_scatter = [left, bottom, width, height]
                     rect_histx = [left, bottom_h, width, 0.2]
-                    #plt.set_facecolor('white')
+                    # plt.set_facecolor('white')
                     nullfmt = NullFormatter()
 
                     axScatter = plt.axes(rect_scatter)
@@ -1245,50 +1244,50 @@ class DataFactory():
                     axHistx.yaxis.set_major_formatter(nullfmt)
                     binwidth = 0.05
                     xymax = np.max([np.max(np.fabs(log2fc_array)), np.max(np.fabs(p_values))])
-                    lim = (int(xymax/binwidth) + 1) * binwidth
+                    lim = (int(xymax / binwidth) + 1) * binwidth
                     bins = np.arange(-lim, lim + binwidth, binwidth)
                     axHistx.hist(log2fc_array, bins=bins, histtype='stepfilled', color='grey', align='mid')
                     # plot h-lines
-                    #ax.axhline(y=ooFive, linewidth=2, color='orange', linestyle="--")
+                    # ax.axhline(y=ooFive, linewidth=2, color='orange', linestyle="--")
                     axScatter.axhline(y=ooFive, linewidth=2, color='orange', linestyle="--")
                     ooFive_artist = plt.Line2D((0, 1), (0, 0), color='orange', linestyle='--')
                     ooFive_label = "p-value = %s" % (ooFive)
-                    ooOne_label =  "p-value = %s" % (ooOne)
-                    #ax.axhline(y=ooOne, linewidth=2, color='red', linestyle="--")
+                    ooOne_label = "p-value = %s" % (ooOne)
+                    # ax.axhline(y=ooOne, linewidth=2, color='red', linestyle="--")
                     axScatter.axhline(y=ooOne, linewidth=2, color='red', linestyle="--")
                     ooOne_artist = plt.Line2D((0, 1), (0, 0), color='red', linestyle='--')
                     # bonferroni
-                    #ooFive_corrected = 0.05 / pair_data_count
-                    #ooOne_corrected = 0.01 / pair_data_count
-                    #ax.axhline(y=ooFive_corrected, linewidth=2, color='grey', linestyle="--")
-                    #ooFive_corrected_artist = plt.Line2D((0, 1), (0, 0), color='grey', linestyle='--')
-                    #ax.axhline(y=ooOne_corrected, linewidth=2, color='black', linestyle="--")
-                    #ooOne_corrected_artist = plt.Line2D((0, 1), (0, 0), color='black', linestyle='--')
+                    # ooFive_corrected = 0.05 / pair_data_count
+                    # ooOne_corrected = 0.01 / pair_data_count
+                    # ax.axhline(y=ooFive_corrected, linewidth=2, color='grey', linestyle="--")
+                    # ooFive_corrected_artist = plt.Line2D((0, 1), (0, 0), color='grey', linestyle='--')
+                    # ax.axhline(y=ooOne_corrected, linewidth=2, color='black', linestyle="--")
+                    # ooOne_corrected_artist = plt.Line2D((0, 1), (0, 0), color='black', linestyle='--')
 
                     # plot v-lines
-                    #ax.axvline(x=1.0, linewidth=2, color='purple', linestyle="--")
-                    #ax.axvline(x=log2fc_percentile, linewidth=2, color='pink', linestyle="--")
+                    # ax.axvline(x=1.0, linewidth=2, color='purple', linestyle="--")
+                    # ax.axvline(x=log2fc_percentile, linewidth=2, color='pink', linestyle="--")
                     axScatter.axvline(x=1.0, linewidth=2, color='purple', linestyle="--")
                     axScatter.axvline(x=log2fc_percentile, linewidth=2, color='blue', linestyle="--")
                     v1_label = "|log2FC| = 1" % ()
                     v1_artist = plt.Line2D((0, 1), (0, 0), color='purple', linestyle='--')
                     nine_five_percentile_label = "|log2FC-95%%ile| = %s" % ("{0:.2f}".format(log2fc_percentile))
                     nine_five_percentile_artist = plt.Line2D((0, 1), (0, 0), color='blue', linestyle='--')
-                    #ax.axvline(x=-1.0, linewidth=2, color='purple', linestyle="--")
-                    #ax.axvline(x=-log2fc_percentile, linewidth=2, color='pink', linestyle="--")
+                    # ax.axvline(x=-1.0, linewidth=2, color='purple', linestyle="--")
+                    # ax.axvline(x=-log2fc_percentile, linewidth=2, color='pink', linestyle="--")
                     axScatter.axvline(x=-1.0, linewidth=2, color='purple', linestyle="--")
                     axScatter.axvline(x=-log2fc_percentile, linewidth=2, color='blue', linestyle="--")
                     # plot dots
-                    #ax.scatter(log2fc_array, p_array, alpha=0.8, edgecolors='none', s=25, c='grey')
+                    # ax.scatter(log2fc_array, p_array, alpha=0.8, edgecolors='none', s=25, c='grey')
                     axScatter.scatter(log2fc_array, p_array, alpha=0.8, edgecolors='none', s=25, c='grey')
                     # Create legend from custom artist/label lists
-                    #legend = ax.legend([ooFive_artist, ooOne_artist, ooFive_corrected_artist, ooOne_corrected_artist],
+                    # legend = ax.legend([ooFive_artist, ooOne_artist, ooFive_corrected_artist, ooOne_corrected_artist],
                     #          [ooFive, ooOne, "%s (0.05 corrected)" % '%.2E' % Decimal(ooFive_corrected), "%s (0.01 corrected)" % '%.2E' % Decimal(ooOne_corrected)],
                     #          fontsize=inputObj.plot_font_size, frameon=True)
-                    #legend = ax.legend([ooFive_artist, ooOne_artist, v1_artist, nine_five_percentile_artist],
-                    legend = axScatter.legend([ooFive_artist, ooOne_artist, v1_artist, nine_five_percentile_artist],
-                            [ooFive_label, ooOne_label, v1_label, nine_five_percentile_label],
-                            fontsize=inputObj.plot_font_size, frameon=True)
+                    # legend = ax.legend([ooFive_artist, ooOne_artist, v1_artist, nine_five_percentile_artist],
+                    legend = axScatter.legend([
+                        ooFive_artist, ooOne_artist, v1_artist, nine_five_percentile_artist],
+                        [ooFive_label, ooOne_label, v1_label, nine_five_percentile_label], fontsize=inputObj.plot_font_size, frameon=True)
                     legend.get_frame().set_facecolor('white')
                     if abs(np.min(log2fc_array)) < abs(np.max(log2fc_array)):
                         x_min = 0.0 - abs(np.max(log2fc_array))
@@ -1296,23 +1295,23 @@ class DataFactory():
                     else:
                         x_min = 0.0 - abs(np.min(log2fc_array))
                         x_max = 0.0 + abs(np.min(log2fc_array))
-                    #ax.set_xlim(x_min - 1, x_max + 1)
-                    #ax.grid(True, linewidth=1, which="major", color="lightgrey")
-                    #ax.grid(True, linewidth=0.5, which="minor", color="lightgrey")
-                    #ax.set_ylim(np.min(p_array) * 0.1, 1.1)
-                    #ax.set_xlabel("log2(mean(%s)/mean(%s))" % (x_label, y_label), fontsize=inputObj.plot_font_size)
-                    #ax.set_ylabel("p-value", fontsize=inputObj.plot_font_size)
+                    # ax.set_xlim(x_min - 1, x_max + 1)
+                    # ax.grid(True, linewidth=1, which="major", color="lightgrey")
+                    # ax.grid(True, linewidth=0.5, which="minor", color="lightgrey")
+                    # ax.set_ylim(np.min(p_array) * 0.1, 1.1)
+                    # ax.set_xlabel("log2(mean(%s)/mean(%s))" % (x_label, y_label), fontsize=inputObj.plot_font_size)
+                    # ax.set_ylabel("p-value", fontsize=inputObj.plot_font_size)
                     axScatter.set_xlim(x_min - 1, x_max + 1)
                     axScatter.grid(True, linewidth=1, which="major", color="lightgrey")
                     axScatter.grid(True, linewidth=0.5, which="minor", color="lightgrey")
                     axScatter.set_ylim(1.1, np.min(p_array) * 0.1)
                     axScatter.set_xlabel("log2(mean(%s)/mean(%s))" % (x_label, y_label), fontsize=inputObj.plot_font_size)
                     axScatter.set_ylabel("p-value", fontsize=inputObj.plot_font_size)
-                    #ax.set_yscale('log')
+                    # ax.set_yscale('log')
                     axScatter.set_yscale('log')
                     axHistx.set_xlim(axScatter.get_xlim())
                     print("[STATUS] - Plotting %s" % (pairwise_representation_test_f))
-                    #plt.gca().invert_yaxis()
+                    # plt.gca().invert_yaxis()
                     plt.savefig(pairwise_representation_test_f, format=inputObj.plot_format)
                     plt.close()
 
@@ -1326,24 +1325,25 @@ class DataFactory():
                     if protein_counts_level and protein_counts_other_level:
                         mwu_pvalue, mwu_log2_mean, mean_ALO_count, mean_non_ALO_count = statistic(protein_counts_level, protein_counts_other_level, inputObj.test)
                         yield [clusterObj.cluster_id, level, other_level, mean_ALO_count, mean_non_ALO_count, mwu_log2_mean, mwu_pvalue]
-                        #pvalue = None
-                        #try:
-                        #    pvalue = scipy.stats.mannwhitneyu(protein_counts_level, protein_counts_other_level, alternative="two-sided")[1]
-                        #except:
-                        #    pvalue = 1.0
-                        #mean_level = mean(protein_counts_level)
-                        #mean_other_level = mean(protein_counts_other_level)
-                        #log2fc_mean = log((mean_level/mean_other_level), 2)
-                        #yield [clusterObj.cluster_id, level, other_level, mean_level, mean_other_level, log2fc_mean, pvalue]
+                        # pvalue = None
+                        # try:
+                        #     pvalue = scipy.stats.mannwhitneyu(protein_counts_level, protein_counts_other_level, alternative="two-sided")[1]
+                        # except:
+                        #     pvalue = 1.0
+                        # mean_level = mean(protein_counts_level)
+                        # mean_other_level = mean(protein_counts_other_level)
+                        # log2fc_mean = log((mean_level/mean_other_level), 2)
+                        # yield [clusterObj.cluster_id, level, other_level, mean_level, mean_other_level, log2fc_mean, pvalue]
 
 ########################################################################
 # CLASS : AloCollection
 ########################################################################
 
+
 class AloCollection():
     def __init__(self, proteomes, proteome_id_by_species_id, attributes, level_by_attribute_by_proteome_id, tree_ete, node_idx_by_proteome_ids):
         self.attributes_verbose = attributes
-        self.attributes = [attribute for attribute in attributes if attribute not in inputObj.ATTRIBUTE_RESERVED] # list of attributes
+        self.attributes = [attribute for attribute in attributes if attribute not in inputObj.ATTRIBUTE_RESERVED]  # list of attributes
         self.proteome_id_by_species_id = proteome_id_by_species_id
         self.tree_ete = tree_ete
 
@@ -1360,7 +1360,7 @@ class AloCollection():
         self.rarefaction_by_samplesize_by_level_by_attribute = {}
 
     ###############################
-    ### create_ALOs
+    # create_ALOs
     ###############################
 
     def create_ALOs(self):
@@ -1369,30 +1369,30 @@ class AloCollection():
             for level in self.proteome_ids_by_level_by_attribute[attribute]:
                 proteome_ids = self.proteome_ids_by_level_by_attribute[attribute][level]
                 ALO = AttributeLevelObj(attribute, level, proteome_ids)
-                if not level in ALO_by_level_by_attribute[attribute]:
+                if level not in ALO_by_level_by_attribute[attribute]:
                     ALO_by_level_by_attribute[attribute][level] = {}
                 ALO_by_level_by_attribute[attribute][level] = ALO
         return ALO_by_level_by_attribute
 
     ###############################
-    ### compute_proteomes_by_level_by_attribute
+    # compute_proteomes_by_level_by_attribute
     ###############################
 
     def compute_proteomes_by_level_by_attribute(self):
-        proteomes_by_level_by_attribute = {attribute : {} for attribute in self.attributes}
+        proteomes_by_level_by_attribute = {attribute: {} for attribute in self.attributes}
         for proteome_id in self.level_by_attribute_by_proteome_id:
             for attribute in self.attributes:
                 level = self.level_by_attribute_by_proteome_id[proteome_id][attribute]
-                if not level in proteomes_by_level_by_attribute[attribute]:
+                if level not in proteomes_by_level_by_attribute[attribute]:
                     proteomes_by_level_by_attribute[attribute][level] = set()
                 proteomes_by_level_by_attribute[attribute][level].add(proteome_id)
         return proteomes_by_level_by_attribute
     ###############################
-    ### compute_levels_by_attribute
+    # compute_levels_by_attribute
     ###############################
 
     def compute_levels_by_attribute(self):
-        levels_by_attribute = {attribute : set() for attribute in self.attributes}
+        levels_by_attribute = {attribute: set() for attribute in self.attributes}
         for proteome in self.level_by_attribute_by_proteome_id:
             for attribute in self.attributes:
                 level = self.level_by_attribute_by_proteome_id[proteome][attribute]
@@ -1406,7 +1406,7 @@ class AloCollection():
                     ALO = self.ALO_by_level_by_attribute[attribute][level]
                     ALO.analyse_domains()
     ###############################
-    ### analyse_clusters
+    # analyse_clusters
     ###############################
 
     def analyse_clusters(self):
@@ -1414,18 +1414,18 @@ class AloCollection():
             print("[STATUS]\t - Clusters found = %s (of which %s were inferred singletons)" % (clusterCollection.cluster_count, clusterCollection.inferred_singletons_count))
         else:
             print("[STATUS]\t - Clusters found = %s" % (clusterCollection.cluster_count))
-        parse_steps = clusterCollection.cluster_count/100
+        parse_steps = clusterCollection.cluster_count / 100
         print("[STATUS] - Analysing clusters ...")
         analyse_clusters_start = time.time()
         for idx, clusterObj in enumerate(clusterCollection.clusterObjs):
             self.analyse_cluster(clusterObj)
-            progress(idx+1, parse_steps, clusterCollection.cluster_count)
+            progress(idx + 1, parse_steps, clusterCollection.cluster_count)
         analyse_clusters_end = time.time()
         analyse_clusters_elapsed = analyse_clusters_end - analyse_clusters_start
         print("[STATUS] - Took %ss to analyse clusters" % (analyse_clusters_elapsed))
 
- ###############################
-    ### analyse_clusters : analyse_cluster
+    ###############################
+    # analyse_clusters : analyse_cluster
     ###############################
 
     def analyse_cluster(self, clusterObj):
@@ -1445,13 +1445,13 @@ class AloCollection():
                     # Nothing to see here ...
                     node.counts['absent'] += 1
                 else:
-                    if clusterObj.singleton == True:
+                    if clusterObj.singleton is True:
                         # This is a singleton
                         node.counts['singleton'] += 1
                         node.apomorphic_cluster_counts['singletons'] += 1
                     elif len(difference) > 0:
                         # This is a 'shared' cluster
-                        node.counts['shared'] +=1
+                        node.counts['shared'] += 1
                     elif len(difference) == 0:
                         # This is a node 'specific' cluster
                         node.counts['specific'] += 1
@@ -1471,27 +1471,28 @@ class AloCollection():
                                     # At least on child node proteome in cluster
                                     child_nodes_covered.append(True)
                                     child_node_proteome_ids_covered_count = len(clusterObj.proteome_ids.intersection(child_node.proteome_ids))
-                                    child_node_proteome_coverage_strings.append(\
-                                            "%s=(%s/%s)" % (child_node.name, child_node_proteome_ids_covered_count, len(child_node.proteome_ids)))
+                                    child_node_proteome_coverage_strings.append(
+                                        "%s=(%s/%s)" % (child_node.name, child_node_proteome_ids_covered_count, len(child_node.proteome_ids)))
                             if all(child_nodes_covered):
                                 # At least one proteome of each child node in cluster
                                 # => SYNAPOMORPHY
-                                node_proteome_coverage = len(intersection)/len(node.proteome_ids)
+                                node_proteome_coverage = len(intersection) / len(node.proteome_ids)
                                 node_cluster_type = ''
                                 if node_proteome_coverage == 1.0:
                                     node_cluster_type = 'complete_presence'
                                 else:
                                     node_cluster_type = 'partial_absence'
                                 node.synapomorphic_cluster_counts[node_cluster_type] += 1
-                                node.synapomorphic_cluster_strings.append(\
-                                        (clusterObj.cluster_id, \
-                                            node.name, \
-                                            node_cluster_type, \
-                                            '{0:.3}'.format(node_proteome_coverage), \
-                                            ";".join(child_node_proteome_coverage_strings), \
-                                            ",".join(sorted(intersection))) \
-                                            #",".join(sorted(clusterObj.proteome_ids))) \
-                                        )
+                                node.synapomorphic_cluster_strings.append(
+                                    (
+                                        clusterObj.cluster_id,
+                                        node.name,
+                                        node_cluster_type,
+                                        '{0:.3}'.format(node_proteome_coverage),
+                                        ";".join(child_node_proteome_coverage_strings),
+                                        ",".join(sorted(intersection))
+                                    )
+                                )
                     else:
                         sys.exit("[ERROR] You broke my program ...")
 
@@ -1589,7 +1590,7 @@ class AloCollection():
             node_clusters = []
             node_clusters.append("\t".join(node_clusters_header))
             # header_f_by_node_name
-            #header_f_by_node_name = {}
+            header_f_by_node_name = {}
             charts_f_by_node_name = {}
             for node in self.tree_ete.traverse("levelorder"):
                 for synapomorphic_cluster_string in node.synapomorphic_cluster_strings:
@@ -1603,8 +1604,8 @@ class AloCollection():
                 node_stats_line.append(node.synapomorphic_cluster_counts['partial_absence'])
                 node_stats_line.append(len(node.proteome_ids))
                 node_stats.append("\t".join([str(string) for string in node_stats_line]))
-                #if inputObj.render_tree:
-                    #header_f_by_node_name[node.name] = self.generate_header_for_node(node)
+                if inputObj.render_tree:
+                    header_f_by_node_name[node.name] = self.generate_header_for_node(node)
                 charts_f_by_node_name[node.name] = self.generate_chart_for_node(node)
             print("[STATUS] - Writing %s ... " % node_stats_f)
             with open(node_stats_f, 'w') as node_stats_fh:
@@ -1623,7 +1624,6 @@ class AloCollection():
         tree_txt_f = join(dataFactory.dirs['tree'], "tree.%s" % ('txt'))
         with open(tree_txt_f, 'w') as tree_txt_fh:
             tree_txt_fh.write("%s\n" % (self.tree_ete.get_ascii(show_internal=True, compact=False)))
-
 
     def plot_tree(self, header_f_by_node_name, charts_f_by_node_name):
         tree_f = join(dataFactory.dirs['tree'], "tree.%s" % ('pdf'))  # must be PDF! (otherwise it breaks)
@@ -1715,11 +1715,11 @@ class AloCollection():
             ax.set_ylabel("Count", fontsize=inputObj.plot_font_size)
             ax.set_xlabel("Proteome coverage", fontsize=inputObj.plot_font_size)
             print("[STATUS]\t- Plotting %s" % (chart_f))
-            f.savefig(chart_f,  bbox_inches='tight', format='png')
+            f.savefig(chart_f, bbox_inches='tight', format='png')
             if inputObj.plot_format == 'pdf':
                 pdf_chart_f = join(dataFactory.dirs['tree_charts'], "%s.barchart.pdf" % (node.name))
                 print("[STATUS]\t- Plotting %s" % (pdf_chart_f))
-                f.savefig(pdf_chart_f,  bbox_inches='tight', format='pdf')
+                f.savefig(pdf_chart_f, bbox_inches='tight', format='pdf')
             plt.close()
             return chart_f
 
@@ -1731,9 +1731,9 @@ class AloCollection():
                 proteome_ids = self.proteome_ids_by_level_by_attribute[attribute][level]
                 if not len(proteome_ids) == 1:
                     ALO = self.ALO_by_level_by_attribute[attribute][level]
-                    if not attribute in rarefaction_by_samplesize_by_level_by_attribute:
+                    if attribute not in rarefaction_by_samplesize_by_level_by_attribute:
                         rarefaction_by_samplesize_by_level_by_attribute[attribute] = {}
-                    if not level in rarefaction_by_samplesize_by_level_by_attribute[attribute]:
+                    if level not in rarefaction_by_samplesize_by_level_by_attribute[attribute]:
                         rarefaction_by_samplesize_by_level_by_attribute[attribute][level] = {}
                     for repetition in range(0, inputObj.repetitions):
                         seen_cluster_ids = set()
@@ -1744,7 +1744,7 @@ class AloCollection():
                             seen_cluster_ids.update(proteome_ALO.cluster_ids_by_cluster_type_by_cluster_status['present']['specific'])
                             seen_cluster_ids.update(proteome_ALO.cluster_ids_by_cluster_type_by_cluster_status['present']['shared'])
                             sample_size = idx + 1
-                            if not sample_size in rarefaction_by_samplesize_by_level_by_attribute[attribute][level]:
+                            if sample_size not in rarefaction_by_samplesize_by_level_by_attribute[attribute][level]:
                                 rarefaction_by_samplesize_by_level_by_attribute[attribute][level][sample_size] = []
                             rarefaction_by_samplesize_by_level_by_attribute[attribute][level][sample_size].append(len(seen_cluster_ids))
 
@@ -1758,7 +1758,7 @@ class AloCollection():
                 number_of_samples = len(rarefaction_by_samplesize_by_level[level])
                 if number_of_samples > max_number_of_samples:
                     max_number_of_samples = number_of_samples
-                colour = plt.cm.Paired(idx/len(rarefaction_by_samplesize_by_level))
+                colour = plt.cm.Paired(idx / len(rarefaction_by_samplesize_by_level))
                 x_values = []
                 y_mins = []
                 y_maxs = []
@@ -1790,6 +1790,7 @@ class AloCollection():
 # CLASS : AttributeLevelObj
 ########################################################################
 
+
 class AttributeLevelObj():
     '''
     Definitions:
@@ -1798,17 +1799,17 @@ class AttributeLevelObj():
         'specific' : only present within one ALO
     '''
     def __init__(self, attribute, level, proteomes):
-        self.attribute = attribute # string
-        self.level = level # string
-        self.proteomes_list = list(proteomes) #
-        self.proteomes = set(proteomes) # frozenset(), used for checking whether cluster and ALO intersect
-        self.proteome_count = len(proteomes) # int
+        self.attribute = attribute  # string
+        self.level = level  # string
+        self.proteomes_list = list(proteomes)  #
+        self.proteomes = set(proteomes)  # frozenset(), used for checking whether cluster and ALO intersect
+        self.proteome_count = len(proteomes)  # int
 
-        self.cluster_ids_by_cluster_type_by_cluster_status = {'present' : {'singleton' : [], 'specific' : [], 'shared' : []},
-                                                              'absent' : {'singleton' : [], 'specific' : [], 'shared' : []}}  # sums up to cluster_count
-        self.protein_ids_by_cluster_type = {'singleton' : [], 'specific' : [], 'shared' : []} # list of lists
-        self.protein_span_by_cluster_type = {'singleton' : [], 'specific' : [], 'shared' : []}
-        self.clusters_by_cluster_cardinality_by_cluster_type = {'shared' : {'true' : [], 'fuzzy' : []}, 'specific' : {'true' : [], 'fuzzy' : []}}
+        self.cluster_ids_by_cluster_type_by_cluster_status = {'present': {'singleton': [], 'specific': [], 'shared': []},
+                                                              'absent': {'singleton': [], 'specific': [], 'shared': []}}  # sums up to cluster_count
+        self.protein_ids_by_cluster_type = {'singleton': [], 'specific': [], 'shared': []}  # list of lists
+        self.protein_span_by_cluster_type = {'singleton': [], 'specific': [], 'shared': []}
+        self.clusters_by_cluster_cardinality_by_cluster_type = {'shared': {'true': [], 'fuzzy': []}, 'specific': {'true': [], 'fuzzy': []}}
 
         self.cluster_status_by_cluster_id = {}
         self.cluster_type_by_cluster_id = {}
@@ -1824,20 +1825,20 @@ class AttributeLevelObj():
         self.protein_length_stats_by_cluster_id = {}
         self.protein_count_by_cluster_id = {}
 
-        self.rarefaction_data = {} # repetition : number of clusters
+        self.rarefaction_data = {}  # repetition : number of clusters
 
     ###############################
-    ### add_clusterObj
+    # add_clusterObj
     ###############################
 
     def analyse_domains(self):
         print("[STATUS] - Analysing domains (this may take a while) ... ")
-        domain_counter_by_domain_source_by_cluster_type = {'singleton' : {}, 'specific' : {}, 'shared' : {}}
-        protein_with_domain_count_by_domain_source_by_cluster_type = {'singleton' : {}, 'specific' : {}, 'shared' : {}}
+        domain_counter_by_domain_source_by_cluster_type = {'singleton': {}, 'specific': {}, 'shared': {}}
+        protein_with_domain_count_by_domain_source_by_cluster_type = {'singleton': {}, 'specific': {}, 'shared': {}}
         get_proteinObj_by_protein_id = proteinCollection.proteinObjs_by_protein_id.get
         for cluster_type in self.protein_ids_by_cluster_type:
             for domain_source in proteinCollection.domain_sources:
-                if not domain_source in domain_counter_by_domain_source_by_cluster_type[cluster_type]:
+                if domain_source not in domain_counter_by_domain_source_by_cluster_type[cluster_type]:
                     domain_counter_by_domain_source_by_cluster_type[cluster_type][domain_source] = Counter()
                     protein_with_domain_count_by_domain_source_by_cluster_type[cluster_type][domain_source] = 0
                 for protein_id in self.protein_ids_by_cluster_type[cluster_type]:
@@ -1864,8 +1865,8 @@ class AttributeLevelObj():
                 protein_with_domain_count_by_domain_source_by_cluster_type['total'][domain_source] += protein_with_domain_count_by_domain_source_by_cluster_type[cluster_type][domain_source]
         self.domain_counter_by_domain_source_by_cluster_type = domain_counter_by_domain_source_by_cluster_type
         self.protein_with_domain_count_by_domain_source_by_cluster_type = protein_with_domain_count_by_domain_source_by_cluster_type
-        #print self.level
-        #for cluster_type in self.domain_counter_by_domain_source_by_cluster_type:
+        # print self.level
+        # for cluster_type in self.domain_counter_by_domain_source_by_cluster_type:
         #    print cluster_type
         #    print self.domain_counter_by_domain_source_by_cluster_type[cluster_type]
         #    print self.protein_with_domain_count_by_domain_source_by_cluster_type[cluster_type]
@@ -1891,7 +1892,7 @@ class AttributeLevelObj():
         self.cluster_mean_non_ALO_count_by_cluster_id[clusterObj.cluster_id] = mean_non_ALO_count
 
     ###############################
-    ### get_protein_count_by_cluster_type
+    # get_protein_count_by_cluster_type
     ###############################
 
     def get_protein_count_by_cluster_type(self, cluster_type):
@@ -1901,7 +1902,7 @@ class AttributeLevelObj():
             return len(self.protein_ids_by_cluster_type[cluster_type])
 
     ###############################
-    ### get_protein_span_by_cluster_type
+    # get_protein_span_by_cluster_type
     ###############################
 
     def get_protein_span_by_cluster_type(self, cluster_type):
@@ -1913,7 +1914,7 @@ class AttributeLevelObj():
         return span
 
     ###############################
-    ### get_cluster_count_by_cluster_status_by_cluster_type
+    # get_cluster_count_by_cluster_status_by_cluster_type
     ###############################
 
     def get_cluster_count_by_cluster_status_by_cluster_type(self, cluster_status, cluster_type):
@@ -1932,10 +1933,11 @@ class AttributeLevelObj():
 # CLASS : ProteinCollection
 ########################################################################
 
+
 class ProteinCollection():
     def __init__(self, proteinObjs):
         self.proteinObjs = proteinObjs
-        self.proteinObjs_by_protein_id = {proteinObj.protein_id : proteinObj for proteinObj in proteinObjs}
+        self.proteinObjs_by_protein_id = {proteinObj.protein_id: proteinObj for proteinObj in proteinObjs}
         self.protein_count = len(proteinObjs)
         self.domain_sources = []
         self.fastas_parsed = False
@@ -1943,7 +1945,7 @@ class ProteinCollection():
         self.domain_description_by_domain_id_by_domain_source = None
 
     ###############################
-    ### add_domainObjs_to_proteinObjs
+    # add_domainObjs_to_proteinObjs
     ###############################
 
     def add_annotation_to_proteinObj(self, domain_protein_id, domain_counter_by_domain_source, go_terms):
@@ -1956,7 +1958,7 @@ class ProteinCollection():
             proteinObj.go_terms = go_terms
 
     def get_protein_length_stats(self, protein_ids):
-        protein_length_stats = {'sum' : 0, 'mean' : 0.0, 'median' : 0, 'sd': 0.0}
+        protein_length_stats = {'sum': 0, 'mean': 0.0, 'median': 0, 'sd': 0.0}
         if protein_ids and self.fastas_parsed:
             protein_lengths = [self.proteinObjs_by_protein_id[protein_id].length for protein_id in protein_ids]
             protein_length_stats['sum'] = sum(protein_lengths)
@@ -1965,8 +1967,9 @@ class ProteinCollection():
             protein_length_stats['sd'] = sd(protein_lengths)
         return protein_length_stats
 ########################################################################
-# CLASS : ProteinObj
+# CLASS: ProteinObj
 ########################################################################
+
 
 class ProteinObj():
     def __init__(self, protein_id, proteome_id, species_id, sequence_id):
@@ -1982,32 +1985,30 @@ class ProteinObj():
         self.domain_counter_by_domain_source = {}
         self.go_terms = []
 
-
     ###############################
-    ### add_length
+    # add_length
     ###############################
 
     def add_length(self, length):
         self.length = length
 
     ###############################
-    ### get_domain_list
+    # get_domain_list
     ###############################
 
     def get_domain_list(self):
         return sorted(self.domain_list, key=lambda x: x.domain_start, reverse=False)
 
-
     ###############################
-    ### compute_domain_count_by_domain_id_by_domain_source
+    # compute_domain_count_by_domain_id_by_domain_source
     ###############################
 
     def compute_domain_count_by_domain_id_by_domain_source(self):
         if self.domain_list:
-            domain_ids_by_domain_source = {domainObj.domain_source : [] for domainObj in self.domain_list}
+            domain_ids_by_domain_source = {domainObj.domain_source: [] for domainObj in self.domain_list}
             for domainObj in self.domain_list:
                 domain_ids_by_domain_source[domainObj.domain_source].append(domainObj.domain_id)
-            self.domain_count_by_domain_id_by_domain_source = {domain_source : Counter(domain_ids_by_domain_source[domain_source]) for domain_source in domain_ids_by_domain_source}
+            self.domain_count_by_domain_id_by_domain_source = {domain_source: Counter(domain_ids_by_domain_source[domain_source]) for domain_source in domain_ids_by_domain_source}
         else:
             self.domain_count_by_domain_id_by_domain_source = Counter()
 
@@ -2015,19 +2016,21 @@ class ProteinObj():
 # CLASS : ClusterCollection
 ########################################################################
 
+
 class ClusterCollection():
     def __init__(self, clusterObjs, inferred_singletons_count, functional_annotation_parsed, fastas_parsed, domain_sources):
         self.clusterObjs = clusterObjs
-        self.clusterObjs_by_cluster_id = {clusterObj.cluster_id: clusterObj for clusterObj in clusterObjs} # only for testing
+        self.clusterObjs_by_cluster_id = {clusterObj.cluster_id: clusterObj for clusterObj in clusterObjs}  # only for testing
         self.cluster_count = len(clusterObjs)
         self.inferred_singletons_count = inferred_singletons_count
         self.functional_annotation_parsed = functional_annotation_parsed
         self.fastas_parsed = fastas_parsed
-        #self.domain_sources = [domain_source for domain_source in domain_sources if not domain_source == "GO"]
+        # self.domain_sources = [domain_source for domain_source in domain_sources if not domain_source == "GO"]
         self.domain_sources = domain_sources
 ########################################################################
 # CLASS : ClusterObj
 ########################################################################
+
 
 class ClusterObj():
     def __init__(self, cluster_id, protein_ids):
@@ -2055,14 +2058,14 @@ class ClusterObj():
         self.protein_length_stats = self.compute_protein_length_stats()
 
         self.implicit_protein_ids_by_proteome_id_by_level_by_attribute = None
-        self.proteome_ids_by_level_by_attribute = None # used for checking status
+        self.proteome_ids_by_level_by_attribute = None  # used for checking status
         self.proteome_coverage_by_level_by_attribute = None
-        self.protein_counts_of_proteomes_by_level_by_attribute = None # non-zero-counts
+        self.protein_counts_of_proteomes_by_level_by_attribute = None  # non-zero-counts
         self.protein_median = None
         self.cluster_type_by_attribute = None
 
     ###############################
-    ### compute_protein_ids_by_proteome
+    # compute_protein_ids_by_proteome
     ###############################
 
     def compute_protein_ids_by_proteome(self):
@@ -2076,7 +2079,7 @@ class ClusterObj():
         for protein_id in self.protein_ids:
             if proteinCollection.proteinObjs_by_protein_id[protein_id].secreted:
                 secreted += 1
-        return secreted/self.protein_count
+        return secreted / self.protein_count
 
     def compute_protein_length_stats(self):
         protein_lengths = [proteinCollection.proteinObjs_by_protein_id[protein_id].length for protein_id in self.protein_ids]
@@ -2093,7 +2096,7 @@ class ClusterObj():
             protein_domain_counter_by_domain_source = proteinCollection.proteinObjs_by_protein_id[protein_id].domain_counter_by_domain_source
             if protein_domain_counter_by_domain_source:
                 for domain_source, protein_domain_counter in list(protein_domain_counter_by_domain_source.items()):
-                    if not domain_source in cluster_domain_counter_by_domain_source:
+                    if domain_source not in cluster_domain_counter_by_domain_source:
                         cluster_domain_counter_by_domain_source[domain_source] = Counter()
                     cluster_domain_counter_by_domain_source[domain_source] += protein_domain_counter
         return cluster_domain_counter_by_domain_source
@@ -2102,7 +2105,7 @@ class ClusterObj():
         domain_entropy_by_domain_source = {}
         for domain_source, domain_counter in list(self.domain_counter_by_domain_source.items()):
             total_count = len([domain for domain in domain_counter.elements()])
-            domain_entropy = -sum([i/total_count * log(i/total_count, 2) for i in list(domain_counter.values())])
+            domain_entropy = -sum([i / total_count * log(i / total_count, 2) for i in list(domain_counter.values())])
             if str(domain_entropy) == "-0.0":
                 domain_entropy_by_domain_source[domain_source] = 0.0
             else:
@@ -2144,7 +2147,7 @@ class InputObj():
         self.check_if_fasta_dir_and_species_ids_f()
         # outprefix
         self.outprefix = args['--outprefix']
-        # proteins
+        # proteins
         self.infer_singletons = args['--infer_singletons']
         # values: fuzzyness
         self.fuzzy_count = None
@@ -2191,7 +2194,7 @@ class InputObj():
         SUPPORTED_TAXRANKS = set(['superkingdom', 'kingdom', 'phylum', 'class', 'order', 'superfamily', 'family', 'subfamily', 'genus', 'species'])
         unsupported_taxranks = []
         for taxrank in self.taxranks:
-            if not taxrank in SUPPORTED_TAXRANKS:
+            if taxrank not in SUPPORTED_TAXRANKS:
                 unsupported_taxranks.append(taxrank)
         if unsupported_taxranks:
             sys.exit("[ERROR] : Taxrank(s) %s not part of supported Taxranks (%s)" % (",".join(sorted(unsupported_taxranks)), ",".join(sorted(SUPPORTED_TAXRANKS))))
@@ -2251,11 +2254,11 @@ class InputObj():
             if 'DISPLAY' in environ:
                 print("[STATUS] - X server seems to be present...")
                 test_tree_f = join(getcwd(), "this_is_a_test_tree.pdf")
-                t = ete3.Tree( "((a,b),c);" )
+                t = ete3.Tree("((a,b),c);")
                 try:
-                    a = t.render(test_tree_f, w=40, units="mm")
+                    _ = t.render(test_tree_f, w=40, units="mm")
                     print("[STATUS] - ETE can connect to X server (X11). Tree will be rendered.")
-                except:
+                except Exception:
                     self.render_tree = False
                     print("[WARN] - ETE cannot connect to X server (X11). No tree will be rendered.")
                 remove(test_tree_f)

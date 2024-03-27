@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
@@ -16,16 +16,15 @@ Options:
 
 
 """
-
-from __future__ import division
 from docopt import docopt
 import sys
 import os
 
+
 def read_file(infile):
     if not infile or not os.path.exists(infile):
         sys.exit("[X] - File '%s' does not exist." % (infile))
-    print "[+] Parsing file %s ..." % (infile)
+    print("[+] Parsing file %s ..." % (infile))
     with open(infile) as fh:
         for line in fh:
             yield line.rstrip("\n")
@@ -39,7 +38,7 @@ def write_file(out_f, outprefix, header, lines):
             out_f = "%s" % os.path.join(outprefix, out_f)
         else:
             out_f = "%s.%s" % (outprefix, out_f)
-    print "[+] \t Writing file %s ..." % (out_f)
+    print("[+] \t Writing file %s ..." % (out_f))
     with open(out_f, 'w') as out_fh:
         if header:
             out_fh.write("%s\n" % (header))
@@ -72,7 +71,7 @@ class DataCollection():
                     self.parse_fasta_f(fasta_f, species_idx)
                 species_idx += 1
         if not self.config_flag:
-            print "[+] [Summary] %s fasta files (containing %s sequences) parsed." % (len(self.species_id_lines), len(self.sequence_id_lines))
+            print("[+] [Summary] %s fasta files (containing %s sequences) parsed." % (len(self.species_id_lines), len(self.sequence_id_lines)))
 
     def parse_fasta_f(self, fasta_f, species_idx):
         seq_count = 0
@@ -83,10 +82,10 @@ class DataCollection():
                     header = header.replace(":", "_").replace(",", "_").replace("(", "_").replace(")", "_")
                 self.sequence_id_lines.append("%s_%s: %s" % (species_idx, seq_count, header))
                 seq_count += 1
-        print "[+] \t %s sequences parsed" % (seq_count)
+        print("[+] \t %s sequences parsed" % (seq_count))
 
     def write_files(self):
-        print "[+] Writing output ..."
+        print("[+] Writing output ...")
         if not self.config_flag:
             write_file('SpeciesIDs.txt', self.outprefix, None, self.species_id_lines)
             write_file('SequenceIDs.txt', self.outprefix, None, self.sequence_id_lines)
@@ -94,7 +93,7 @@ class DataCollection():
 
 
 if __name__ == "__main__":
-    __version__ = 0.1
+    __version__ = 0.2
 
     args = docopt(__doc__)
     fasta_dir = args['--fasta_dir']

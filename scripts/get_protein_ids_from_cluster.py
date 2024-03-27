@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
@@ -17,11 +17,10 @@ usage: get_protein_ids_from_cluster.py     -g <FILE> [--protein_ids <FILE>]
         -s, --single_out_file           Write all proteins to a single file
 
 """
-
-from __future__ import division
 from docopt import docopt
 import sys
 from os.path import basename, isfile, abspath, splitext, join, exists
+
 
 def parse_headers(header_f):
     headers = {}
@@ -34,6 +33,7 @@ def parse_headers(header_f):
                 headers[header] = None
     return headers
 
+
 def parse_clusters(clusters):
     clusters = {}
     with open(cluster_f) as cluster_fh:
@@ -45,6 +45,7 @@ def parse_clusters(clusters):
                 clusters[cluster] = None
     return clusters
 
+
 def parse_groups(group_f):
     output = {}
     with open(groups_f) as group_fh:
@@ -54,32 +55,33 @@ def parse_groups(group_f):
             if headers:
                 for protein in proteins:
                     if protein in headers:
-                        if headers[protein] == None:
+                        if headers[protein] is None:
                             headers[protein] = clusterID
                             output[clusterID] = proteins
                         else:
                             sys.exit("[-] protein %s found more than once" % protein)
             else:
                 if clusterID in clusters:
-                    if clusters[clusterID] == None:
+                    if clusters[clusterID] is None:
                         clusters[clusterID] = clusterID
                         output[clusterID] = proteins
                     else:
                         sys.exit("[-] cluster %s found more than once" % clusterID)
     return output
 
+
 def write_output(output, outprefix):
     headers_found = set([k for k, v in headers.iteritems() if v])
     clusters_found = set([k for k, v in clusters.iteritems() if v])
     if headers:
-        print "[+] Found %s of headers ..." % "{:.0%}".format(len(headers_found)/len(headers))
+        print("[+] Found %s of headers ..." % "{:.0%}".format(len(headers_found) / len(headers)))
     if clusters:
-        print "[+] Found %s of clusters ..." % "{:.0%}".format(len(clusters_found)/len(clusters))
+        print("[+] Found %s of clusters ..." % "{:.0%}".format(len(clusters_found) / len(clusters)))
     stats_f = "%s.parse_stats.txt" % (splitext(basename(groups_f))[0])
     if outprefix:
         stats_f = "%s.%s" % (outprefix, stats_f)
     if headers_found or clusters_found:
-        print "[+] Writing files ..."
+        print("[+] Writing files ...")
         if not single_out_file:
             stats_lines = []
             for clusterID, proteins in output.items():
@@ -108,7 +110,7 @@ def write_output(output, outprefix):
 
 
 if __name__ == "__main__":
-    __version__ = 0.2
+    __version__ = 0.3
     args = docopt(__doc__)
     groups_f = args['--groups']
     header_f = args['--protein_ids']
@@ -120,20 +122,20 @@ if __name__ == "__main__":
     headers = {}
     clusters = {}
 
-    print "[+] Start ..."
+    print("[+] Start ...")
     if header_f:
-        print "[+] Parsing headers in %s ..." % header_f
+        print("[+] Parsing headers in %s ..." % header_f)
         parse_type = 'header'
         headers = parse_headers(header_f)
     elif cluster_id:
-        print "[+] Getting cluster %s ..." % cluster_id
+        print("[+] Getting cluster %s ..." % cluster_id)
         clusters[cluster_id] = None
     elif cluster_f:
-        print "[+] Parsing clusters in %s ..." % cluster_f
+        print("[+] Parsing clusters in %s ..." % cluster_f)
         parse_type = 'cluster'
         clusters = parse_clusters(cluster_f)
     else:
         sys.exit(__doc__.strip())
-    print "[+] Parse groups %s ..." % groups_f
+    print("[+] Parse groups %s ..." % groups_f)
     output = parse_groups(groups_f)
     write_output(output, outprefix)
