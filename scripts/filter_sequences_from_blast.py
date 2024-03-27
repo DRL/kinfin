@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
@@ -15,8 +15,6 @@ usage: filter_sequences_from_blast.py      -b <DIR> [-s <FILE>] [-o <DIR>] [-i <
                                                 - If not provided, headers in include/exclude file are being used.
         -v, --verbose                       Verbose output
 """
-
-from __future__ import division
 from docopt import docopt
 import os
 import shutil
@@ -70,7 +68,7 @@ class DataCollection():
         for f in os.listdir(blast_dir):
             if f.startswith("Blast") and f.endswith(".txt"):
                 blast_f = os.path.join(blast_dir, f)
-                print "[+] Filtering %s (%s/%s)" % (blast_f, blast_f_done, blast_f_total)
+                print("[+] Filtering %s (%s/%s)" % (blast_f, blast_f_done, blast_f_total))
                 outfile = os.path.join(self.out_path, f)
                 statsfile = os.path.join(self.out_path, f + ".stats.txt")
                 outstring = []
@@ -80,8 +78,8 @@ class DataCollection():
                     field = line.rstrip("\n").split("\t")
                     status = [self.status_by_blast_id[field[0]], self.status_by_blast_id[field[1]]]
                     if verbose_flag:
-                        print field
-                        print status, all(status)
+                        print(field)
+                        print(status, all(status))
                     if all(status) is True:
                         outstring.append(line)
                         stats_dict["included"] += 1
@@ -91,7 +89,7 @@ class DataCollection():
                     out_fh.write("".join(outstring))
                 stats_dict["total"] = stats_dict["included"] + stats_dict["excluded"]
                 if stats_dict["total"] == 0:
-                    print "[-] No blast results found in %s." % (blast_f)
+                    print("[-] No blast results found in %s." % (blast_f))
                     with open(statsfile, 'w') as stats_fh:
                         stats_fh.write("file=%s;total=0;FILE WAS EMPTY!.\n")
                 else:
@@ -142,18 +140,18 @@ def get_output_path(out_dir):
         valid_decisions = set(['y', 'n'])
         decision = ""
         while decision not in valid_decisions:
-            decision = raw_input("[-] Directory %s already exists\n\tOverwrite (y/n) ? : " % (out_path))
+            decision = input("[-] Directory %s already exists\n\tOverwrite (y/n) ? : " % (out_path))
         if decision == 'y':
             shutil.rmtree(out_path)
         else:
             sys.exit("[X] Exiting.")
-    print "[+] Creating directory \n\t%s" % (out_path)
+    print("[+] Creating directory \n\t%s" % (out_path))
     os.mkdir(out_path)
     return out_path
 
 
 if __name__ == "__main__":
-    __version__ = 0.2
+    __version__ = 0.3
     args = docopt(__doc__)
 
     blast_dir = args['--blast_dir']

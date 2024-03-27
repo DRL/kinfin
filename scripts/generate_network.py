@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
@@ -14,16 +14,13 @@ usage: generate_network.py      -m <FILE> -c <FILE> [-o <STR>] [--exclude_univer
 
 
 """
-
-from __future__ import division
 import sys
 import networkx as nx
-from os.path import basename, isfile, abspath, splitext, join, exists
-from os import getcwd, mkdir
-import shutil
-
+from os.path import exists
+import collections
 from docopt import docopt
 from itertools import combinations
+
 
 def check_file(f):
     if not f or not exists(f):
@@ -31,13 +28,15 @@ def check_file(f):
     else:
         return f
 
+
 def read_file(f):
     with open(f) as fh:
         for line in fh:
             yield line.rstrip("\n")
 
+
 def parse_cluster_stats_f(cluster_stats_f, proteomeObj_by_proteome_id, attribute, exclude_universal):
-    print "[+] Parsing %s ... " % cluster_stats_f
+    print("[+] Parsing %s ... " % cluster_stats_f)
     proteome_id_by_idx = None
     cluster_type_idx = None
     edge_weights = {}
@@ -45,9 +44,9 @@ def parse_cluster_stats_f(cluster_stats_f, proteomeObj_by_proteome_id, attribute
         temp = line.rstrip("\n").split("\t")
         if line.startswith("#"):
             proteome_id_by_idx = {idx: col.replace("_count", "") for idx, col in enumerate(temp) if col.replace("_count", "") in proteomeObj_by_proteome_id}
-            #proteome_id_fields = [column.replace("_count", "") for column in temp if column.replace("_count", "") in proteomeObj_by_proteome_id]
-            #proteome_id_idx = [idx for idx, column in enumerate(temp) if column.replace("_count", "") in proteomeObj_by_proteome_id]
-            #proteome_id_by_idx = {idx : proteome_id for idx, proteome_id in zip(proteome_id_idx, sorted(proteome_id_fields))}
+            # proteome_id_fields = [column.replace("_count", "") for column in temp if column.replace("_count", "") in proteomeObj_by_proteome_id]
+            # proteome_id_idx = [idx for idx, column in enumerate(temp) if column.replace("_count", "") in proteomeObj_by_proteome_id]
+            # proteome_id_by_idx = {idx : proteome_id for idx, proteome_id in zip(proteome_id_idx, sorted(proteome_id_fields))}
             if not proteome_id_by_idx:
                 sys.exit("[-] No column header ending in '_count' found in %s. Please use TAXON.cluster_summary.txt" % (",".join(temp)))
             for idx, col in enumerate(temp):
@@ -63,32 +62,34 @@ def parse_cluster_stats_f(cluster_stats_f, proteomeObj_by_proteome_id, attribute
             cluster_type = temp[cluster_type_idx]
             for proteome_id, count in protein_counts_by_proteome_id.items():
                 proteomeObj_by_proteome_id[proteome_id].add_cluster(cluster_type, count)
-            if cluster_type  == "shared":
+            if cluster_type == "shared":
                 # only clusters with more than one proteome
                 if exclude_universal and len(protein_counts_by_proteome_id) == len(proteome_id_by_idx):
                     pass
                 else:
                     for combination in combinations(protein_counts_by_proteome_id.keys(), 2):
                         edge_nodes = frozenset(combination)
-                        if not edge_nodes in edge_weights:
+                        if edge_nodes not in edge_weights:
                             edge_weights[edge_nodes] = 0
                         edge_weights[edge_nodes] += 1
 
-    #print edge_weights
+    # print edge_weights
     weighted_edges = generate_edges(edge_weights)
     for proteome_id, proteomeObj in proteomeObj_by_proteome_id.items():
         proteomeObj.level_by_attribute['protein_count'] = proteomeObj.protein_counts['total']
     return weighted_edges, proteomeObj_by_proteome_id
 
+
 def generate_edges(edge_weights):
     weighted_edges = []
     max_edge_weight = max(edge_weights.values())
-    print "[+] Max edge weight is %s, ..." % (max_edge_weight)
+    print("[+] Max edge weight is %s, ..." % (max_edge_weight))
     for edge_nodes, weight in edge_weights.items():
         nodes = list(edge_nodes)
         edge_tuple = (nodes[0], nodes[1], weight)
         weighted_edges.append(edge_tuple)
     return weighted_edges
+
 
 def generate_outpath_by_name(out_prefix):
     outpath_by_name = {}
@@ -98,23 +99,22 @@ def generate_outpath_by_name(out_prefix):
     else:
         string = "graph"
     outpath_by_name["graphml_f"] = "%s.graphml" % (string)
-    outpath_by_name["gex_f"] =  "%s.gexf" % (string)
+    outpath_by_name["gex_f"] = "%s.gexf" % (string)
     return outpath_by_name
 
 
 def construct_graphs(weighted_edges, proteomeObj_by_proteome_id, attributes):
-    print "[+] Building graphs"
+    print("[+] Building graphs")
     G = nx.Graph()
     G.name = "Graph"
-    proteome_id_by_idx = {}
-    for proteome_id, proteomeObj  in proteomeObj_by_proteome_id.items():
-        G.add_node(proteomeObj.proteome_id, {k :v for k, v in proteomeObj.level_by_attribute.items()})
-        G.add_node(proteomeObj.proteome_id, {k :v for k, v in proteomeObj.level_by_attribute.items()})
+    for proteome_id, proteomeObj in proteomeObj_by_proteome_id.items():
+        G.add_node(proteomeObj.proteome_id, {k: v for k, v in proteomeObj.level_by_attribute.items()})
+        G.add_node(proteomeObj.proteome_id, {k: v for k, v in proteomeObj.level_by_attribute.items()})
     G.add_weighted_edges_from(weighted_edges)
-    print nx.info(G)
-    print "[+] Saving network %s" % outpath_by_name["graphml_f"]
+    print(nx.info(G))
+    print("[+] Saving network %s" % outpath_by_name["graphml_f"])
     nx.write_graphml(G, outpath_by_name["graphml_f"])
-    print "[+] Saving network %s" % outpath_by_name["gex_f"]
+    print("[+] Saving network %s" % outpath_by_name["gex_f"])
     nx.write_gexf(G, outpath_by_name["gex_f"])
 
 
@@ -125,8 +125,9 @@ def santisise_args(args):
     sane_args['--out_prefix'] = args['--out_prefix']
     return sane_args
 
+
 def parse_classification_f(species_classification_f):
-    print "[+] Parsing SpeciesClassification file: %s ..." % (species_classification_f)
+    print("[+] Parsing SpeciesClassification file: %s ..." % (species_classification_f))
     attributes = []
     proteomeObj_by_proteome_id = {}
     for line in read_file(species_classification_f):
@@ -136,7 +137,7 @@ def parse_classification_f(species_classification_f):
                 if not 'IDX' == attributes[0] or not 'TAXON' == attributes[1]:
                     sys.exit("[-] First/second element have to be IDX/TAXON.\n\t%s" % (attributes))
                 else:
-                    pass # accounts for SpeciesIDs that are commented out for Orthifinder
+                    pass  # accounts for SpeciesIDs that are commented out for Orthofinder
         elif line.strip():
             temp = line.split(",")
             if not len(temp) == len(attributes):
@@ -145,7 +146,7 @@ def parse_classification_f(species_classification_f):
                 sys.exit("[-] 'proteome' should be unique. %s was encountered multiple times" % (temp[0]))
             proteome_idx = temp[0]
             proteome_id = temp[1]
-            level_by_attribute = {x : '' for x in attributes}
+            level_by_attribute = {x: '' for x in attributes}
             for idx, level in enumerate(temp):
                 attribute = attributes[idx]
                 level_by_attribute[attribute] = level
@@ -161,15 +162,15 @@ class ProteomeObj():
         self.proteome_idx = proteome_idx
         self.proteome_id = proteome_id
         self.level_by_attribute = level_by_attribute
-
-        self.protein_counts = {"total": 0, "singleton" : 0, "shared" : 0, "specific" : 0}
-        self.cluster_counts = {"total": 0, "singleton" : 0, "shared" : 0, "specific" : 0}
+        self.protein_counts = collections.Counter()
+        self.cluster_counts = collections.Counter()
 
     def add_cluster(self, cluster_type, count):
         self.protein_counts[cluster_type] += count
         self.protein_counts["total"] += count
         self.cluster_counts[cluster_type] += 1
         self.cluster_counts["total"] += 1
+
 
 if __name__ == "__main__":
     __version__ = 0.3

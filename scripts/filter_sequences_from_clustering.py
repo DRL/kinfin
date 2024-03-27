@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
@@ -12,13 +12,11 @@ usage: filter_sequences_from_clustering.py      -c <FILE> [-o <STR>] [-i <FILE>]
         -i, --include_id_f <FILE>           File containing headers of sequences to be included
         -e, --exclude_id_f <FILE>           File containing headers of sequences to be excluded
 """
-
-from __future__ import division
 from docopt import docopt
 import os
 import sys
 from collections import defaultdict
-from collections import Counter
+
 
 class DataCollection():
     def __init__(self, include_ids, exclude_ids):
@@ -39,7 +37,7 @@ class DataCollection():
             pass
 
     def filter_cluster_f(self, cluster_f, out_prefix):
-        print "[+] Filtering %s ..." % (cluster_f)
+        print("[+] Filtering %s ..." % (cluster_f))
         included_out_f = "%s.included.txt" % (os.path.basename(cluster_f))
         excluded_out_f = "%s.excluded.txt" % (os.path.basename(cluster_f))
         statsfile = "%s.filtered.stats.txt" % (os.path.basename(cluster_f))
@@ -122,7 +120,7 @@ def parse_ids_f(id_f):
 
 
 if __name__ == "__main__":
-    __version__ = 0.1
+    __version__ = 0.2
     args = docopt(__doc__)
 
     out_prefix = args['--out_prefix']

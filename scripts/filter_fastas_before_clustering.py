@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """usage: filter_fastas_before_clustering.py            -f FILE [-p INT] [-l INT] [-s INT]
@@ -16,37 +16,37 @@
         - Adds prefix from filename to each sequence
         - Prints single-line FASTA sequences, if longer than minimal length and not exceeding the number of stops (*)
 """
-
-from __future__ import division
 from docopt import docopt
-import sys
 from os import path
+
 
 class SeqObj():
     def __init__(self, header_l, seq, prefix):
-        self.header = header_l[0].replace(":", "_").replace(",", "_").replace("(", "_").replace(")", "_") # orthofinder replaces chars
+        self.header = header_l[0].replace(":", "_").replace(",", "_").replace("(", "_").replace(")", "_")  # orthofinder replaces chars
         self.seq = seq
         self.prefix = prefix
         self.length = len(seq)
 
     def print_fixed(self):
-        print ">%s.%s\n%s" % (self.prefix, self.header, self.seq)
+        print(f">{self.prefix}.{self.header}\n{self.seq}")
 
     def non_terminal_stops(self):
         non_terminal = self.seq.rstrip("*")
         return non_terminal.count("*")
 
+
 def readFasta(infile):
     with open(infile) as fh:
         header, seqs = '', []
-        for l in fh:
-            if l[0] == '>':
+        for line in fh:
+            if line[0] == '>':
                 if (header):
                     yield header, ''.join(seqs)
-                header, seqs = l[1:-1].split(" "), [] # Header is split at first whitespace
+                header, seqs = line[1:-1].split(" "), []  # Header is split at first whitespace
             else:
-                seqs.append(l[:-1])
+                seqs.append(line[:-1])
         yield header, ''.join(seqs)
+
 
 def main(args):
     fasta_f = args['--fasta']
@@ -80,12 +80,13 @@ def main(args):
     with open(fasta_f + ".filter_stats.txt", "w") as out_fh:
         out_fh.write("filename=%s; raw=%s (%s); stop_fail=%s (%s); length_fail=%s (%s); pass=%s (%s)\n" % (
             fasta_f,
-            stats['raw'], "{:.2%}".format(stats['raw']/stats['raw']),
-            stats['stop_fail'], "{:.2%}".format(stats['stop_fail']/stats['raw']),
-            stats['length_fail'], "{:.2%}".format(stats['length_fail']/stats['raw']),
-            stats['pass'], "{:.2%}".format(stats['pass']/stats['raw'])
-            )
+            stats['raw'], "{:.2%}".format(stats['raw'] / stats['raw']),
+            stats['stop_fail'], "{:.2%}".format(stats['stop_fail'] / stats['raw']),
+            stats['length_fail'], "{:.2%}".format(stats['length_fail'] / stats['raw']),
+            stats['pass'], "{:.2%}".format(stats['pass'] / stats['raw'])
         )
+        )
+
 
 if __name__ == "__main__":
     args = docopt(__doc__)

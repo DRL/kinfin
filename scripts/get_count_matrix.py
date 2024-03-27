@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
@@ -19,19 +19,18 @@ usage: get_count_matrix.py           -g <FILE> -s <FILE> -c <FILE> [-u <FILE>] [
         -x, --taxon_order <FILE>                Taxon order file (one line per taxon), otherwise alphabetical order.
         -o, --outprefix <STRING>                Output prefix
 """
-
-from __future__ import division
 import re
 import sys
 import operator
 from docopt import docopt
-from collections import Counter
+import collections
 import os
+
 
 def read_file(infile):
     if not infile or not os.path.exists(infile):
         sys.exit("[X] - File '%s' does not exist." % (infile))
-    print "[+] Parsing %s ..." % (infile)
+    print("[+] Parsing %s ..." % (infile))
     with open(infile) as fh:
         for line in fh:
             line = line.replace(r'\r', '\n')
@@ -47,7 +46,7 @@ def write_file(out_f, outprefix, header, strings):
             out_f = "%s" % os.path.join(outprefix, out_f)
         else:
             out_f = "%s.%s" % (outprefix, out_f)
-    print "[+] \t Writing file %s ..." % (out_f)
+    print("[+] \t Writing file %s ..." % (out_f))
     with open(out_f, 'w') as out_fh:
         out_fh.write("%s\n" % (header))
         out_fh.write("%s\n" % "\n".join(strings))
@@ -83,7 +82,7 @@ class ClusterObj():
         self.domain_ids = ''
         self.domain_descriptions = ''
         self.protein_count = len(protein_ids)
-        self.protein_count_by_taxon_id = Counter()
+        self.protein_count_by_taxon_id = collections.Counter()
         self.taxon_count = 0
         self.target_protein_ids = set()
 
@@ -98,6 +97,7 @@ class ClusterObj():
     def add_protein_ids_of_interest(self, protein_ids_of_interest):
         for protein_id in protein_ids_of_interest:
             self.target_protein_ids.add(protein_id)
+
 
 class DataCollection():
     def __init__(self, args):
@@ -241,7 +241,7 @@ class DataCollection():
         for line in read_file(self.sequence_id_f):
             col = line.split(": ")
             taxon_idx = col[0].split("_")[0]
-            protein_id = col[1].replace(":", "_").replace(",", "_").replace("(", "_").replace(")", "_") # behaviour like Orthofinder
+            protein_id = col[1].replace(":", "_").replace(",", "_").replace("(", "_").replace(")", "_")  # behaviour like Orthofinder
             self.taxon_id_by_protein_id[protein_id] = self.taxon_id_by_idx[taxon_idx]
 
     def parse_target_id_f(self, arg):
@@ -285,13 +285,13 @@ class DataCollection():
             if self.cluster_id_f:
                 # looking for cluster_ids
                 if cluster_id in self.targetCluster_by_cluster_id:
-                    taxon_counter = Counter([self.taxon_id_by_protein_id[protein_id] for protein_id in clusterObj.protein_ids])
+                    taxon_counter = collections.Counter([self.taxon_id_by_protein_id[protein_id] for protein_id in clusterObj.protein_ids])
                     clusterObj.add_taxon_counter(taxon_counter)
                     self.targetCluster_by_cluster_id[cluster_id] = clusterObj
             else:
                 protein_ids_of_interest = clusterObj.protein_ids.intersection(self.target_id_by_protein_id.keys())
                 if protein_ids_of_interest:
-                    taxon_counter = Counter([self.taxon_id_by_protein_id[protein_id] for protein_id in clusterObj.protein_ids])
+                    taxon_counter = collections.Counter([self.taxon_id_by_protein_id[protein_id] for protein_id in clusterObj.protein_ids])
                     clusterObj.add_taxon_counter(taxon_counter)
                     clusterObj.add_protein_ids_of_interest(protein_ids_of_interest)
                     self.targetCluster_by_cluster_id[cluster_id] = clusterObj
@@ -311,7 +311,7 @@ class DataCollection():
 
 
 if __name__ == "__main__":
-    __version__ = 0.1
+    __version__ = 0.2
     args = docopt(__doc__)
-    print "[+] Start ..."
+    print("[+] Start ...")
     dataCollection = DataCollection(args)
