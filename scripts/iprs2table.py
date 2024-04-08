@@ -102,7 +102,7 @@ def output(inputObj, domains_ids_by_domain_source_by_protein_id):
         out_fh.write("\n".join(output) + "\n")
     counts = []
     for domain in domain_sources:
-        counts.append("[=]\t%s = %s unique IDs in %s proteins" % (domain, len(unique_domain_ids_by_domain_source[domain]), protein_id_counts_by_domain_source[domain]))
+        counts.append("[=]\t%s = %s unique IDs in %s proteins" % (domain, len(unique_domain_ids_by_domain_source.get(domain, {})), protein_id_counts_by_domain_source.get(domain, 0)))
     print("\n".join(counts))
 
 
