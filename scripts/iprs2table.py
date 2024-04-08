@@ -16,7 +16,7 @@ usage: ips_to_table.py      -i <FILE> [-o <STR>]
                                                     - GO-terms and IPR-IDs domain counts are inferred for these
 """
 import sys
-import collections.Counter
+import collections
 from os.path import exists
 
 import_errors = []
@@ -37,7 +37,6 @@ def read_file(f):
 
 
 def parse_interproscan(inputObj):
-    interproscan_f = inputObj.interproscan_f
     domain_sources = inputObj.domain_sources
     domains_ids_by_domain_source_by_protein_id = {}
     for line in read_file(inputObj.interproscan_f):
