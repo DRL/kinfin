@@ -2299,7 +2299,7 @@ def welcome_screen():
 
 
 if __name__ == "__main__":
-    __version__ = "1.1"
+    __version__ = "1.1.1"
     welcome_screen()
     args = docopt(__doc__)
     inputObj = InputObj(args)
