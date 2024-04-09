@@ -100,7 +100,7 @@ class DataObj():
 
     def yield_counts_by_proteome_count(self, count_type):
         self.proteome_counts_by_colour = OrderedDict()
-        cmap = mat.cm.get_cmap(self.cmap)
+        cmap = mat.colormaps[self.cmap]
         y_bottom = [0] * self.count_of_cluster_sizes
         x = self.cluster_sizes
         for proteome_count in sorted(self.counts_by_cluster_size_by_proteome_counts):
@@ -136,8 +136,10 @@ class DataObj():
         if plot_type in PLOTS:
             if plot_type == "loglog" or plot_type == "loglin" or plot_type == "loglogpowerlaw":
                 for proteome_count, x, y, y_bottom, colour in self.yield_counts_by_proteome_count('absolute'):
+                    x = np.array(x)
+                    y = np.array(y)
                     ax.plot(x, y, c='None')
-                    mask = np.where(y >= 1, y, "nan")
+                    mask = np.where(y >= 1, y, np.nan)
                     ax.fill_between(x, y, y_bottom, facecolor=colour, interpolate=True, where=mask)
                     progress(proteome_count, 1, self.proteome_count_max)
                 ax.plot
@@ -190,7 +192,7 @@ class DataObj():
                     # ax.legend()
                     plt.gca().set_ylim(bottom=0.9, top=self.cluster_count_max * 2)
                     plt.gca().set_xlim(left=0.8, right=self.xlim)
-                    ax.set_yscale('symlog', linthreshy=1.0)
+                    ax.set_yscale('symlog', linthresh=1.0)
                     ax.set_xscale('log')
             legend_handles = []
             for colour, proteomes in self.proteome_counts_by_colour.items():
@@ -231,7 +233,7 @@ if __name__ == "__main__":
     dataObj = DataObj(out_prefix, plot_fmt, cmap, xlim)
     dataObj.parse_data(input_f)
     # dataObj.plot_cluster_sizes('loglog')
-    # dataObj.plot_cluster_sizes('loglin')
+    #dataObj.plot_cluster_sizes('loglin')
     # dataObj.plot_cluster_sizes('logbar')
     # dataObj.plot_cluster_sizes('barperc')
     # dataObj.plot_cluster_sizes('powerlaw')
