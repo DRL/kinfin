@@ -26,7 +26,7 @@ usage: kinfin.py      -g <FILE> -c <FILE> -s <FILE> [-t <FILE>] [-o <PREFIX>]
             -t, --tree_file <FILE>              Tree file in Newick format (taxon names must be the same as TAXON in config file)
 
         General options
-            -o, --outprefix <STR>               Output prefix
+            -o, --output_path <STR>               Output prefix
             --infer_singletons                  Absence of proteins in clustering is interpreted as singleton (based on SequenceIDs.txt)
             --plot_tree                         Plot PDF of annotated phylogenetic tree (requires -t, full ETE3 installation and X-server/xvfb-run)
             --min_proteomes <INT>               Required number of proteomes in a taxon-set to be used
@@ -60,8 +60,8 @@ usage: kinfin.py      -g <FILE> -c <FILE> -s <FILE> [-t <FILE>] [-o <PREFIX>]
 
 
 import sys
-from os.path import isfile, join, exists, realpath, dirname
-from os import getcwd, mkdir, remove, environ
+from os.path import isfile, join, exists, realpath, dirname, isabs, abspath
+from os import getcwd, mkdir, remove, environ, makedirs
 import shutil
 import random
 import time
@@ -469,30 +469,29 @@ class DataFactory():
     ###############################
 
     def setup_dirs(self, inputObj):
-        outprefix = inputObj.outprefix
+        output_path = inputObj.output_path
         self.dirs = {}
-        if outprefix:
-            if outprefix.endswith("/"):
-                result_path = "%skinfin_results" % (outprefix)
-            else:
-                result_path = "%s.kinfin_results" % (outprefix)
+        if output_path:
+            if not isabs(output_path):
+                output_path = abspath(output_path)
         else:
-            result_path = join(getcwd(), "kinfin_results")
-        self.dirs['main'] = result_path
-        print("[STATUS] - Output directories in \n\t%s" % (result_path))
-        if exists(result_path):
+            output_path = join(getcwd(), "kinfin_results")
+
+        self.dirs['main'] = output_path
+        print("[STATUS] - Output directories in \n\t%s" % (output_path))
+        if exists(output_path):
             print("[STATUS] - Directory exists. Deleting directory ...")
-            shutil.rmtree(result_path)
+            shutil.rmtree(output_path)
         print("[STATUS] - Creating directories ...")
-        mkdir(result_path)
+        makedirs(output_path)
         for attribute in aloCollection.attributes:
-            attribute_path = join(result_path, attribute)
+            attribute_path = join(output_path, attribute)
             self.dirs[attribute] = attribute_path
             if not exists(attribute_path):
                 print("\t%s" % (attribute_path))
                 mkdir(attribute_path)
         if aloCollection.tree_ete:
-            tree_path = join(result_path, "tree")
+            tree_path = join(output_path, "tree")
             node_chart_path = join(tree_path, "charts")
             node_header_path = join(tree_path, "headers")
             if not exists(tree_path):
@@ -2134,8 +2133,8 @@ class InputObj():
         # FASTA files
         self.fasta_dir = args['--fasta_dir']
         self.check_if_fasta_dir_and_species_ids_f()
-        # outprefix
-        self.outprefix = args['--outprefix']
+        # output_path
+        self.output_path = args['--output_path']
         # proteins
         self.infer_singletons = args['--infer_singletons']
         # values: fuzzyness
