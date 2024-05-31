@@ -71,8 +71,8 @@ def parse_groups(group_f):
 
 
 def write_output(output, outprefix):
-    headers_found = set([k for k, v in headers.iteritems() if v])
-    clusters_found = set([k for k, v in clusters.iteritems() if v])
+    headers_found = set([k for k, v in headers.items() if v])
+    clusters_found = set([k for k, v in clusters.items() if v])
     if headers:
         print("[+] Found %s of headers ..." % "{:.0%}".format(len(headers_found) / len(headers)))
     if clusters:
