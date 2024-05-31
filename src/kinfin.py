@@ -108,17 +108,6 @@ mat.rcParams.update({'font.size': 22})
 ########################################################################
 
 
-def retrieve_ftp(remote_f, local_f):
-    try:
-        print("[STATUS] - Downloading '%s' to '%s'." % (remote_f, local_f))
-        req = urlopen(remote_f)
-        with open(local_f, 'wb') as local_fh:
-            shutil.copyfileobj(req, local_fh)
-        req.close()
-    except IOError:
-        sys.exit("[ERROR] : '%s' could not be downloaded." % (remote_f))
-
-
 def check_file(infile):
     if infile:
         if not isfile(infile):
@@ -2227,22 +2216,19 @@ class InputObj():
         if self.pfam_mapping:
             pfam_mapping_f = join(dirname(realpath(__file__)), "../data/Pfam-A.clans.tsv.gz")
             if not isfile(pfam_mapping_f):
-                print("[WARN] - PFAM-ID file 'data/Pfam-A.clans.tsv.gz' not found. Will be downloaded from ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.clans.tsv.gz")
-                remote_f = "ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.clans.tsv.gz"
-                retrieve_ftp(remote_f, pfam_mapping_f)
+                print("[ERROR] - PFAM-ID file 'data/Pfam-A.clans.tsv.gz' not found. Please run the install script to download")
+                sys.exit()
             self.pfam_mapping_f = pfam_mapping_f
         if self.ipr_mapping:
             ipr_mapping_f = join(dirname(realpath(__file__)), "../data/entry.list")
             if not isfile(ipr_mapping_f):
-                print("[WARN] - IPR-ID file 'data/entry.list' not found. Will be downloaded from ftp://ftp.ebi.ac.uk/pub/databases/interpro/entry.list")
-                remote_f = "ftp://ftp.ebi.ac.uk/pub/databases/interpro/entry.list"
-                retrieve_ftp(remote_f, ipr_mapping_f)
+                print("[ERROR] - IPR-ID file 'data/entry.list' not found. Please run the install script to download")
+                sys.exit()
             self.ipr_mapping_f = ipr_mapping_f
             go_mapping_f = join(dirname(realpath(__file__)), "../data/interpro2go")
             if not isfile(go_mapping_f):
-                print("[WARN] - GO-ID file, but 'data/interpro2go' not found. Will be downloaded from ftp://ftp.ebi.ac.uk/pub/databases/interpro/interpro2go")
-                remote_f = "ftp://ftp.ebi.ac.uk/pub/databases/interpro/interpro2go"
-                retrieve_ftp(remote_f, go_mapping_f)
+                print("[ERROR] - GO-ID file, but 'data/interpro2go' not found. Please run the install script to download")
+                sys.exit()
             self.go_mapping_f = go_mapping_f
 
     def check_that_ete_can_plot(self):
