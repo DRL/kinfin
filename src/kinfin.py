@@ -461,7 +461,6 @@ class DataFactory():
         # add taxranks to rank
         for taxrank in inputObj.taxranks:
             attributes.append(taxrank)
-        self.nodesdb_file = nodesdb_f
         return attributes, level_by_attribute_by_proteome_id
 
     ###############################
@@ -598,7 +597,6 @@ class DataFactory():
             if not line.startswith("#"):
                 idx, fasta = line.split(": ")
                 fasta_by_ortho_id[idx] = fasta
-        self.species_ids_file = species_ids_f
         return fasta_by_ortho_id
 
     ###############################
@@ -614,7 +612,6 @@ class DataFactory():
             print("[STATUS]\t - Parsing FASTA %s" % (fasta_path))
             for header, length in readFastaLen(fasta_path):
                 fasta_len_by_protein_id[header] = length
-        self.fasta_dir = fasta_dir
         return fasta_len_by_protein_id
 
     ###############################
