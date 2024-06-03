@@ -2233,7 +2233,7 @@ class InputObj():
     def check_that_ete_can_plot(self):
         if self.render_tree:
             try:
-                import PyQt4
+                import PyQt4 # type: ignore
             except ImportError:
                 sys.exit("[ERROR] : Plotting of trees requires additional ETE3 dependencies. PyQt4 is not installed. Please install PyQt4")
             if 'DISPLAY' in environ:
