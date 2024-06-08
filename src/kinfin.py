@@ -1688,11 +1688,11 @@ class AloCollection():
             x_values = np.array(proteome_coverages)
             ax.hist(x_values, histtype='stepfilled', align='mid', bins=np.arange(0.0, 1.0 + 0.1, 0.1))
             ax.set_xlim(-0.1, 1.1)
-            for tick in ax.xaxis.get_major_ticks():
-                tick.label.set_fontsize(inputObj.plot_font_size - 2)
-                tick.label.set_rotation('vertical')
-            for tick in ax.yaxis.get_major_ticks():
-                tick.label.set_fontsize(inputObj.plot_font_size - 2)
+            for tick in ax.xaxis.get_majorticklabels():
+                tick.set_fontsize(inputObj.plot_font_size - 2)
+                tick.set_rotation('vertical')
+            for tick in ax.yaxis.get_majorticklabels():
+                tick.set_fontsize(inputObj.plot_font_size - 2)
             ax.set_frame_on(False)
             ax.xaxis.grid(True, linewidth=1, which="major", color="lightgrey")
             ax.yaxis.grid(True, linewidth=1, which="major", color="lightgrey")
