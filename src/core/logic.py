@@ -422,3 +422,34 @@ def parse_ipr_mapping(ipr_mapping_f: str) -> Dict[str, str]:
                     error_msg = f"[ERROR] : Conflicting descriptions for {ipr_id}"
                     raise ValueError(error_msg)
     return ipr_mapping_dict
+
+
+def parse_go_mapping(go_mapping_f: str) -> Dict[str, str]:
+    """
+    Parse a Gene Ontology (GO) mapping file to create a dictionary mapping GO IDs to their descriptions.
+
+    Args:
+    - go_mapping_f (str): Path to the GO mapping file, where each line contains a GO ID and its description.
+      Lines starting with '!' are skipped as they are comments.
+
+    Returns:
+    - Dict[str, str]: A dictionary mapping GO IDs (without 'GO:' prefix) to their corresponding descriptions.
+
+    Raises:
+    - ValueError: If conflicting descriptions are found for the same GO ID.
+    """
+    print(f"[STATUS] - Parsing {go_mapping_f} ... ")
+    go_mapping_dict: Dict[str, str] = {}
+    for line in yield_file_lines(go_mapping_f):
+        if not line.startswith("!"):
+            temp: List[str] = line.replace(" > ", "|").split("|")
+            go_string: List[str] = temp[1].split(";")
+            go_desc, go_id = go_string[0].replace("GO:", ""), go_string[1].lstrip(" ")
+
+            if go_id not in go_mapping_dict:
+                go_mapping_dict[go_id] = go_desc
+            else:
+                if not go_desc == go_mapping_dict[go_id]:
+                    error_msg = f"[ERROR] : Conflicting descriptions for {go_id}"
+                    raise ValueError(error_msg)
+    return go_mapping_dict
