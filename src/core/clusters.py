@@ -30,3 +30,24 @@ class Cluster:
         self.proteome_count: int = len(self.proteome_ids)
         self.singleton: bool = False if self.protein_count > 1 else True
         self.apomorphy: bool = False if self.proteome_count > 1 else True
+
+
+class ClusterCollection:
+    def __init__(
+        self,
+        cluster_list: List[Cluster],
+        inferred_singletons_count: int,
+        functional_annotation_parsed: bool,
+        fastas_parsed: bool,
+        domain_sources: List[str],
+    ):
+        self.cluster_list: List[Cluster] = cluster_list
+        self.cluster_list_by_cluster_id: Dict[str, Cluster] = {
+            cluster.cluster_id: cluster for cluster in cluster_list
+        }  # only for testing
+        self.cluster_count: int = len(cluster_list)
+        self.inferred_singletons_count: int = inferred_singletons_count
+        self.functional_annotation_parsed: bool = functional_annotation_parsed
+        self.fastas_parsed: bool = fastas_parsed
+        # self.domain_sources = [domain_source for domain_source in domain_sources if not domain_source == "GO"]
+        self.domain_sources: List[str] = domain_sources
