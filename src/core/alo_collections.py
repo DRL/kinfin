@@ -1,9 +1,22 @@
+import os
 from typing import Any, Dict, List, Optional, Set, Tuple
 
+import ete3
+import matplotlib as mat
 from ete3 import Tree
 
 from core.alo import AttributeLevel
 from core.config import ATTRIBUTE_RESERVED
+
+mat.use("agg")
+import matplotlib.pyplot as plt
+from matplotlib.ticker import FormatStrFormatter, NullFormatter
+
+plt.style.use("ggplot")
+mat.rc("ytick", labelsize=20)
+mat.rc("xtick", labelsize=20)
+axis_font = {"size": "20"}
+mat.rcParams.update({"font.size": 22})
 
 
 class AloCollection:
@@ -83,3 +96,105 @@ class AloCollection:
                     ALO_by_level_by_attribute[attribute][level] = None
                 ALO_by_level_by_attribute[attribute][level] = ALO
         return ALO_by_level_by_attribute
+
+    def generate_header_for_node(self, node: ete3.TreeNode, dirs: Dict[str, str]):
+        """
+        Generates a header image for a given node of a tree with specified statistics.
+
+        Args:
+            node (ete3.TreeNode): The TreeNode object representing the node for which the header is generated.
+            dirs (Dict[str, str]): A dictionary containing directory paths, including 'tree_headers' where the header image will be saved.
+
+        Returns:
+            str: File path to the generated header image.
+
+        Notes:
+            - The method generates a header image in PNG format displaying various statistics (apomorphies and synapomorphies) for the given tree node.
+            - The statistics include counts of singletons, non-singletons, complete presence synapomorphies, and partial absence synapomorphies.
+            - The generated image is saved in the specified directory under 'tree_headers' with the node's name as the filename.
+
+        Raises:
+            Any exceptions that might occur during file saving or table rendering.
+        """
+
+        node_header_f = os.path.join(dirs["tree_headers"], f"{node.name}.header.png")
+        data = []
+        data.append(
+            (
+                "Apomorphies (size=1)",
+                "{:,}".format(
+                    node.apomorphic_cluster_counts["singletons"]  # type:ignore
+                ),
+            )
+        )
+        data.append(
+            (
+                "Apomorphies (size>1)",
+                "{:,}".format(
+                    node.apomorphic_cluster_counts["non_singletons"]  # type:ignore
+                ),
+            )
+        )
+        data.append(
+            (
+                "Synapomorphies (all)",
+                "{:,}".format(
+                    node.synapomorphic_cluster_counts[  # type:ignore
+                        "complete_presence"
+                    ]
+                    + node.synapomorphic_cluster_counts[  # type:ignore
+                        "partial_absence"
+                    ]
+                ),
+            )
+        )
+        data.append(
+            (
+                "Synapomorphies (cov=100%)",
+                "{:,}".format(
+                    node.synapomorphic_cluster_counts[  # type:ignore
+                        "complete_presence"
+                    ]
+                ),
+            )
+        )
+        data.append(
+            (
+                "Synapomorphies (cov<100%)",
+                "{:,}".format(
+                    node.synapomorphic_cluster_counts["partial_absence"]  # type:ignore
+                ),
+            )
+        )
+        col_labels = ("Type", "Count")
+        fig, ax = plt.subplots(figsize=(2, 0.5))
+        ax.set_facecolor("white")
+        table = ax.table(
+            cellText=data,
+            colLabels=col_labels,
+            loc="bottom",
+            fontsize=24,
+            colLoc="center",
+            rowLoc="right",
+            edges="",
+        )
+        table.set_fontsize(24)
+        table.scale(2, 1)
+        for key, cell in list(table.get_celld().items()):
+            row, col = key
+            cell._text.set_color("grey")
+            if row > 0:
+                cell.set_edgecolor("darkgrey")
+                cell.visible_edges = "T"
+            else:
+                cell.set_edgecolor("darkgrey")
+                cell.visible_edges = "B"
+            if row == len(data) - 2:
+                cell.set_edgecolor("darkgrey")
+                cell.visible_edges = "T"
+        ax.axis("tight")
+        ax.axis("off")
+        print(f"[STATUS]\t- Plotting {node_header_f}")
+        fig.savefig(node_header_f, pad=0, bbox_inches="tight", format="png")
+        plt.close()
+        return node_header_f
