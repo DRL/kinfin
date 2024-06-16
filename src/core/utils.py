@@ -1,7 +1,7 @@
 import gzip
 import os
 import sys
-from typing import Any, Generator
+from typing import Any, Generator, List, Tuple
 
 
 def progress(iteration: int, steps: int | float, max_value: int) -> None:
@@ -57,3 +57,46 @@ def yield_file_lines(filepath: str) -> Generator[str, Any, None]:
         with open(filepath) as fh:
             for line in fh:
                 yield line.rstrip("\n")
+
+
+def read_fasta_len(fasta_file: str) -> Generator[Tuple[str, int], Any, None]:
+    """
+    Generator function to parse a FASTA file and yield tuples of header and sequence length.
+
+    Args:
+    - fasta_file (str): Path to the FASTA file to be parsed.
+
+    Yields:
+    Tuple[str, int]: A tuple containing the header and the length of the sequence.
+
+    Raises:
+    FileNotFoundError: If the specified FASTA file does not exist.
+    """
+    check_file(fasta_file)
+    with open(fasta_file) as fh:
+        print(f"[STATUS]\t - Parsing FASTA {fasta_file}")
+        header: str = ""
+        seqs: List[str] = []
+        for line in fh:
+            if line[0] == ">":
+                if header:
+                    header = (
+                        header.replace(":", "_")
+                        .replace(",", "_")
+                        .replace("(", "_")
+                        .replace(")", "_")
+                    )  # orthofinder replaces chars
+                    yield header, len("".join(seqs))
+                header, seqs = (
+                    line[1:-1].split()[0],
+                    [],
+                )  # Header is split at first whitespace
+            else:
+                seqs.append(line[:-1])
+        header = (
+            header.replace(":", "_")
+            .replace(",", "_")
+            .replace("(", "_")
+            .replace(")", "_")
+        )  # orthofinder replaces chars
+        yield header, len("".join(seqs))
