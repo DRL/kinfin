@@ -1,7 +1,10 @@
 import gzip
 import os
 import sys
-from typing import Any, Generator, List, Tuple
+from math import log, sqrt
+from typing import Any, Generator, List, Optional, Tuple
+
+import scipy
 
 
 def progress(iteration: int, steps: int | float, max_value: int) -> None:
@@ -100,3 +103,106 @@ def read_fasta_len(fasta_file: str) -> Generator[Tuple[str, int], Any, None]:
             .replace(")", "_")
         )  # orthofinder replaces chars
         yield header, len("".join(seqs))
+
+
+def median(lst):
+    list_sorted = sorted(lst)
+    list_length = len(lst)
+    index = (list_length - 1) // 2
+    if list_length % 2:
+        return list_sorted[index] / 1.0
+    else:
+        return (list_sorted[index] + list_sorted[index + 1]) / 2.0
+
+
+def mean(lst):
+    if lst:
+        return float(sum(lst)) / len(lst)
+    else:
+        return 0.0
+
+
+def sd(lst, population=True):
+    n = len(lst)
+    differences = [x_ - mean(lst) for x_ in lst]
+    sq_differences = [d**2 for d in differences]
+    ssd = sum(sq_differences)
+    if population is True:
+        variance = ssd / n
+    else:
+        variance = ssd / (n - 1)
+    sd_result = sqrt(variance)
+    return sd_result
+
+
+def statistic(
+    count_1: List[int],
+    count_2: List[int],
+    test: str,
+    min_proteomes: int,
+) -> Tuple[
+    Optional[float],
+    Optional[float],
+    Optional[float],
+    Optional[float],
+]:
+    pvalue: Optional[float] = None
+    log2_mean: Optional[float] = None
+    mean_count_1: Optional[float] = None
+    mean_count_2: Optional[float] = None
+
+    implicit_count_1: List[float] = [count for count in count_1 if count > 0]
+    implicit_count_2: List[float] = [count for count in count_2 if count > 0]
+
+    if len(implicit_count_1) < min_proteomes or len(implicit_count_2) < min_proteomes:
+        return None, None, None, None
+
+    mean_count_1 = mean(implicit_count_1)
+    mean_count_2 = mean(implicit_count_2)
+    log2_mean = log(mean_count_1 / mean_count_2)
+
+    if (
+        len(set(implicit_count_1)) == 1
+        and len(set(implicit_count_2)) == 1
+        and set(implicit_count_1) == set(implicit_count_2)
+    ):  # equal
+        pvalue = 1.0
+    elif test == "welch":
+        # try:
+        # Welch's t-test
+        pvalue = scipy.stats.ttest_ind(
+            implicit_count_1,
+            implicit_count_2,
+            equal_var=False,
+        )[1]
+
+        if pvalue != pvalue:  # testing for "nan"
+            pvalue = 1.0
+    elif test == "mannwhitneyu":
+        try:
+            pvalue = scipy.stats.mannwhitneyu(
+                implicit_count_1,
+                implicit_count_2,
+                alternative="two-sided",
+            )[1]
+        except ValueError:  # throws ValueError when all numbers are equal
+            pvalue = 1.0
+    elif test == "ttest":
+        # try:
+        pvalue = scipy.stats.ttest_ind(implicit_count_1, implicit_count_2)[1]  # t-test
+        if pvalue != pvalue:  # testing for "nan"
+            pvalue = 1.0
+    elif test == "ks":
+        # H0 that they are drawn from the same distribution
+        pvalue = scipy.stats.ks_2samp(implicit_count_1, implicit_count_2)[1]
+        if pvalue != pvalue:  # testing for "nan"
+            pvalue = 1.0
+    elif test == "kruskal":
+        # H0 is that population median is equal
+        pvalue = scipy.stats.kruskal(implicit_count_1, implicit_count_2)[1]
+        if pvalue != pvalue:  # testing for "nan"
+            pvalue = 1.0
+    else:
+        pass
+
+    return pvalue, log2_mean, mean_count_1, mean_count_2
