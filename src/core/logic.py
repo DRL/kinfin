@@ -1,6 +1,7 @@
 import json
 import os
-from typing import Dict, List, Set, Tuple
+from collections import defaultdict
+from typing import DefaultDict, Dict, List, Set, Tuple
 
 import ete3
 from ete3 import Tree, TreeNode
@@ -453,3 +454,22 @@ def parse_go_mapping(go_mapping_f: str) -> Dict[str, str]:
                     error_msg = f"[ERROR] : Conflicting descriptions for {go_id}"
                     raise ValueError(error_msg)
     return go_mapping_dict
+
+
+def compute_protein_ids_by_proteome(
+    proteomes_by_protein_id: Dict[str, str]
+) -> DefaultDict[str, Set[str]]:
+    """
+    Compute protein IDs grouped by proteome IDs.
+
+    Args:
+        proteomes_by_protein_id (Dict[str, str]): A dictionary mapping protein IDs to proteome IDs.
+
+    Returns:
+        DefaultDict[str, Set[str]]: A defaultdict where keys are proteome IDs and values are sets
+        of protein IDs belonging to each proteome ID.
+    """
+    protein_ids_by_proteome_id: DefaultDict[str, Set[str]] = defaultdict(set)
+    for protein_id, proteome_id in list(proteomes_by_protein_id.items()):
+        protein_ids_by_proteome_id[proteome_id].add(protein_id)
+    return protein_ids_by_proteome_id
