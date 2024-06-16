@@ -23,3 +23,16 @@ class Protein:
 
     def update_length(self, length: int) -> None:
         self.length = length
+
+
+class ProteinCollection:
+    def __init__(self, proteins_list: List[Protein]) -> None:
+        self.proteins_list: List[Protein] = proteins_list
+        self.proteins_by_protein_id: Dict[str, Protein] = {
+            protein.protein_id: protein for protein in proteins_list
+        }
+        self.protein_count: int = len(proteins_list)
+        self.domain_sources: List[str] = []
+        self.fastas_parsed: bool = False
+        self.functional_annotation_parsed: bool = False
+        self.domain_desc_by_id_by_source: Dict[str, Dict[str,str]] = {}  # fmt: skip
