@@ -1,6 +1,22 @@
 import gzip
 import os
+import sys
 from typing import Any, Generator
+
+
+def progress(iteration: int, steps: int | float, max_value: int) -> None:
+    if int(iteration) == int(max_value):
+        sys.stdout.write("\r")
+        print("[PROGRESS] \t- %d%%" % (100))
+    elif int(iteration) % int(steps + 1) == 0:
+        sys.stdout.write("\r")
+        print(
+            "[PROGRESS] \t- %d%%" % (float(int(iteration) / int(max_value)) * 100),
+            end=" ",
+        )
+        sys.stdout.flush()
+    else:
+        pass
 
 
 def check_file(filepath: str | None, install_kinfin: bool = False) -> None:
