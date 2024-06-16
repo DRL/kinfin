@@ -1,6 +1,8 @@
 from collections import Counter
 from typing import Dict, List, Optional
 
+from core.utils import mean, median, sd
+
 
 class Protein:
     def __init__(
@@ -67,3 +69,40 @@ class ProteinCollection:
             if signalp_notm and "SignalP-noTM" in signalp_notm:
                 protein.secreted = True
             protein.go_terms = go_terms
+
+    def get_protein_length_stats(
+        self, protein_ids: List[str]
+    ) -> Dict[str, int | float]:
+        """
+        Calculate statistics (sum, mean, median, standard deviation) of protein lengths.
+
+        Args:
+            protein_ids (List[str]): List of protein IDs for which to calculate statistics.
+
+        Returns:
+            Dict[str, int | float]: A dictionary containing the calculated statistics:
+                - 'sum': Sum of lengths of proteins in the input list.
+                - 'mean': Mean length of proteins in the input list.
+                - 'median': Median length of proteins in the input list.
+                - 'sd': Standard deviation of lengths of proteins in the input list.
+
+            If no valid protein lengths could be calculated (e.g., if protein_ids is empty or no lengths
+            are available for the provided protein IDs), the values in the dictionary will default to 0 or 0.0.
+        """
+        protein_length_stats = {"sum": 0, "mean": 0.0, "median": 0, "sd": 0.0}
+        if protein_ids and self.fastas_parsed:
+            protein_lengths: List[int] = [
+                length
+                for length in [
+                    self.proteins_by_protein_id[protein_id].length
+                    for protein_id in protein_ids
+                    if protein_id in self.proteins_by_protein_id
+                ]
+                if length is not None
+            ]
+            protein_length_stats["sum"] = sum(protein_lengths)
+            protein_length_stats["mean"] = mean(protein_lengths)
+            protein_length_stats["median"] = median(protein_lengths)
+            protein_length_stats["sd"] = sd(protein_lengths)
+
+        return protein_length_stats
