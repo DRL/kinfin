@@ -276,3 +276,58 @@ class AloCollection:
             tree_txt_f = os.path.join(dirs["tree"], "tree.txt")
             with open(tree_txt_f, "w") as tree_txt_fh:
                 tree_txt_fh.write(f"{self.tree_ete.get_ascii(show_internal=True, compact=False)}\n")  # fmt:skip
+
+    def plot_tree(
+        self,
+        header_f_by_node_name,
+        charts_f_by_node_name,
+        dirs: Dict[str, str],
+    ) -> None:
+        """
+        Plot and save a tree visualization with custom header and chart images for nodes.
+
+        This method uses the `self.tree_ete` attribute of the class to visualize the tree
+        in a hierarchical manner, with customized header and chart images for each node.
+
+        Args:
+        - header_f_by_node_name: Dictionary mapping node names to header image file paths (must be PNG).
+        - charts_f_by_node_name: Dictionary mapping node names to chart image file paths (must be PNG).
+        - dirs: A dictionary containing directory paths, specifically 'tree' for saving the tree PDF.
+
+        Returns:
+        - None
+        """
+        tree_f = os.path.join(
+            dirs["tree"], "tree.pdf"
+        )  # must be PDF! (otherwise it breaks)
+        style = ete3.NodeStyle()
+        style["vt_line_width"] = 5
+        style["hz_line_width"] = 5
+        style["fgcolor"] = "darkgrey"
+        for node in self.tree_ete.traverse("levelorder"):  # type: ignore
+            node.set_style(style)
+            if header_f_by_node_name[node.name]:
+                node_header_face = ete3.faces.ImgFace(
+                    header_f_by_node_name[node.name]
+                )  # must be PNG! (ETE can't do PDF Faces)
+                node.add_face(node_header_face, column=0, position="branch-top")
+            if charts_f_by_node_name[node.name]:
+                node_chart_face = ete3.faces.ImgFace(
+                    charts_f_by_node_name[node.name]
+                )  # must be PNG! (ETE can't do PDF Faces)
+                node.add_face(node_chart_face, column=0, position="branch-bottom")
+            node_name_face = ete3.TextFace(node.name, fsize=64)
+            node.img_style["size"] = 10
+            node.img_style["shape"] = "sphere"
+            node.img_style["fgcolor"] = "black"
+            if not node.is_leaf():
+                node.add_face(node_name_face, column=0, position="branch-right")
+            node.add_face(node_name_face, column=0, position="aligned")
+        ts = ete3.TreeStyle()
+        ts.draw_guiding_lines = True
+        ts.show_scale = False
+        ts.show_leaf_name = False
+        ts.allow_face_overlap = True
+        ts.guiding_lines_color = "lightgrey"
+        print(f"[STATUS] - Writing tree {tree_f}... ")
+        self.tree_ete.render(tree_f, dpi=600, h=1189, units="mm", tree_style=ts)  # type: ignore
