@@ -4,6 +4,37 @@ from core.utils import yield_file_lines
 
 
 # cli
+def get_lineage(
+    taxid: str,
+    nodesdb: Dict[str, Dict[str, str]],
+    taxranks: List[str],
+) -> Dict[str, str]:
+    """
+    Get the lineage of a taxonomic identifier.
+
+    Args:
+        taxid (str): The taxonomic identifier.
+        nodesdb (Dict[str, Dict[str, str]]): A dictionary containing information about nodes.
+        taxranks (List[str]): A list of taxonomic ranks to include in the lineage.
+
+    Returns:
+        Dict[str, str]: A dictionary containing the lineage information, with taxonomic ranks as keys
+        and corresponding names as values.
+    """
+    lineage = {taxrank: "undef" for taxrank in taxranks}
+    parent = ""
+    node = taxid
+    while parent != "1":
+        taxrank = nodesdb[node]["rank"]
+        name = nodesdb[node]["name"]
+        parent = nodesdb[node]["parent"]
+        if taxrank in taxranks:
+            lineage[taxrank] = name
+        node = parent
+    return lineage
+
+
+# cli
 def parse_attributes_from_config_file(
     config_f: str,
 ) -> Tuple[Set[str], Dict[str, str], List[str], Dict[str, Dict[str, str]]]:
