@@ -1,5 +1,8 @@
 from typing import Dict, List, Set, Tuple
 
+import ete3
+from ete3 import Tree, TreeNode
+
 from core.utils import progress, yield_file_lines
 
 
@@ -196,3 +199,66 @@ def add_taxid_attributes(
         attributes.append(taxrank)
 
     return attributes, level_by_attribute_by_proteome_id
+
+
+
+# cli
+def parse_tree_from_file(
+    tree_f: str,
+    outgroups: List[str],
+) -> tuple[Tree, Dict[frozenset[str], str]]:
+    """
+    Parse a phylogenetic tree from nwk file and set specified outgroups.
+
+    Args:
+        tree_f (str): Path to the nwk tree file.
+        outgroups (List[str]): List of outgroup taxa names.
+
+    Returns:
+        tuple[ete3.Tree, Dict[str, int]]: A tuple containing the parsed phylogenetic tree
+            and a dictionary mapping proteome IDs to node indices.
+    """
+    print(f"[STATUS] - Parsing Tree file : {tree_f} ...")
+    tree_ete: TreeNode = ete3.Tree(tree_f)
+    if len(outgroups) > 1:
+        outgroup_node: TreeNode = tree_ete.get_common_ancestor(outgroups)  # type: ignore
+        try:
+            print(f"[STATUS] - Setting LCA of {", ".join(outgroups)} as outgroup : ...")
+            tree_ete.set_outgroup(outgroup_node)  # type: ignore
+        except ete3.coretype.tree.TreeError:  # type: ignore
+            print("[STATUS] - Tree seems to be rooted already : ...")
+    else:
+        print(f"[STATUS] - Setting {",".join(outgroups)} as outgroup : ...")
+        tree_ete.set_outgroup(outgroups[0])  # type: ignore
+    print(tree_ete)
+    node_idx_by_proteome_ids: Dict[frozenset[str], str] = {}
+    for idx, node in enumerate(tree_ete.traverse("levelorder")):  # type: ignore
+        proteome_ids = frozenset([leaf.name for leaf in node])
+        if not node.name:
+            node.add_features(
+                name=f"n{idx}",
+                nodetype="node",
+                proteome_ids=proteome_ids,
+                apomorphic_cluster_counts={"singletons": 0, "non_singletons": 0},
+                synapomorphic_cluster_counts={
+                    "complete_presence": 0,
+                    "partial_absence": 0,
+                },
+                synapomorphic_cluster_strings=[],
+                counts={"specific": 0, "shared": 0, "absent": 0, "singleton": 0},
+            )
+        else:
+            node.add_features(
+                nodetype="tip",
+                proteome_ids=proteome_ids,
+                apomorphic_cluster_counts={"singletons": 0, "non_singletons": 0},
+                synapomorphic_cluster_counts={
+                    "complete_presence": 0,
+                    "partial_absence": 0,
+                },
+                synapomorphic_cluster_strings=[],
+                counts={"specific": 0, "shared": 0, "absent": 0, "singleton": 0},
+            )
+        node_idx_by_proteome_ids[proteome_ids] = node.name
+    return tree_ete, node_idx_by_proteome_ids
+
