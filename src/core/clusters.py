@@ -1,5 +1,5 @@
 from collections import Counter
-from typing import DefaultDict, Dict, FrozenSet, List, Set
+from typing import DefaultDict, Dict, FrozenSet, List, Literal, Optional, Set
 
 from core.logic import compute_protein_ids_by_proteome
 from core.proteins import ProteinCollection
@@ -33,6 +33,14 @@ class Cluster:
         self.apomorphy: bool = False if self.proteome_count > 1 else True
 
         self.protein_ids_by_proteome_id: DefaultDict[str, Set[str]] = compute_protein_ids_by_proteome(self.proteomes_by_protein_id)  # fmt:skip
+        self.protein_counts_of_proteomes_by_level_by_attribute:Dict[str, Dict[str, List[int]]] = {}  # fmt:skip
+        self.proteome_coverage_by_level_by_attribute: Dict[str, Dict[str, float]] = {}
+        self.implicit_protein_ids_by_proteome_id_by_level_by_attribute: Dict[str, Dict[str, Dict[str, List[str]]]] = {}  # fmt:skip
+        self.cluster_type_by_attribute: Dict[
+            str,
+            Literal["singleton", "shared", "specific"],
+        ] = {}
+        self.protein_median: Optional[float] = None
 
 
 class ClusterCollection:
