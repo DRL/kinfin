@@ -256,3 +256,23 @@ class AloCollection:
                 f.savefig(pdf_chart_f, bbox_inches="tight", format="pdf")
             plt.close()
             return chart_f
+
+    def plot_text_tree(self, dirs: Dict[str, str]) -> None:
+        """
+        Plot and save the textual representation of the tree.
+
+        This method uses the `tree_ete` attribute of the class to generate and save
+        both a Newick format (.nwk) and a text format (.txt) representation of the tree.
+
+        Args:
+        - dirs: A dictionary containing directory paths, specifically 'tree' for saving tree files.
+
+        Returns:
+        - None
+        """
+        if self.tree_ete:
+            tree_nwk_f = os.path.join(dirs["tree"], "tree.nwk")
+            self.tree_ete.write(format=1, outfile=tree_nwk_f)
+            tree_txt_f = os.path.join(dirs["tree"], "tree.txt")
+            with open(tree_txt_f, "w") as tree_txt_fh:
+                tree_txt_fh.write(f"{self.tree_ete.get_ascii(show_internal=True, compact=False)}\n")  # fmt:skip
