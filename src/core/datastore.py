@@ -2,8 +2,10 @@ from core.alo_collections import AloCollection
 from core.build import (
     build_AloCollection,
     build_AloCollection_from_json,
+    build_ClusterCollection,
     build_ProteinCollection,
 )
+from core.clusters import ClusterCollection
 from core.input import InputData
 from core.proteins import ProteinCollection
 
@@ -42,4 +44,9 @@ class DataFactory:
             pfam_mapping_f=self.inputData.pfam_mapping_f,
             sequence_ids_f=self.inputData.sequence_ids_f,
             species_ids_f=self.inputData.species_ids_f,
+        )
+        self.clusterCollection: ClusterCollection = build_ClusterCollection(
+            cluster_f=self.inputData.cluster_f,
+            proteinCollection=self.proteinCollection,
+            infer_singletons=self.inputData.infer_singletons,
         )

@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional
 from ete3 import Tree
 
 from core.alo_collections import AloCollection
-from core.clusters import Cluster
+from core.clusters import Cluster, ClusterCollection
 from core.logic import (
     add_taxid_attributes,
     parse_attributes_from_config_file,
@@ -362,3 +362,24 @@ def build_ProteinCollection(
         )
 
     return proteinCollection
+
+
+def build_ClusterCollection(
+    cluster_f: str,
+    proteinCollection: ProteinCollection,
+    infer_singletons: Optional[bool],
+) -> ClusterCollection:
+    print(f"[STATUS] - Parsing {cluster_f} ... this may take a while")
+    cluster_list: List[Cluster] = parse_cluster_file(cluster_f, proteinCollection)
+
+    inferred_singletons_count = 0
+    if infer_singletons:
+        inferred_singletons_count = get_singletons(proteinCollection, cluster_list)
+
+    return ClusterCollection(
+        cluster_list,
+        inferred_singletons_count,
+        proteinCollection.functional_annotation_parsed,
+        proteinCollection.fastas_parsed,
+        proteinCollection.domain_sources,
+    )
