@@ -81,6 +81,19 @@ def build_AloCollection_from_json(
     taxon_idx_mapping_file: str,
     tree_f: Optional[str],
 ):
+    """
+    Builds an AloCollection object from API input.
+
+    Args:
+        json_list List[Dict[str,str]]: JSON list of attributes.
+        taxon_idx_mapping_file str: The path to the taxon-idx mapping file
+        nodesdb_f (str): Path to the nodes database file for inferring taxonomic ranks.
+        taxranks (List[str]): List of taxonomic ranks to be inferred.
+        tree_f (Optional[str]): Path to the tree file. If provided, ALOs are added from the tree.
+
+    Returns:
+        AloCollection: An instance of the AloCollection class containing parsed data.
+    """
     (
         proteomes,
         proteome_id_by_species_id,
