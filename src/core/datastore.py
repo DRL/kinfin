@@ -659,3 +659,89 @@ class DataFactory:
                         # mean_other_level = mean(protein_counts_other_level)
                         # log2fc_mean = log((mean_level/mean_other_level), 2)
                         # yield [clusterObj.cluster_id, level, other_level, mean_level, mean_other_level, log2fc_mean, pvalue]
+
+    def get_attribute_metrics(self, ALO):
+        """
+        Retrieves various metrics related to an Attribute-Level Orthology (ALO) object.
+
+        Parameters:
+        - ALO: An Attribute-Level Orthology (ALO) object containing cluster and protein metrics.
+
+        Returns:
+        - str: A tab-separated string containing the following metrics:
+        [attribute, level, cluster_total_count, protein_total_count, protein_total_span,
+        singleton_cluster_count, singleton_protein_count, singleton_protein_span,
+        specific_cluster_count, specific_protein_count, specific_protein_span,
+        shared_cluster_count, shared_protein_count, shared_protein_span,
+        specific_cluster_true_1to1_count, specific_cluster_fuzzy_count,
+        shared_cluster_true_1to1_count, shared_cluster_fuzzy_count,
+        absent_cluster_total_count, absent_cluster_singleton_count,
+        absent_cluster_specific_count, absent_cluster_shared_count,
+        proteome_count, TAXON_taxa]
+        """
+        attribute_metrics = []
+        attribute_metrics.append(ALO.attribute)
+        attribute_metrics.append(ALO.level)
+        attribute_metrics.append(
+            ALO.get_cluster_count_by_cluster_status_by_cluster_type("present", "total")
+        )
+        attribute_metrics.append(ALO.get_protein_count_by_cluster_type("total"))
+        attribute_metrics.append(ALO.get_protein_span_by_cluster_type("total"))
+        attribute_metrics.append(
+            ALO.get_cluster_count_by_cluster_status_by_cluster_type(
+                "present", "singleton"
+            )
+        )
+        attribute_metrics.append(ALO.get_protein_count_by_cluster_type("singleton"))
+        attribute_metrics.append(ALO.get_protein_span_by_cluster_type("singleton"))
+        attribute_metrics.append(
+            ALO.get_cluster_count_by_cluster_status_by_cluster_type(
+                "present", "specific"
+            )
+        )
+        attribute_metrics.append(ALO.get_protein_count_by_cluster_type("specific"))
+        attribute_metrics.append(ALO.get_protein_span_by_cluster_type("specific"))
+        attribute_metrics.append(
+            ALO.get_cluster_count_by_cluster_status_by_cluster_type("present", "shared")
+        )
+        attribute_metrics.append(ALO.get_protein_count_by_cluster_type("shared"))
+        attribute_metrics.append(ALO.get_protein_span_by_cluster_type("shared"))
+        attribute_metrics.append(
+            ALO.get_cluster_count_by_cluster_cardinality_by_cluster_type(
+                "specific", "true"
+            )
+        )
+        attribute_metrics.append(
+            ALO.get_cluster_count_by_cluster_cardinality_by_cluster_type(
+                "specific", "fuzzy"
+            )
+        )
+        attribute_metrics.append(
+            ALO.get_cluster_count_by_cluster_cardinality_by_cluster_type(
+                "shared", "true"
+            )
+        )
+        attribute_metrics.append(
+            ALO.get_cluster_count_by_cluster_cardinality_by_cluster_type(
+                "shared", "fuzzy"
+            )
+        )
+        attribute_metrics.append(
+            ALO.get_cluster_count_by_cluster_status_by_cluster_type("absent", "total")
+        )
+        attribute_metrics.append(
+            ALO.get_cluster_count_by_cluster_status_by_cluster_type(
+                "absent", "singleton"
+            )
+        )
+        attribute_metrics.append(
+            ALO.get_cluster_count_by_cluster_status_by_cluster_type(
+                "absent", "specific"
+            )
+        )
+        attribute_metrics.append(
+            ALO.get_cluster_count_by_cluster_status_by_cluster_type("absent", "shared")
+        )
+        attribute_metrics.append(ALO.proteome_count)
+        attribute_metrics.append(ALO.get_proteomes())
+        return "\t".join([str(field) for field in attribute_metrics])
