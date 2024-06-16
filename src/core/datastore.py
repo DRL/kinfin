@@ -1,5 +1,5 @@
 from core.alo_collections import AloCollection
-from core.build import build_AloCollection, build_ALoCollection_from_json
+from core.build import build_AloCollection, build_AloCollection_from_json
 from core.input import InputData
 
 
@@ -15,7 +15,7 @@ class DataFactory:
                 taxranks=self.inputData.taxranks,
             )
         elif self.inputData.taxon_idx_mapping_file is not None:
-            self.aloCollection: AloCollection = build_ALoCollection_from_json(
+            self.aloCollection: AloCollection = build_AloCollection_from_json(
                 nodesdb_f=self.inputData.nodesdb_f,
                 tree_f=self.inputData.tree_f,
                 taxranks=self.inputData.taxranks,

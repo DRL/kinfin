@@ -73,7 +73,8 @@ def build_AloCollection(
     )
 
 
-def build_ALoCollection_from_json(
+# api
+def build_AloCollection_from_json(
     nodesdb_f: str,
     taxranks: List[str],
     json_list: List[Dict[str, str]],
