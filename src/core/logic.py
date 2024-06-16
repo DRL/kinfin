@@ -391,3 +391,34 @@ def parse_pfam_mapping(pfam_mapping_f: str) -> Dict[str, str]:
                 raise ValueError(error_msg)
 
     return pfam_mapping_dict
+
+
+def parse_ipr_mapping(ipr_mapping_f: str) -> Dict[str, str]:
+    """
+    Parse an InterPro (IPR) mapping file to create a dictionary mapping InterPro IDs to their descriptions.
+
+    Args:
+    - ipr_mapping_f (str): Path to the InterPro mapping file, where each line contains an InterPro ID and its description.
+      Lines starting with "Active_site" are skipped as they are not relevant to mapping.
+
+    Returns:
+    - Dict[str, str]: A dictionary mapping InterPro IDs to their corresponding descriptions.
+
+    Raises:
+    - ValueError: If conflicting descriptions are found for the same InterPro ID.
+    """
+    print(f"[STATUS] - Parsing {ipr_mapping_f} ... ")
+
+    ipr_mapping_dict: Dict[str, str] = {}
+    for line in yield_file_lines(ipr_mapping_f):
+        if not line.startswith("Active_site"):
+            temp: List[str] = line.split()
+            ipr_id: str = temp[0]
+            ipr_desc: str = " ".join(temp[1:])
+            if ipr_id not in ipr_mapping_dict:
+                ipr_mapping_dict[ipr_id] = ipr_desc
+            else:
+                if not ipr_desc == ipr_mapping_dict[ipr_id]:
+                    error_msg = f"[ERROR] : Conflicting descriptions for {ipr_id}"
+                    raise ValueError(error_msg)
+    return ipr_mapping_dict
