@@ -149,3 +149,50 @@ def parse_attributes_from_config_file(
         attributes,
         level_by_attribute_by_proteome_id,
     )
+
+
+# common
+def add_taxid_attributes(
+    nodesdb_f: str,
+    taxranks: List[str],
+    attributes: List[str],
+    level_by_attribute_by_proteome_id: Dict[str, Dict[str, str]],
+) -> Tuple[List[str], Dict[str, Dict[str, str]]]:
+    """
+    Adds taxonomic attributes to the dictionary of attributes indexed by proteome ID.
+
+    Parameters:
+
+        - nodesdb_f (str): File path to the nodes database.
+        - taxranks (List[str]): List of taxonomic ranks to be included as attributes.
+        - attributes (List[str]): List of existing attributes.
+        - level_by_attribute_by_proteome_id (Dict[str, Dict[str, str]]): Dictionary where keys
+            are proteome IDs and values are dictionaries of attributes for each proteome ID,
+            including at least the "TAXID" attribute.
+
+    Returns:
+        Tuple[List[str], Dict[str, Dict[str, str]]]: A tuple containing:
+
+            - Updated list of attributes with taxonomic ranks added and "TAXID" removed.
+            - Updated dictionary of attributes indexed by proteome ID, with taxonomic attributes added and "TAXID" removed.
+    """
+    NODESDB = parse_nodesdb(str(nodesdb_f))
+    for proteome_id in level_by_attribute_by_proteome_id:
+        taxid = level_by_attribute_by_proteome_id[proteome_id]["TAXID"]
+        lineage = get_lineage(taxid=taxid, nodesdb=NODESDB, taxranks=taxranks)
+
+        # add lineage attribute/levels
+        for taxrank in taxranks:
+            level_by_attribute_by_proteome_id[proteome_id][taxrank] = lineage[taxrank]
+
+        # remove taxid-levels
+        del level_by_attribute_by_proteome_id[proteome_id]["TAXID"]
+
+    # remove taxid-attribute
+    attributes.remove("TAXID")
+
+    # add taxranks to rank
+    for taxrank in taxranks:
+        attributes.append(taxrank)
+
+    return attributes, level_by_attribute_by_proteome_id
