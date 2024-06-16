@@ -1,6 +1,45 @@
 from typing import Dict, List, Set, Tuple
 
-from core.utils import yield_file_lines
+from core.utils import progress, yield_file_lines
+
+
+# common
+def parse_nodesdb(filepath: str) -> Dict[str, Dict[str, str]]:
+    """
+    Parses the nodes database file.
+
+    Args:
+        filepath (str): The path to the nodes database file.
+
+    Returns:
+        Dict[str, Dict[str, str]]: A dictionary containing node information.
+            Keys are node identifiers, and values are dictionaries with keys:
+
+                - 'rank': The rank of the node.
+                - 'name': The name of the node.
+                - 'parent': The parent of the node.
+    """
+    print(f"[STATUS] - Parsing nodesDB {filepath}")
+
+    nodesdb: Dict[str, Dict[str, str]] = {}
+    nodesdb_count = 0
+    nodes_count = 0
+
+    for line in yield_file_lines(filepath):
+        if line.startswith("#"):
+            nodesdb_count = int(line.lstrip("# nodes_count = ").rstrip("\n"))
+        elif not line.strip():
+            pass
+        else:
+            nodes_count += 1
+            try:
+                node, rank, name, parent = line.rstrip("\n").split("\t")
+                nodesdb[node] = {"rank": rank, "name": name, "parent": parent}
+            except Exception:
+                pass
+            if nodesdb_count:
+                progress(nodes_count, 1000, nodesdb_count)
+    return nodesdb
 
 
 # cli
