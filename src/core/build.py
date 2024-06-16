@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 from ete3 import Tree
 
 from core.alo_collections import AloCollection
+from core.clusters import Cluster
 from core.logic import (
     add_taxid_attributes,
     parse_attributes_from_config_file,
@@ -16,6 +17,38 @@ from core.logic import (
 )
 from core.proteins import Protein, ProteinCollection
 from core.utils import progress, yield_file_lines
+
+
+def get_singletons(
+    proteinCollection: ProteinCollection,
+    cluster_list: List[Cluster],
+) -> int:
+    """
+    Identify and create singleton clusters for unclustered proteins in a protein collection.
+
+    Args:
+    - proteinCollection (ProteinCollection): An instance of ProteinCollection class.
+    - cluster_list (List[Cluster]): A list to which new singleton Cluster objects will be appended.
+
+    Returns:
+    - int: Number of singleton clusters created and appended to cluster_list.
+
+    This function iterates through proteins in the given protein collection that are not yet clustered.
+    For each unclustered protein, it creates a new singleton cluster and appends it to cluster_list.
+    """
+    print("[STATUS] - Inferring singletons ...")
+    singleton_idx = 0
+    for protein in proteinCollection.proteins_list:
+        if protein.clustered is False:
+            cluster_id = "singleton_%s" % singleton_idx
+            clusterObj = Cluster(
+                cluster_id,
+                [protein.protein_id],
+                proteinCollection,
+            )
+            cluster_list.append(clusterObj)
+            singleton_idx += 1
+    return singleton_idx
 
 
 # cli
