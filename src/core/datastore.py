@@ -427,3 +427,156 @@ class DataFactory:
         print(f"[STATUS] - Plotting {count_plot_f}")
         f.savefig(count_plot_f, format=self.inputData.plot_format)
         plt.close()
+
+    def get_header_line(self, filetype, attribute):
+        """
+        Generate a header line based on the specified filetype and attribute.
+
+        Args:
+        - filetype (str): The type of file for which the header line is generated.
+                          Possible values include "attribute_metrics", "cluster_metrics_ALO",
+                          "cluster_metrics", "cluster_metrics_domains", "cluster_metrics_domains_detailed",
+                          "cafe", "pairwise_representation_test", "cluster_1to1s_ALO".
+        - attribute (str): The specific attribute or level associated with the header line.
+
+        Returns:
+        - str: The generated header line as a tab-separated string.
+
+        Raises:
+        - ValueError: If the provided filetype is not recognized.
+
+        """
+        if filetype == "attribute_metrics":
+            attribute_metrics_header = []
+            attribute_metrics_header.append("#attribute")
+            attribute_metrics_header.append("taxon_set")
+            attribute_metrics_header.append("cluster_total_count")
+            attribute_metrics_header.append("protein_total_count")
+            attribute_metrics_header.append("protein_total_span")
+            attribute_metrics_header.append("singleton_cluster_count")
+            attribute_metrics_header.append("singleton_protein_count")
+            attribute_metrics_header.append("singleton_protein_span")
+            attribute_metrics_header.append("specific_cluster_count")
+            attribute_metrics_header.append("specific_protein_count")
+            attribute_metrics_header.append("specific_protein_span")
+            attribute_metrics_header.append("shared_cluster_count")
+            attribute_metrics_header.append("shared_protein_count")
+            attribute_metrics_header.append("shared_protein_span")
+            attribute_metrics_header.append("specific_cluster_true_1to1_count")
+            attribute_metrics_header.append("specific_cluster_fuzzy_count")
+            attribute_metrics_header.append("shared_cluster_true_1to1_count")
+            attribute_metrics_header.append("shared_cluster_fuzzy_count")
+            attribute_metrics_header.append("absent_cluster_total_count")
+            attribute_metrics_header.append("absent_cluster_singleton_count")
+            attribute_metrics_header.append("absent_cluster_specific_count")
+            attribute_metrics_header.append("absent_cluster_shared_count")
+            attribute_metrics_header.append("TAXON_count")
+            attribute_metrics_header.append("TAXON_taxa")
+            return "\t".join(attribute_metrics_header)
+        elif filetype == "cluster_metrics_ALO":
+            cluster_metrics_ALO_header = []
+            cluster_metrics_ALO_header.append("#cluster_id")
+            cluster_metrics_ALO_header.append("cluster_status")
+            cluster_metrics_ALO_header.append("cluster_type")
+            cluster_metrics_ALO_header.append("cluster_protein_count")
+            cluster_metrics_ALO_header.append("cluster_proteome_count")
+            cluster_metrics_ALO_header.append("TAXON_protein_count")
+            cluster_metrics_ALO_header.append("TAXON_mean_count")
+            cluster_metrics_ALO_header.append("non_taxon_mean_count")
+            cluster_metrics_ALO_header.append("representation")
+            cluster_metrics_ALO_header.append("log2_mean(TAXON/others)")
+            cluster_metrics_ALO_header.append("pvalue(TAXON vs. others)")
+            cluster_metrics_ALO_header.append("TAXON_coverage")
+            cluster_metrics_ALO_header.append("TAXON_count")
+            cluster_metrics_ALO_header.append("non_TAXON_count")
+            cluster_metrics_ALO_header.append("TAXON_taxa")
+            cluster_metrics_ALO_header.append("non_TAXON_taxa")
+            # for domain_source in clusterCollection.domain_sources:
+            #    cluster_metrics_ALO_header.append(domain_source)
+            return "\t".join(cluster_metrics_ALO_header)
+        elif filetype == "cluster_metrics":
+            cluster_metrics_header = []
+            cluster_metrics_header.append("#cluster_id")
+            cluster_metrics_header.append("cluster_protein_count")
+            cluster_metrics_header.append("protein_median_count")
+            cluster_metrics_header.append("TAXON_count")
+            cluster_metrics_header.append("attribute")
+            cluster_metrics_header.append("attribute_cluster_type")
+            cluster_metrics_header.append("protein_span_mean")
+            cluster_metrics_header.append("protein_span_sd")
+            cluster_metrics_header += [
+                "%s_count" % level
+                for level in sorted(
+                    self.aloCollection.ALO_by_level_by_attribute[attribute]
+                )
+            ]
+            if not attribute == "TAXON":
+                cluster_metrics_header += [
+                    "%s_median" % level
+                    for level in sorted(
+                        self.aloCollection.ALO_by_level_by_attribute[attribute]
+                    )
+                ]
+                cluster_metrics_header += [
+                    "%s_cov" % level
+                    for level in sorted(
+                        self.aloCollection.ALO_by_level_by_attribute[attribute]
+                    )
+                ]
+            return "\t".join(cluster_metrics_header)
+        elif filetype == "cluster_metrics_domains":
+            cluster_metrics_domains_header = []
+            cluster_metrics_domains_header.append("#cluster_id")
+            cluster_metrics_domains_header.append("cluster_protein_count")
+            cluster_metrics_domains_header.append("TAXON_count")
+            cluster_metrics_domains_header.append("protein_span_mean")
+            cluster_metrics_domains_header.append("protein_span_sd")
+            cluster_metrics_domains_header.append("fraction_secreted")
+            for domain_source in self.clusterCollection.domain_sources:
+                cluster_metrics_domains_header.append(domain_source)
+                cluster_metrics_domains_header.append(f"{domain_source}_entropy")
+            return "\t".join(cluster_metrics_domains_header)
+        elif filetype == "cluster_metrics_domains_detailed":
+            cluster_metrics_domains_detailed_header = []
+            cluster_metrics_domains_detailed_header.append("#cluster_id")
+            cluster_metrics_domains_detailed_header.append("domain_source")
+            cluster_metrics_domains_detailed_header.append("domain_id")
+            cluster_metrics_domains_detailed_header.append("domain_description")
+            cluster_metrics_domains_detailed_header.append("protein_count")
+            cluster_metrics_domains_detailed_header.append("protein_count_with_domain")
+            cluster_metrics_domains_detailed_header.append("TAXA_with_domain_fraction")
+            cluster_metrics_domains_detailed_header.append("TAXA_with_domain")
+            cluster_metrics_domains_detailed_header.append("TAXA_without_domain")
+            return "\t".join(cluster_metrics_domains_detailed_header)
+        elif filetype == "cafe":
+            cafe_header = []
+            cafe_header.append("#ID")
+            for level in sorted(self.aloCollection.ALO_by_level_by_attribute["TAXON"]):
+                cafe_header.append(level)
+            return "\t".join(cafe_header)
+        elif filetype == "pairwise_representation_test":
+            pairwise_representation_test_header = []
+            pairwise_representation_test_header.append("#cluster_id")
+            pairwise_representation_test_header.append("TAXON_1")
+            pairwise_representation_test_header.append("TAXON_1_mean")
+            pairwise_representation_test_header.append("TAXON_2")
+            pairwise_representation_test_header.append("TAXON_2_mean")
+            pairwise_representation_test_header.append("log2_mean(TAXON_1/TAXON_2)")
+            pairwise_representation_test_header.append(
+                "mwu_pvalue(TAXON_1 vs. TAXON_2)"
+            )
+            # pairwise_representation_test_header.append("go_terms")
+            # for domain_source in clusterCollection.domain_sources:
+            #    pairwise_representation_test_header.append(domain_source)
+            return "\t".join(pairwise_representation_test_header)
+        elif filetype == "cluster_1to1s_ALO":
+            cluster_1to1s_ALO_header = []
+            cluster_1to1s_ALO_header.append("#cluster_id")
+            cluster_1to1s_ALO_header.append("cluster_type")
+            cluster_1to1s_ALO_header.append("1to1_type")
+            cluster_1to1s_ALO_header.append("proteome_count")
+            cluster_1to1s_ALO_header.append("percentage_at_target_count")
+            return "\t".join(cluster_1to1s_ALO_header)
+        else:
+            error_msg = f"[ERROR] {filetype} is not a valid header 'filetype'"
+            raise ValueError(error_msg)
