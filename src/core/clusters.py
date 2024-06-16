@@ -43,6 +43,7 @@ class Cluster:
         ] = {}
         self.protein_median: Optional[float] = None
         self.protein_length_stats: Optional[Dict[str,float]]= self.compute_protein_length_stats(proteinCollection, self.protein_ids)  # fmt:skip
+        self.secreted_cluster_coverage: float = self.compute_secreted_cluster_coverage(proteinCollection, self.protein_ids, self.protein_count)  # fmt:skip
 
     def compute_protein_length_stats(
         self,
@@ -71,6 +72,29 @@ class Cluster:
             protein_length_stats["median"] = median(protein_lengths)
             protein_length_stats["sd"] = sd(protein_lengths)
             return protein_length_stats
+
+    def compute_secreted_cluster_coverage(
+        self,
+        proteinCollection: ProteinCollection,
+        protein_ids: Set[str],
+        protein_count: int,
+    ) -> float:
+        """
+        Computes the fraction of secreted proteins in a given set of protein IDs.
+
+        Parameters:
+        - proteinCollection: A ProteinCollection object containing protein data.
+        - protein_ids: A set of protein IDs to compute secreted protein coverage.
+        - protein_count: Total count of proteins in the cluster.
+
+        Returns:
+        - float: Fraction of secreted proteins in the provided set of protein IDs.
+        """
+        secreted = 0
+        for protein_id in protein_ids:
+            if proteinCollection.proteins_by_protein_id[protein_id].secreted:
+                secreted += 1
+        return secreted / protein_count
 
 
 class ClusterCollection:
