@@ -329,6 +329,7 @@ def parse_attributes_from_json(
         level_by_attribute_by_proteome_id,
     )
 
+
 def parse_fasta_dir(species_ids_f: str, fasta_dir: str) -> Dict[str, int]:
     """
     Parse a species IDs file to retrieve fasta file names and then calculate
@@ -359,3 +360,34 @@ def parse_fasta_dir(species_ids_f: str, fasta_dir: str) -> Dict[str, int]:
             fasta_len_by_protein_id[header] = length
 
     return fasta_len_by_protein_id
+
+
+def parse_pfam_mapping(pfam_mapping_f: str) -> Dict[str, str]:
+    """
+    Parse a PFAM mapping file to create a dictionary mapping PFAM domain IDs to their descriptions.
+
+    Args:
+    - pfam_mapping_f (str): Path to the PFAM mapping file, where each line contains tab-separated values
+      with the domain ID in the first column and its description in the fifth column.
+
+    Returns:
+    - Dict[str, str]: A dictionary mapping PFAM domain IDs to their corresponding descriptions.
+
+    Raises:
+    - ValueError: If conflicting descriptions are found for the same domain ID.
+    """
+    print(f"[STATUS] - Parsing {pfam_mapping_f} ... ")
+
+    pfam_mapping_dict: Dict[str, str] = {}
+    for line in yield_file_lines(pfam_mapping_f):
+        temp: List[str] = line.split("\t")
+        domain_id: str = temp[0]
+        domain_desc: str = temp[4]
+        if domain_id not in pfam_mapping_dict:
+            pfam_mapping_dict[domain_id] = domain_desc
+        else:
+            if not domain_desc == pfam_mapping_dict[domain_id]:
+                error_msg = f"[ERROR] : Conflicting descriptions for {domain_id}"
+                raise ValueError(error_msg)
+
+    return pfam_mapping_dict
