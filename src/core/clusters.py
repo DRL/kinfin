@@ -44,6 +44,7 @@ class Cluster:
         self.protein_median: Optional[float] = None
         self.protein_length_stats: Optional[Dict[str,float]]= self.compute_protein_length_stats(proteinCollection, self.protein_ids)  # fmt:skip
         self.secreted_cluster_coverage: float = self.compute_secreted_cluster_coverage(proteinCollection, self.protein_ids, self.protein_count)  # fmt:skip
+        self.domain_counter_by_domain_source: Dict[str, Counter[str]] = self.compute_domain_counter_by_domain_source(proteinCollection, self.protein_ids)  # fmt:skip
 
     def compute_protein_length_stats(
         self,
@@ -95,6 +96,42 @@ class Cluster:
             if proteinCollection.proteins_by_protein_id[protein_id].secreted:
                 secreted += 1
         return secreted / protein_count
+
+    def compute_domain_counter_by_domain_source(
+        self,
+        proteinCollection: ProteinCollection,
+        protein_ids: Set[str],
+    ) -> Dict[str, Counter[str]]:
+        """
+        Computes the aggregated domain counts by domain source for a set of protein IDs.
+
+        Parameters:
+        - proteinCollection: A ProteinCollection object containing protein data.
+        - protein_ids: A set of protein IDs for which domain counts are computed.
+
+        Returns:
+        - Dict[str, Counter[str]]: A dictionary where keys are domain sources and values are
+          Counters mapping domain IDs to their respective counts.
+        """
+        cluster_domain_counter_by_domain_source: Dict[str, Counter[str]] = {}
+        for protein_id in protein_ids:
+            protein_domain_counter_by_domain_source: Dict[str, Counter[str]] = (
+                proteinCollection.proteins_by_protein_id[
+                    protein_id
+                ].domain_counter_by_domain_source
+            )
+            if protein_domain_counter_by_domain_source:
+                for domain_source, protein_domain_counter in list(
+                    protein_domain_counter_by_domain_source.items()
+                ):
+                    if domain_source not in cluster_domain_counter_by_domain_source:
+                        cluster_domain_counter_by_domain_source[domain_source] = (
+                            Counter()
+                        )
+                    cluster_domain_counter_by_domain_source[
+                        domain_source
+                    ] += protein_domain_counter
+        return cluster_domain_counter_by_domain_source
 
 
 class ClusterCollection:
