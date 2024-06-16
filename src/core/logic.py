@@ -1,3 +1,4 @@
+import json
 from typing import Dict, List, Set, Tuple
 
 import ete3
@@ -201,7 +202,6 @@ def add_taxid_attributes(
     return attributes, level_by_attribute_by_proteome_id
 
 
-
 # cli
 def parse_tree_from_file(
     tree_f: str,
@@ -262,3 +262,68 @@ def parse_tree_from_file(
         node_idx_by_proteome_ids[proteome_ids] = node.name
     return tree_ete, node_idx_by_proteome_ids
 
+
+# api
+def parse_attributes_from_json(
+    json_list: List[Dict[str, str]],
+    taxon_idx_mapping_file: str,
+) -> Tuple[Set[str], Dict[str, str], List[str], Dict[str, Dict[str, str]]]:
+    """
+    Parses attributes from a JSON list.
+
+    Args:
+        json_list List[Dict[str,str]]: JSON list of attributes.
+        taxon_idx_mapping_file str: The path to the taxon-idx mapping file
+
+    Returns:
+        Tuple[Set[str], Dict[str, str], List[str], Dict[str, Dict[str, str]]]: A tuple containing:
+            - A set of proteome IDs.
+            - A dictionary mapping species IDs to proteome IDs.
+            - A list of attributes.
+            - A dictionary mapping proteome IDs to dictionaries, where each inner dictionary
+              maps attributes to their corresponding levels.
+
+    Raises:
+        FileNotFoundError: If the specified configuration file is not found.
+        ValueError: If there are errors in the configuration file format or content.
+
+    Note:
+        - The configuration file is expected to have a header line starting with '#',
+          where the first element is 'IDX' and the second element is 'TAXON'.
+        - Each subsequent non-empty line in the configuration file should contain
+          comma-separated values corresponding to the attributes defined in the header line.
+        - The 'TAXON' attribute is expected to be unique for each line.
+    """
+
+    print("[STATUS] - Parsing JSON list...")
+    attributes: List[str] = []
+    level_by_attribute_by_proteome_id: Dict[str, Dict[str, str]] = {}
+    proteomes: Set[str] = set()
+    proteome_id_by_species_id: Dict[str, str] = {}
+
+    attributes = list(json_list[0].keys())
+    attributes.insert(0, "IDX")
+
+    with open(taxon_idx_mapping_file, "r") as f:
+        taxon_idx_mapping = json.load(f)
+
+    attributes.insert(0, "all")
+
+    for entry in json_list:
+        proteome_id = entry["TAXON"]
+        species_id = taxon_idx_mapping[proteome_id]
+        proteomes.add(proteome_id)
+        proteome_id_by_species_id[species_id] = proteome_id
+
+        level_by_attribute_by_proteome_id[proteome_id] = {
+            attribute: entry.get(attribute, "") for attribute in attributes[1:]
+        }
+        level_by_attribute_by_proteome_id[proteome_id]["IDX"] = proteome_id
+        level_by_attribute_by_proteome_id[proteome_id]["all"] = "all"
+    attributes.insert(0, "all")
+    return (
+        proteomes,
+        proteome_id_by_species_id,
+        attributes,
+        level_by_attribute_by_proteome_id,
+    )
