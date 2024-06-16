@@ -331,3 +331,87 @@ class AloCollection:
         ts.guiding_lines_color = "lightgrey"
         print(f"[STATUS] - Writing tree {tree_f}... ")
         self.tree_ete.render(tree_f, dpi=600, h=1189, units="mm", tree_style=ts)  # type: ignore
+
+    def write_tree(
+        self,
+        dirs: Dict[str, str],
+        render_tree: bool,
+        plot_format: str,
+        fontsize: int,
+    ) -> None:
+        """
+        Write tree data to files and optionally render a graphical tree representation.
+
+        This method generates and saves various metrics and data related to the tree structure,
+        including node statistics and cluster metrics. It can also render a graphical tree
+        representation if specified.
+
+        Args:
+        - dirs: A dictionary containing directory paths, including 'tree' for saving tree-related files.
+        - render_tree: Boolean flag indicating whether to render a graphical tree representation.
+        - plot_format: Format for saving plots ('png', 'pdf', etc.).
+        - fontsize: Font size used for plotting.
+
+        Returns:
+        - None
+        """
+        if self.tree_ete:
+            print("[STATUS] - Writing data for tree ... ")
+            # Node stats
+            node_stats_f = os.path.join(dirs["tree"], "tree.node_metrics.txt")
+            node_stats_header: List[str] = []
+            node_stats_header.append("#nodeID")
+            node_stats_header.append("taxon_specific_apomorphies_singletons")
+            node_stats_header.append("taxon_specific_apomorphies_non_singletons")
+            node_stats_header.append("node_specific_synapomorphies_total")
+            node_stats_header.append("node_specific_synapomorphies_complete_presence")
+            node_stats_header.append("node_specific_synapomorphies_partial_absence")
+            node_stats_header.append("proteome_count")
+            node_stats: List[str] = []
+            node_stats.append("\t".join(node_stats_header))
+            # Cluster node stats
+            node_clusters_f = os.path.join(dirs["tree"], "tree.cluster_metrics.txt")
+            node_clusters_header = []
+            node_clusters_header.append("#clusterID")
+            node_clusters_header.append("nodeID")
+            node_clusters_header.append("synapomorphy_type")
+            node_clusters_header.append("node_taxon_coverage")
+            node_clusters_header.append("children_coverage")
+            node_clusters_header.append("node_taxa_present")
+            node_clusters = []
+            node_clusters.append("\t".join(node_clusters_header))
+            # header_f_by_node_name
+            header_f_by_node_name = {}
+            charts_f_by_node_name = {}
+            for node in self.tree_ete.traverse("levelorder"):  # type: ignore
+                for synapomorphic_cluster_string in node.synapomorphic_cluster_strings:  # type: ignore
+                    node_clusters.append(
+                        "\t".join(
+                            [
+                                str(string)
+                                for string in list(synapomorphic_cluster_string)
+                            ]
+                        )
+                    )
+                node_stats_line = []
+                node_stats_line.append(node.name)
+                node_stats_line.append(node.apomorphic_cluster_counts["singletons"])  # type: ignore
+                node_stats_line.append(node.apomorphic_cluster_counts["non_singletons"])  # type: ignore
+                node_stats_line.append(node.synapomorphic_cluster_counts["complete_presence"] + node.synapomorphic_cluster_counts["partial_absence"])  # type: ignore
+                node_stats_line.append(node.synapomorphic_cluster_counts["complete_presence"])  # type: ignore
+                node_stats_line.append(node.synapomorphic_cluster_counts["partial_absence"])  # type: ignore
+                node_stats_line.append(len(node.proteome_ids))  # type: ignore
+                node_stats.append("\t".join([str(string) for string in node_stats_line]))  # fmt:skip
+                if render_tree:
+                    header_f_by_node_name[node.name] = self.generate_header_for_node(node, dirs)  # fmt:skip
+                charts_f_by_node_name[node.name] = self.generate_chart_for_node(node, dirs, plot_format, fontsize)  # fmt:skip
+            print("[STATUS] - Writing %s ... " % node_stats_f)
+            with open(node_stats_f, "w") as node_stats_fh:
+                node_stats_fh.write("\n".join(node_stats) + "\n")
+            print("[STATUS] - Writing %s ... " % node_clusters_f)
+            with open(node_clusters_f, "w") as node_clusters_fh:
+                node_clusters_fh.write("\n".join(node_clusters) + "\n")
+            if render_tree:
+                self.plot_tree(header_f_by_node_name, charts_f_by_node_name, dirs)
+            else:
+                self.plot_text_tree(dirs)
