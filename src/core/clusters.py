@@ -3,6 +3,7 @@ from typing import DefaultDict, Dict, FrozenSet, List, Literal, Optional, Set
 
 from core.logic import compute_protein_ids_by_proteome
 from core.proteins import ProteinCollection
+from core.utils import mean, median, sd
 
 
 class Cluster:
@@ -41,6 +42,35 @@ class Cluster:
             Literal["singleton", "shared", "specific"],
         ] = {}
         self.protein_median: Optional[float] = None
+        self.protein_length_stats: Optional[Dict[str,float]]= self.compute_protein_length_stats(proteinCollection, self.protein_ids)  # fmt:skip
+
+    def compute_protein_length_stats(
+        self,
+        proteinCollection: ProteinCollection,
+        protein_ids: Set[str],
+    ) -> Optional[Dict[str, float]]:
+        """
+        Computes statistics (mean, median, standard deviation) of protein lengths.
+
+        Parameters:
+        - proteinCollection: A ProteinCollection object containing protein data.
+        - protein_ids: A set of protein IDs for which lengths are to be computed.
+
+        Returns:
+        - Optional[Dict[str, float]]: A dictionary containing 'mean', 'median', and 'sd'
+          (standard deviation) of protein lengths, if all lengths are available and at least
+          one protein ID is provided. Returns None if no valid protein lengths are found.
+        """
+        protein_lengths: List[int | None] = [
+            proteinCollection.proteins_by_protein_id[protein_id].length
+            for protein_id in protein_ids
+        ]
+        if all(protein_lengths):
+            protein_length_stats: Dict[str, float] = {}
+            protein_length_stats["mean"] = mean(protein_lengths)
+            protein_length_stats["median"] = median(protein_lengths)
+            protein_length_stats["sd"] = sd(protein_lengths)
+            return protein_length_stats
 
 
 class ClusterCollection:
