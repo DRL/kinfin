@@ -1,7 +1,7 @@
 import json
 import os
 from collections import defaultdict
-from typing import DefaultDict, Dict, List, Literal, Set, Tuple
+from typing import DefaultDict, Dict, List, Literal, Optional, Set, Tuple
 
 import ete3
 from ete3 import Tree, TreeNode
@@ -502,4 +502,53 @@ def get_attribute_cluster_type(
             return "shared"
         else:
             return "specific"
+
+
+def get_ALO_cluster_cardinality(
+    ALO_proteome_counts_in_cluster: List[int],
+    fuzzy_range: Set[int],
+    fuzzy_count: int = 1,
+    fuzzy_fraction: float = 0.75,
+) -> Optional[str]:
+    """
+    Determine the cardinality type of a cluster based on ALO proteome counts.
+
+    Args:
+        ALO_proteome_counts_in_cluster (List[int]): List of ALO proteome counts in the cluster.
+        fuzzy_range (Set[int]): Set of integers representing the range of fuzzy counts.
+        fuzzy_count (int, optional): Specific count considered as fuzzy. Default is 1.
+        fuzzy_fraction (float, optional): Fraction threshold for considering a cluster as 'fuzzy'. Default is 0.75.
+
+    Returns:
+        Optional[str]: Returns "true" (str) if all counts are 1, "fuzzy" (str) if the cluster meets fuzzy criteria,
+                       and None otherwise.
+    """
+    if len(ALO_proteome_counts_in_cluster) > 2:
+        length = len(ALO_proteome_counts_in_cluster)
+        if all(count == 1 for count in ALO_proteome_counts_in_cluster):
+            return "true"
+        else:
+            fuzzycount_count = len(
+                [
+                    ALO_proteome_counts
+                    for ALO_proteome_counts in ALO_proteome_counts_in_cluster
+                    if ALO_proteome_counts == fuzzy_count
+                ]
+            )
+
+            fuzzyrange_count = len(
+                [
+                    ALO_proteome_counts
+                    for ALO_proteome_counts in ALO_proteome_counts_in_cluster
+                    if ALO_proteome_counts in fuzzy_range
+                ]
+            )
+
+            fuzzy_fr = fuzzycount_count / length
+
+            if fuzzy_fr >= fuzzy_fraction:
+                if fuzzycount_count + fuzzyrange_count == length:
+                    return "fuzzy"
+
+    return None
 
