@@ -1,5 +1,6 @@
 import os
 import shutil
+import time
 from typing import Dict, List, Literal, Optional
 
 from core.alo_collections import AloCollection
@@ -13,7 +14,7 @@ from core.clusters import Cluster, ClusterCollection
 from core.input import InputData
 from core.logic import get_ALO_cluster_cardinality, get_attribute_cluster_type
 from core.proteins import ProteinCollection
-from core.utils import median, statistic
+from core.utils import median, progress, statistic
 
 
 class DataFactory:
@@ -347,3 +348,21 @@ class DataFactory:
                 if not count == 0
             ]
         )
+
+    def analyse_clusters(self) -> None:
+        if self.clusterCollection.inferred_singletons_count:
+            print(f"[STATUS]\t - Clusters found = {self.clusterCollection.cluster_count} (of which {self.clusterCollection.inferred_singletons_count} were inferred singletons)")  # fmt:skip
+
+        else:
+            print(f"[STATUS]\t - Clusters found = {self.clusterCollection.cluster_count}")  # fmt:skip
+
+        parse_steps = self.clusterCollection.cluster_count / 100
+
+        print("[STATUS] - Analysing clusters ...")
+        analyse_clusters_start = time.time()
+        for idx, cluster in enumerate(self.clusterCollection.cluster_list):
+            self.analyse_cluster(cluster)
+            progress(idx + 1, parse_steps, self.clusterCollection.cluster_count)
+        analyse_clusters_end = time.time()
+        analyse_clusters_elapsed = analyse_clusters_end - analyse_clusters_start
+        print(f"[STATUS] - Took {analyse_clusters_elapsed}s to analyse clusters")
