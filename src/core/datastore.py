@@ -2,7 +2,7 @@ import os
 import shutil
 import time
 from collections import Counter
-from typing import Dict, List, Literal, Optional
+from typing import Any, Dict, Generator, List, Literal, Optional
 
 import matplotlib as mat
 import numpy as np
@@ -580,3 +580,82 @@ class DataFactory:
         else:
             error_msg = f"[ERROR] {filetype} is not a valid header 'filetype'"
             raise ValueError(error_msg)
+
+    def pairwise_representation_test(
+        self, clusterObj, attribute, level, levels_seen, levels
+    ) -> Generator[Any, Any, Any]:
+        """
+        Conducts pairwise statistical tests between the protein counts of a given cluster
+        at a specific level (`level`) and all other levels (`other_level`) within a set of `levels`.
+
+        Parameters:
+        - clusterObj: The cluster object for which pairwise tests are conducted.
+        - attribute: The attribute or level associated with the cluster metrics.
+        - level: The specific level within the attribute for comparisons.
+        - levels_seen: A set containing levels that have already been processed.
+        - levels: A collection of all levels within the attribute for potential comparisons.
+
+        Yields:
+        - List: A list containing the following statistical results:
+        [cluster_id, level, other_level, mean_ALO_count, mean_non_ALO_count, mwu_log2_m
+
+        """
+
+        for other_level in set(levels).difference(levels_seen):
+            if not other_level == level:
+                other_ALO = self.aloCollection.ALO_by_level_by_attribute[attribute][
+                    other_level
+                ]
+                if (
+                    other_ALO
+                    and len(clusterObj.proteome_ids.intersection(other_ALO.proteomes))
+                    >= 2
+                ):
+                    protein_counts_level = [
+                        count
+                        for count in clusterObj.protein_counts_of_proteomes_by_level_by_attribute[
+                            attribute
+                        ][
+                            level
+                        ]
+                        if count > 0
+                    ]
+                    protein_counts_other_level = [
+                        count
+                        for count in clusterObj.protein_counts_of_proteomes_by_level_by_attribute[
+                            attribute
+                        ][
+                            other_level
+                        ]
+                        if count > 0
+                    ]
+                    if protein_counts_level and protein_counts_other_level:
+                        (
+                            mwu_pvalue,
+                            mwu_log2_mean,
+                            mean_ALO_count,
+                            mean_non_ALO_count,
+                        ) = statistic(
+                            protein_counts_level,
+                            protein_counts_other_level,
+                            self.inputData.test,
+                            self.inputData.min_proteomes,
+                        )
+                        yield [
+                            clusterObj.cluster_id,
+                            level,
+                            other_level,
+                            mean_ALO_count,
+                            mean_non_ALO_count,
+                            mwu_log2_mean,
+                            mwu_pvalue,
+                        ]
+                        # pvalue = None
+                        # try:
+                        #     pvalue = scipy.stats.mannwhitneyu(protein_counts_level, protein_counts_other_level, alternative="two-sided")[1]
+                        # except:
+                        #     pvalue = 1.0
+                        # mean_level = mean(protein_counts_level)
+                        # mean_other_level = mean(protein_counts_other_level)
+                        # log2fc_mean = log((mean_level/mean_other_level), 2)
+                        # yield [clusterObj.cluster_id, level, other_level, mean_level, mean_other_level, log2fc_mean, pvalue]
