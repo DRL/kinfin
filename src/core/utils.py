@@ -105,7 +105,7 @@ def read_fasta_len(fasta_file: str) -> Generator[Tuple[str, int], Any, None]:
         yield header, len("".join(seqs))
 
 
-def median(lst):
+def median(lst) -> float:
     list_sorted = sorted(lst)
     list_length = len(lst)
     index = (list_length - 1) // 2
@@ -115,14 +115,14 @@ def median(lst):
         return (list_sorted[index] + list_sorted[index + 1]) / 2.0
 
 
-def mean(lst):
+def mean(lst) -> float:
     if lst:
         return float(sum(lst)) / len(lst)
     else:
         return 0.0
 
 
-def sd(lst, population=True):
+def sd(lst, population=True) -> float:
     n = len(lst)
     differences = [x_ - mean(lst) for x_ in lst]
     sq_differences = [d**2 for d in differences]
