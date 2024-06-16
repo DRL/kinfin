@@ -41,14 +41,45 @@ def get_singletons(
     for protein in proteinCollection.proteins_list:
         if protein.clustered is False:
             cluster_id = "singleton_%s" % singleton_idx
-            clusterObj = Cluster(
+            cluster = Cluster(
                 cluster_id,
                 [protein.protein_id],
                 proteinCollection,
             )
-            cluster_list.append(clusterObj)
+            cluster_list.append(cluster)
             singleton_idx += 1
     return singleton_idx
+
+
+def parse_cluster_file(
+    cluster_f: str,
+    proteinCollection: ProteinCollection,
+) -> List[Cluster]:
+    """
+    Parses a cluster file to create Cluster objects and updates protein information.
+
+    Args:
+        cluster_f (str): Path to the cluster file.
+        proteinCollection (ProteinCollection): Collection of Protein objects.
+
+    Returns:
+        List[Cluster]: List of Cluster objects created from the file.
+
+    Raises:
+        FileNotFoundError: If the cluster file `cluster_f` does not exist.
+    """
+    cluster_list: List[Cluster] = []
+    with open(cluster_f) as fh:
+        for line in fh:
+            temp: List[str] = line.rstrip("\n").split(" ")
+            cluster_id, protein_ids = temp[0].replace(":", ""), temp[1:]
+            protein_ids = [protein_id for protein_id in protein_ids if protein_id]
+            cluster = Cluster(cluster_id, protein_ids, proteinCollection)
+            for protein_id in protein_ids:
+                protein = proteinCollection.proteins_by_protein_id[protein_id]
+                protein.clustered = True
+            cluster_list.append(cluster)
+    return cluster_list
 
 
 # cli
