@@ -1,7 +1,7 @@
 import json
 import os
 from collections import defaultdict
-from typing import DefaultDict, Dict, List, Set, Tuple
+from typing import DefaultDict, Dict, List, Literal, Set, Tuple
 
 import ete3
 from ete3 import Tree, TreeNode
@@ -473,3 +473,33 @@ def compute_protein_ids_by_proteome(
     for protein_id, proteome_id in list(proteomes_by_protein_id.items()):
         protein_ids_by_proteome_id[proteome_id].add(protein_id)
     return protein_ids_by_proteome_id
+
+
+# common
+def get_attribute_cluster_type(
+    singleton,
+    implicit_protein_ids_by_proteome_id_by_level,
+) -> Literal["singleton", "shared", "specific"]:
+    """
+    Determines the type of cluster based on the parameters.
+
+    Parameters:
+    - singleton: A boolean indicating whether the cluster is a singleton.
+    - implicit_protein_ids_by_proteome_id_by_level: A dictionary representing protein ids 
+      grouped by proteome id at different levels.
+
+    Returns:
+    - One of the following strings:
+      - "singleton": If `singleton` is True.
+      - "shared": If there are protein ids grouped under multiple proteome ids.
+      - "specific": If there is only one proteome id with protein ids.
+
+    """
+    if singleton:
+        return "singleton"
+    else:
+        if len(implicit_protein_ids_by_proteome_id_by_level) > 1:
+            return "shared"
+        else:
+            return "specific"
+
