@@ -1,10 +1,11 @@
 import json
+import os
 from typing import Dict, List, Set, Tuple
 
 import ete3
 from ete3 import Tree, TreeNode
 
-from core.utils import progress, yield_file_lines
+from core.utils import progress, read_fasta_len, yield_file_lines
 
 
 # common
@@ -327,3 +328,34 @@ def parse_attributes_from_json(
         attributes,
         level_by_attribute_by_proteome_id,
     )
+
+def parse_fasta_dir(species_ids_f: str, fasta_dir: str) -> Dict[str, int]:
+    """
+    Parse a species IDs file to retrieve fasta file names and then calculate
+    lengths of sequences from corresponding FASTA files.
+
+    Args:
+    - species_ids_f (str): Path to the species IDs file, where each line contains
+      an index and a corresponding FASTA file name separated by ': '.
+    - fasta_dir (str): Directory path where the FASTA files are located.
+
+    Returns:
+    - Dict[str, int]: A dictionary mapping header strings (protein IDs) to their
+      corresponding sequence lengths extracted from the FASTA files.
+    """
+    print("[STATUS] - Parsing FASTAs ...")
+    fasta_file_by_species_id: Dict[str, str] = {}
+
+    for line in yield_file_lines(species_ids_f):
+        if not line.startswith("#"):
+            idx, fasta = line.split(": ")
+            fasta_file_by_species_id[idx] = fasta
+
+    fasta_len_by_protein_id: Dict[str, int] = {}
+    for _, fasta_f in list(fasta_file_by_species_id.items()):
+        fasta_f = os.path.join(fasta_dir, fasta_f)
+
+        for header, length in read_fasta_len(fasta_f):
+            fasta_len_by_protein_id[header] = length
+
+    return fasta_len_by_protein_id
