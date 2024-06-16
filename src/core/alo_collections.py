@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 import ete3
 import matplotlib as mat
+import numpy as np
 from ete3 import Tree
 
 from core.alo import AttributeLevel
@@ -198,3 +199,60 @@ class AloCollection:
         fig.savefig(node_header_f, pad=0, bbox_inches="tight", format="png")
         plt.close()
         return node_header_f
+
+    def generate_chart_for_node(
+        self,
+        node,
+        dirs: Dict[str, str],
+        plot_format: str,
+        fontsize: int,
+    ) -> Optional[str]:
+        """
+        Generate and save a histogram chart for a given node's synapomorphies.
+
+        Args:
+        - node: The node object containing synapomorphic cluster strings.
+        - dirs: A dictionary containing directory paths, specifically 'tree_charts' for saving charts.
+        - plot_format: The format in which to save the chart ('png' or 'pdf').
+        - fontsize: Font size for axis labels and ticks.
+
+        Returns:
+        - Optional[str]: Path to the saved chart file if successful, None otherwise.
+        """
+
+        proteome_coverages = []
+        for synapomorphic_cluster_string in node.synapomorphic_cluster_strings:
+            proteome_coverages.append(float(synapomorphic_cluster_string[3]))
+        if proteome_coverages:
+            chart_f = os.path.join(dirs["tree_charts"], f"{node.name}.barchart.png")
+            f, ax = plt.subplots(figsize=(3.0, 3.0))
+            ax.set_facecolor("white")
+            x_values = np.array(proteome_coverages)
+            ax.hist(
+                x_values,
+                histtype="stepfilled",
+                align="mid",
+                bins=np.arange(0.0, 1.0 + 0.1, 0.1),
+            )
+            ax.set_xlim(-0.1, 1.1)
+            for tick in ax.xaxis.get_majorticklabels():
+                tick.set_fontsize(fontsize - 2)
+                tick.set_rotation("vertical")
+            for tick in ax.yaxis.get_majorticklabels():
+                tick.set_fontsize(fontsize - 2)
+            ax.set_frame_on(False)
+            ax.xaxis.grid(True, linewidth=1, which="major", color="lightgrey")
+            ax.yaxis.grid(True, linewidth=1, which="major", color="lightgrey")
+            f.suptitle("Synapomorphies", y=1.1)
+            ax.set_ylabel("Count", fontsize=fontsize)
+            ax.set_xlabel("Proteome coverage", fontsize=fontsize)
+            print(f"[STATUS]\t- Plotting {chart_f}")
+            f.savefig(chart_f, bbox_inches="tight", format="png")
+            if plot_format == "pdf":
+                pdf_chart_f = os.path.join(
+                    dirs["tree_charts"], f"{node.name}.barchart.pdf"
+                )
+                print(f"[STATUS]\t- Plotting {pdf_chart_f}")
+                f.savefig(pdf_chart_f, bbox_inches="tight", format="pdf")
+            plt.close()
+            return chart_f
