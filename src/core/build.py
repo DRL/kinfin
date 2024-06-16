@@ -319,4 +319,15 @@ def build_ProteinCollection(
     else:
         print("[STATUS] - No Fasta-Dir given, no AA-span information will be reported ...")  # fmt: skip
 
+    if functional_annotation_f is not None:
+        parse_domains_from_functional_annotations_file(
+            functional_annotation_f=functional_annotation_f,
+            pfam_mapping=pfam_mapping,
+            ipr_mapping=ipr_mapping,
+            pfam_mapping_f=pfam_mapping_f,
+            go_mapping_f=go_mapping_f,
+            ipr_mapping_f=ipr_mapping_f,
+            proteinCollection=proteinCollection,
+        )
+
     return proteinCollection
