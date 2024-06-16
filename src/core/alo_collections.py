@@ -1,4 +1,5 @@
 import os
+import random
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 import ete3
@@ -8,8 +9,10 @@ from ete3 import Tree
 
 from core.alo import AttributeLevel
 from core.config import ATTRIBUTE_RESERVED
+from core.utils import median
 
 mat.use("agg")
+
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter, NullFormatter
 
@@ -415,3 +418,140 @@ class AloCollection:
                 self.plot_tree(header_f_by_node_name, charts_f_by_node_name, dirs)
             else:
                 self.plot_text_tree(dirs)
+
+    def compute_rarefaction_data(
+        self,
+        repetitions: int,
+        dirs: Dict[str, str],
+        plotsize: Tuple[float, float],
+        plot_format: str,
+        fontsize: int,
+    ):
+        """
+        Compute rarefaction data and generate rarefaction curves for proteome clusters.
+
+        This method computes rarefaction curves to analyze the accumulation of non-singleton
+        clusters as proteome samples increase. It generates plots for each attribute based on
+        the specified parameters.
+
+        Args:
+        - repetitions: Number of repetitions to shuffle proteome lists for random sampling.
+        - dirs: A dictionary containing directory paths for saving rarefaction plots.
+        - plotsize: Tuple specifying the size (width, height) of the rarefaction plot.
+        - plot_format: Format for saving the rarefaction plots ('png', 'pdf', etc.).
+        - fontsize: Font size used for labels and legends in the plot.
+
+        Returns:
+        - None
+        """
+        rarefaction_by_samplesize_by_level_by_attribute: Dict[
+            str, Dict[str, Dict[int, List[int]]]
+        ] = {}
+        print("[STATUS] - Generating rarefaction data ...")
+        for attribute in self.attributes:
+            for level in self.proteome_ids_by_level_by_attribute[attribute]:
+                proteome_ids = self.proteome_ids_by_level_by_attribute[attribute][level]
+                if not len(proteome_ids) == 1:
+                    if attribute not in rarefaction_by_samplesize_by_level_by_attribute:
+                        rarefaction_by_samplesize_by_level_by_attribute[attribute] = {}
+                    if (
+                        level
+                        not in rarefaction_by_samplesize_by_level_by_attribute[
+                            attribute
+                        ]
+                    ):
+                        rarefaction_by_samplesize_by_level_by_attribute[attribute][
+                            level
+                        ] = {}
+                    ALO = self.ALO_by_level_by_attribute[attribute][level]
+                    if ALO is not None:
+                        for repetition in range(0, repetitions):
+                            seen_cluster_ids = set()
+                            random_list_of_proteome_ids = [x for x in ALO.proteomes]
+                            random.shuffle(random_list_of_proteome_ids)
+                            for idx, proteome_id in enumerate(
+                                random_list_of_proteome_ids
+                            ):
+                                proteome_ALO = self.ALO_by_level_by_attribute["TAXON"][
+                                    proteome_id
+                                ]
+                                if proteome_ALO:
+                                    seen_cluster_ids.update(
+                                        proteome_ALO.cluster_ids_by_cluster_type_by_cluster_status[
+                                            "present"
+                                        ][
+                                            "specific"
+                                        ]
+                                    )
+                                    seen_cluster_ids.update(
+                                        proteome_ALO.cluster_ids_by_cluster_type_by_cluster_status[
+                                            "present"
+                                        ][
+                                            "shared"
+                                        ]
+                                    )
+                                    sample_size = idx + 1
+                                    if (
+                                        sample_size
+                                        not in rarefaction_by_samplesize_by_level_by_attribute[
+                                            attribute
+                                        ][
+                                            level
+                                        ]
+                                    ):
+                                        rarefaction_by_samplesize_by_level_by_attribute[
+                                            attribute
+                                        ][level][sample_size] = []
+                                    rarefaction_by_samplesize_by_level_by_attribute[
+                                        attribute
+                                    ][level][sample_size].append(len(seen_cluster_ids))
+
+        for attribute in rarefaction_by_samplesize_by_level_by_attribute:
+            rarefaction_plot_f = os.path.join(
+                dirs[attribute], f"{attribute}.rarefaction_curve.{plot_format}"
+            )
+            rarefaction_by_samplesize_by_level = (
+                rarefaction_by_samplesize_by_level_by_attribute[attribute]
+            )
+            f, ax = plt.subplots(figsize=plotsize)
+            ax.set_facecolor("white")
+            max_number_of_samples = 0
+            for idx, level in enumerate(rarefaction_by_samplesize_by_level):
+                number_of_samples = len(rarefaction_by_samplesize_by_level[level])
+                if number_of_samples > max_number_of_samples:
+                    max_number_of_samples = number_of_samples
+                colour = plt.cm.Paired(idx / len(rarefaction_by_samplesize_by_level))  # type: ignore
+                x_values = []
+                y_mins = []
+                y_maxs = []
+                median_y_values = []
+                median_x_values = []
+                for x, y_reps in list(
+                    rarefaction_by_samplesize_by_level[level].items()
+                ):
+                    x_values.append(x)
+                    y_mins.append(min(y_reps))
+                    y_maxs.append(max(y_reps))
+                    median_y_values.append(median(y_reps))
+                    median_x_values.append(x)
+                x_array = np.array(x_values)
+                y_mins_array = np.array(y_mins)
+                y_maxs_array = np.array(y_maxs)
+                ax.plot(
+                    median_x_values, median_y_values, "-", color=colour, label=level
+                )
+                ax.fill_between(
+                    x_array, y_mins_array, y_maxs_array, color=colour, alpha=0.5
+                )
+            ax.set_xlim([0, max_number_of_samples + 1])
+            ax.set_ylabel("Count of non-singleton clusters", fontsize=fontsize)
+            ax.set_xlabel("Sampled proteomes", fontsize=fontsize)
+
+            ax.grid(True, linewidth=1, which="major", color="lightgrey")
+            legend = ax.legend(
+                ncol=1, numpoints=1, loc="lower right", frameon=True, fontsize=fontsize
+            )
+            legend.get_frame().set_facecolor("white")
+            print(f"[STATUS]\t- Plotting {rarefaction_plot_f}")
+            f.savefig(rarefaction_plot_f, format=plot_format)
+            plt.close()
