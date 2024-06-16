@@ -1,11 +1,19 @@
 import argparse
+import sys
 
+from cli.validate import validate_cli_args
 from core.config import SUPPORTED_PLOT_FORMATS, SUPPORTED_TAXRANKS, SUPPORTED_TESTS
+from core.input import InputData, ServeArgs
 
 
 # TODO : --plotsize should take a tuple
 # TODO : --taxranks should take multiple inputs
-def parse_args() -> None:
+def parse_args(
+    nodesdb_f: str,
+    pfam_mapping_f: str,
+    ipr_mapping_f: str,
+    go_mapping_f: str,
+) -> ServeArgs | InputData:
     """Parse command-line arguments.
 
     Args:
@@ -158,3 +166,42 @@ def parse_args() -> None:
         default="pdf",
         choices=SUPPORTED_PLOT_FORMATS,
     )
+
+    args = parser.parse_args()
+
+    if args.command == "serve":
+        return ServeArgs(port=args.port)
+    elif args.command == "analyse":
+        validate_cli_args(args=args)
+        fuzzy_range = set(
+            [x for x in range(args.min, args.max + 1) if not x == args.target_count]
+        )
+
+        return InputData(
+            cluster_file=args.cluster_file,
+            config_data=args.config_file,
+            sequence_ids_file=args.sequence_ids_file,
+            species_ids_file=args.species_ids_file,
+            functional_annotation_f=args.functional_annotation,
+            fasta_dir=args.fasta_dir,
+            tree_file=args.tree_file,
+            output_path=args.output_path,
+            infer_singletons=args.infer_singletons,
+            plot_tree=args.plot_tree,
+            min_proteomes=args.min_proteomes,
+            test=args.test,
+            taxranks=args.taxranks,
+            repetitions=args.repetitions + 1,
+            fuzzy_count=args.target_count,
+            fuzzy_fraction=args.target_fraction,
+            fuzzy_range=fuzzy_range,
+            fontsize=args.fontsize,
+            plotsize=args.plotsize,
+            plot_format=args.plot_format,
+            nodesdb_f=nodesdb_f,
+            pfam_mapping_f=pfam_mapping_f,
+            ipr_mapping_f=ipr_mapping_f,
+            go_mapping_f=go_mapping_f,
+        )
+    else:
+        sys.exit()

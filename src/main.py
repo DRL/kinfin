@@ -1,6 +1,8 @@
 import os
 import sys
 
+from cli.commands import parse_args
+from core.input import InputData, ServeArgs
 from core.utils import check_file
 
 if __name__ == "__main__":
@@ -19,4 +21,17 @@ if __name__ == "__main__":
         check_file(go_mapping_f, install_kinfin=True)
     except FileNotFoundError as e:
         print(e)
+        sys.exit(1)
+
+    args = parse_args(nodesdb_f, pfam_mapping_f, ipr_mapping_f, go_mapping_f)
+
+    if isinstance(args, ServeArgs):
+        # run the api server
+        pass
+    elif isinstance(args, InputData):
+        # run the cli script
+        pass
+
+    else:
+        print("[ERROR] - invalid input provided.")
         sys.exit(1)
