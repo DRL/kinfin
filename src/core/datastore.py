@@ -1,7 +1,11 @@
 import os
 import shutil
 import time
+from collections import Counter
 from typing import Dict, List, Literal, Optional
+
+import matplotlib as mat
+import numpy as np
 
 from core.alo_collections import AloCollection
 from core.build import (
@@ -15,6 +19,16 @@ from core.input import InputData
 from core.logic import get_ALO_cluster_cardinality, get_attribute_cluster_type
 from core.proteins import ProteinCollection
 from core.utils import median, progress, statistic
+
+mat.use("agg")
+import matplotlib.pyplot as plt
+from matplotlib.ticker import FormatStrFormatter
+
+plt.style.use("ggplot")
+mat.rc("ytick", labelsize=20)
+mat.rc("xtick", labelsize=20)
+axis_font = {"size": "20"}
+mat.rcParams.update({"font.size": 22})
 
 
 class DataFactory:
@@ -366,3 +380,50 @@ class DataFactory:
         analyse_clusters_end = time.time()
         analyse_clusters_elapsed = analyse_clusters_end - analyse_clusters_start
         print(f"[STATUS] - Took {analyse_clusters_elapsed}s to analyse clusters")
+
+    def plot_cluster_sizes(self):
+        """
+        Plot the distribution of cluster sizes based on the protein counts in each cluster.
+
+        This method generates a scatter plot showing the distribution of cluster sizes
+        based on the number of proteins in each cluster.
+
+        Args:
+        - None
+
+        Returns:
+        - None
+        """
+        cluster_protein_count = []
+        for cluster in self.clusterCollection.cluster_list:
+            cluster_protein_count.append(cluster.protein_count)
+        cluster_protein_counter = Counter(cluster_protein_count)
+        count_plot_f = os.path.join(
+            self.dirs["main"], f"cluster_size_distribution.{self.inputData.plot_format}"
+        )
+        f, ax = plt.subplots(figsize=self.inputData.plotsize)
+        ax.set_facecolor("white")
+        x_values = []
+        y_values = []
+        for value, count in list(cluster_protein_counter.items()):
+            x_values.append(value)
+            y_values.append(count)
+        x_array = np.array(x_values)
+        y_array = np.array(y_values)
+        ax.scatter(x_array, y_array, marker="o", alpha=0.8, s=100)
+        ax.set_xlabel("Cluster size", fontsize=self.inputData.fontsize)
+        ax.set_ylabel("Count", fontsize=self.inputData.fontsize)
+        ax.set_yscale("log")
+        ax.set_xscale("log")
+        plt.margins(0.8)
+        plt.gca().set_ylim(bottom=0.8)
+        plt.gca().set_xlim(left=0.8)
+        ax.xaxis.set_major_formatter(FormatStrFormatter("%.0f"))
+        ax.yaxis.set_major_formatter(FormatStrFormatter("%.0f"))
+        f.tight_layout()
+
+        ax.grid(True, linewidth=1, which="major", color="lightgrey")
+        ax.grid(True, linewidth=0.5, which="minor", color="lightgrey")
+        print(f"[STATUS] - Plotting {count_plot_f}")
+        f.savefig(count_plot_f, format=self.inputData.plot_format)
+        plt.close()
