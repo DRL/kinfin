@@ -8,13 +8,14 @@ from core.logic import (
     add_taxid_attributes,
     parse_attributes_from_config_file,
     parse_attributes_from_json,
+    parse_fasta_dir,
     parse_go_mapping,
     parse_ipr_mapping,
     parse_pfam_mapping,
     parse_tree_from_file,
 )
-from core.proteins import ProteinCollection
-from core.utils import yield_file_lines
+from core.proteins import Protein, ProteinCollection
+from core.utils import progress, yield_file_lines
 
 
 # cli
@@ -228,3 +229,61 @@ def build_AloCollection_from_json(
         node_idx_by_proteome_ids=node_idx_by_proteome_ids,
         tree_ete=tree_ete,
     )
+
+
+# common
+def build_ProteinCollection(
+    sequence_ids_f: str,
+    aloCollection: AloCollection,
+    fasta_dir: Optional[str],
+    species_ids_f: Optional[str],
+    functional_annotation_f: Optional[str],
+    pfam_mapping: bool,
+    ipr_mapping: bool,
+    pfam_mapping_f: str,
+    go_mapping_f: str,
+    ipr_mapping_f: str,
+) -> ProteinCollection:
+    print(f"[STATUS] - Parsing sequence IDs: {sequence_ids_f} ...")
+    proteins_list: List[Protein] = []
+
+    for line in yield_file_lines(sequence_ids_f):
+        temp = line.split(": ")
+        sequence_id = temp[0]
+        protein_id = (
+            temp[1]
+            .split(" ")[0]
+            .replace(":", "_")
+            .replace(",", "_")
+            .replace("(", "_")
+            .replace(")", "_")
+        )  # orthofinder replaces characters
+        species_id = sequence_id.split("_")[0]
+        proteome_id = aloCollection.proteome_id_by_species_id.get(species_id, None)
+        if proteome_id:
+            protein = Protein(protein_id, proteome_id, species_id, sequence_id)
+            proteins_list.append(protein)
+        else:
+            error_msg = f"[ERROR] - Offending SequenceID : {line} (unknown species_id {species_id})"
+            raise ValueError(error_msg)
+
+    proteinCollection = ProteinCollection(proteins_list)
+
+    print(f"[STATUS]\t - Proteins found = {proteinCollection.protein_count}")
+
+    if fasta_dir is not None and species_ids_f is not None:
+        fasta_len_by_protein_id = parse_fasta_dir(
+            fasta_dir=fasta_dir,
+            species_ids_f=species_ids_f,
+        )
+        print("[STATUS] - Adding FASTAs to ProteinCollection ...")
+        parse_steps: float = proteinCollection.protein_count / 100
+        for idx, protein in enumerate(proteinCollection.proteins_list):
+            protein.update_length(fasta_len_by_protein_id[protein.protein_id])
+            progress(idx + 1, parse_steps, proteinCollection.protein_count)
+        aloCollection.fastas_parsed = True
+        proteinCollection.fastas_parsed = True
+    else:
+        print("[STATUS] - No Fasta-Dir given, no AA-span information will be reported ...")  # fmt: skip
+
+    return proteinCollection

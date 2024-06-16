@@ -1,6 +1,11 @@
 from core.alo_collections import AloCollection
-from core.build import build_AloCollection, build_AloCollection_from_json
+from core.build import (
+    build_AloCollection,
+    build_AloCollection_from_json,
+    build_ProteinCollection,
+)
 from core.input import InputData
+from core.proteins import ProteinCollection
 
 
 class DataFactory:
@@ -25,3 +30,16 @@ class DataFactory:
             pass
         else:
             raise ValueError("[ERROR] - Either provide config file or json")
+
+        self.proteinCollection: ProteinCollection = build_ProteinCollection(
+            aloCollection=self.aloCollection,
+            fasta_dir=self.inputData.fasta_dir,
+            go_mapping_f=self.inputData.go_mapping_f,
+            functional_annotation_f=self.inputData.functional_annotation_f,
+            ipr_mapping=self.inputData.ipr_mapping,
+            ipr_mapping_f=self.inputData.ipr_mapping_f,
+            pfam_mapping=self.inputData.pfam_mapping,
+            pfam_mapping_f=self.inputData.pfam_mapping_f,
+            sequence_ids_f=self.inputData.sequence_ids_f,
+            species_ids_f=self.inputData.species_ids_f,
+        )
