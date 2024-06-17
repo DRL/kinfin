@@ -234,3 +234,12 @@ class AttributeLevel:
             KeyError: If 'cluster_type' or 'cluster_cardinality' is not found.
         """
         return len(self.clusters_by_cluster_cardinality_by_cluster_type[cluster_type][cluster_cardinality])  # fmt:skip
+
+    def get_proteomes(self) -> str:
+        """
+        Get a sorted string representation of proteome IDs.
+
+        Returns:
+            str: Comma-separated and sorted list of proteome IDs.
+        """
+        return ", ".join(sorted([str(proteome_id) for proteome_id in self.proteomes]))
