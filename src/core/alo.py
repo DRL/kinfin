@@ -125,3 +125,26 @@ class AttributeLevel:
         self.cluster_mean_non_ALO_count_by_cluster_id[cluster.cluster_id] = (
             mean_non_ALO_count
         )
+
+    def get_protein_count_by_cluster_type(self, cluster_type: str) -> int:
+        """
+        Return the count of proteins for a specific cluster type.
+
+        Args:
+            cluster_type (str): Type of the cluster. Use "total" for the total count across all types.
+
+        Returns:
+            int: Number of proteins in the specified cluster type.
+
+        Raises:
+            KeyError: If 'cluster_type' is not found in self.protein_ids_by_cluster_type.
+        """
+        if cluster_type == "total":
+            return sum(
+                [
+                    len(protein_ids)
+                    for _, protein_ids in list(self.protein_ids_by_cluster_type.items())
+                ]
+            )
+        else:
+            return len(self.protein_ids_by_cluster_type[cluster_type])
