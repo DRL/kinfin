@@ -945,3 +945,768 @@ class DataFactory:
                         format=self.inputData.plot_format,
                     )
                     plt.close()
+
+    def write_cluster_metrics(self) -> None:
+        """
+        Generate cluster metrics for the given data
+
+        Parameters:
+        - None
+
+        Returns:
+        - None: Metrics are saved as files.
+        """
+        cafe_f = os.path.join(self.dirs["main"], "cluster_counts_by_taxon.txt")
+        cafe_output = []
+        cafe_output.append(self.get_header_line("cafe", "TAXON"))
+
+        cluster_metrics_domains_f = os.path.join(
+            self.dirs["main"], "cluster_metrics_domains.txt"
+        )
+        cluster_metrics_domains_output = []
+        cluster_metrics_domains_output.append(
+            self.get_header_line("cluster_metrics_domains", "TAXON")
+        )
+
+        cluster_metrics_domains_detailed_output_by_domain_source = {}
+        cluster_metrics_domains_detailed_f_by_domain_source = {}
+        for domain_source in self.clusterCollection.domain_sources:
+            cluster_metrics_domains_detailed_output_by_domain_source[domain_source] = []
+            cluster_metrics_domains_detailed_output_by_domain_source[
+                domain_source
+            ].append(self.get_header_line("cluster_metrics_domains_detailed", "TAXON"))
+            cluster_metrics_domains_detailed_f_by_domain_source[domain_source] = (
+                os.path.join(
+                    self.dirs["main"], f"cluster_domain_annotation.{domain_source}.txt"
+                )
+            )
+
+        for attribute in self.aloCollection.attributes:
+
+            attribute_metrics_f = os.path.join(
+                self.dirs[attribute], f"{attribute}.attribute_metrics.txt"
+            )
+            attribute_metrics_output = []
+            attribute_metrics_output.append(
+                self.get_header_line("attribute_metrics", attribute)
+            )
+
+            pairwise_representation_test_f = os.path.join(
+                self.dirs[attribute], f"{attribute}.pairwise_representation_test.txt"
+            )
+            pairwise_representation_test_output = []
+            pairwise_representation_test_output.append(
+                self.get_header_line("pairwise_representation_test", attribute)
+            )
+
+            pairwise_representation_test_by_pair_by_attribute = {}
+
+            ###########################
+            # cluster_metrics
+            ###########################
+
+            cluster_metrics_f = os.path.join(
+                self.dirs[attribute], f"{attribute}.cluster_summary.txt"
+            )
+            cluster_metrics_output = []
+            cluster_metrics_output.append(
+                self.get_header_line("cluster_metrics", attribute)
+            )
+
+            levels = sorted(
+                [x for x in self.aloCollection.ALO_by_level_by_attribute[attribute]]
+            )
+            levels_seen = set()
+
+            for level in levels:
+                ALO = self.aloCollection.ALO_by_level_by_attribute[attribute][level]
+
+                ###########################
+                # attribute_metrics
+                ###########################
+
+                attribute_metrics_output.append(self.get_attribute_metrics(ALO))
+
+                ###########################
+                # cluster_metrics_ALO : setup
+                ###########################
+
+                cluster_metrics_ALO_f = os.path.join(
+                    self.dirs[attribute], f"{attribute}.{level}.cluster_metrics.txt"
+                )
+                cluster_metrics_ALO_output = []
+                cluster_metrics_ALO_output.append(
+                    self.get_header_line("cluster_metrics_ALO", attribute)
+                )
+
+                background_representation_test_by_pair_by_attribute = {}
+
+                ###########################
+                # cluster_1to1s
+                ###########################
+
+                cluster_1to1_ALO_f = os.path.join(
+                    self.dirs[attribute], f"{attribute}.{level}.cluster_1to1s.txt"
+                )
+                cluster_1to1_ALO_output = []
+                cluster_1to1_ALO_output.append(
+                    self.get_header_line("cluster_1to1s_ALO", attribute)
+                )
+                if not attribute == "TAXON":
+                    if ALO:
+                        for (
+                            cluster_type
+                        ) in ALO.clusters_by_cluster_cardinality_by_cluster_type:
+                            for (
+                                cluster_cardinality
+                            ) in ALO.clusters_by_cluster_cardinality_by_cluster_type[
+                                cluster_type
+                            ]:
+                                for (
+                                    cluster_id
+                                ) in ALO.clusters_by_cluster_cardinality_by_cluster_type[
+                                    cluster_type
+                                ][
+                                    cluster_cardinality
+                                ]:
+                                    cluster_1to1_ALO_line = []
+                                    cluster_1to1_ALO_line.append(cluster_id)
+                                    cluster_1to1_ALO_line.append(cluster_type)
+                                    cluster_1to1_ALO_line.append(cluster_cardinality)
+                                    cluster_1to1_ALO_line.append(
+                                        self.clusterCollection.cluster_list_by_cluster_id[
+                                            cluster_id
+                                        ].proteome_count
+                                    )
+                                    cluster_1to1_ALO_line.append(
+                                        "{0:.2f}".format(
+                                            len(
+                                                [
+                                                    protein_count
+                                                    for proteome_id, protein_count in list(
+                                                        self.clusterCollection.cluster_list_by_cluster_id[
+                                                            cluster_id
+                                                        ].protein_count_by_proteome_id.items()
+                                                    )
+                                                    if protein_count
+                                                    == self.inputData.fuzzy_count
+                                                ]
+                                            )
+                                            / self.clusterCollection.cluster_list_by_cluster_id[
+                                                cluster_id
+                                            ].proteome_count
+                                        )
+                                    )
+                                    cluster_1to1_ALO_output.append(
+                                        "\t".join(
+                                            [
+                                                str(field)
+                                                for field in cluster_1to1_ALO_line
+                                            ]
+                                        )
+                                    )
+
+                for cluster in self.clusterCollection.cluster_list:
+
+                    ###########################
+                    # cluster_metrics (only done once for each attribute)
+                    ###########################
+
+                    if not levels_seen:
+                        cluster_metrics_line = []
+                        cluster_metrics_line.append(cluster.cluster_id)
+                        cluster_metrics_line.append(cluster.protein_count)
+                        cluster_metrics_line.append(cluster.protein_median)
+                        cluster_metrics_line.append(cluster.proteome_count)
+                        cluster_metrics_line.append(attribute)
+                        cluster_metrics_line.append(
+                            cluster.cluster_type_by_attribute[attribute]
+                        )
+                        if (
+                            self.clusterCollection.fastas_parsed
+                            and cluster.protein_length_stats
+                        ):
+                            cluster_metrics_line.append(
+                                cluster.protein_length_stats["mean"]
+                            )
+                            cluster_metrics_line.append(
+                                cluster.protein_length_stats["sd"]
+                            )
+                        else:
+                            cluster_metrics_line.append("N/A")
+                            cluster_metrics_line.append("N/A")
+                        for _level in levels:
+                            cluster_metrics_line.append(
+                                sum(
+                                    cluster.protein_counts_of_proteomes_by_level_by_attribute[
+                                        attribute
+                                    ][
+                                        _level
+                                    ]
+                                )
+                            )
+                        if not attribute == "TAXON":
+                            for _level in levels:
+                                cluster_metrics_line.append(
+                                    median(
+                                        cluster.protein_counts_of_proteomes_by_level_by_attribute[
+                                            attribute
+                                        ][
+                                            _level
+                                        ]
+                                    )
+                                )
+                            for _level in levels:
+                                cluster_metrics_line.append(
+                                    "{0:.2f}".format(
+                                        cluster.proteome_coverage_by_level_by_attribute[
+                                            attribute
+                                        ][_level]
+                                    )
+                                )
+                        cluster_metrics_output.append(
+                            "\t".join([str(field) for field in cluster_metrics_line])
+                        )
+
+                    ###########################
+                    # cafe (only done for attribute "TAXON")
+                    ###########################
+
+                    if not levels_seen and attribute == "TAXON":
+                        cafe_line = []
+                        # cafe_line.append("None")
+                        cafe_line.append(str(cluster.cluster_id))
+                        for _level in levels:
+                            cafe_line.append(
+                                sum(
+                                    cluster.protein_counts_of_proteomes_by_level_by_attribute[
+                                        attribute
+                                    ][
+                                        _level
+                                    ]
+                                )
+                            )
+                        cafe_output.append(
+                            "\t".join([str(field) for field in cafe_line])
+                        )
+
+                    ###########################
+                    # cluster_metrics_domains (only done for attribute "TAXON")
+                    # - now different:
+                    # - has line for each domain_id for each domain_source
+                    ###########################
+
+                    if not levels_seen and attribute == "TAXON":
+                        if self.clusterCollection.functional_annotation_parsed:
+                            # cluster_metrics_domain_line
+                            cluster_metrics_domains_line = []
+                            cluster_metrics_domains_line.append(cluster.cluster_id)
+                            cluster_metrics_domains_line.append(cluster.protein_count)
+                            cluster_metrics_domains_line.append(cluster.proteome_count)
+                            if (
+                                self.clusterCollection.fastas_parsed
+                                and cluster.protein_length_stats
+                            ):
+                                cluster_metrics_domains_line.append(
+                                    cluster.protein_length_stats["mean"]
+                                )
+                                cluster_metrics_domains_line.append(
+                                    cluster.protein_length_stats["sd"]
+                                )
+                            else:
+                                cluster_metrics_domains_line.append("N/A")
+                                cluster_metrics_domains_line.append("N/A")
+                            if "SignalP_EUK" in self.clusterCollection.domain_sources:
+                                cluster_metrics_domains_line.append(
+                                    "{0:.2f}".format(cluster.secreted_cluster_coverage)
+                                )
+                            else:
+                                cluster_metrics_domains_line.append("N/A")
+                            for domain_source in self.clusterCollection.domain_sources:
+                                # cluster_metrics_domains
+                                if (
+                                    domain_source
+                                    in cluster.domain_counter_by_domain_source
+                                ):
+                                    cluster_metrics_domains_line.append(
+                                        ";".join(
+                                            [
+                                                f"{domain_id}:{count}"
+                                                for domain_id, count in cluster.domain_counter_by_domain_source[
+                                                    domain_source
+                                                ].most_common()
+                                            ]
+                                        )
+                                    )
+                                    cluster_metrics_domains_line.append(
+                                        "{0:.3f}".format(
+                                            cluster.domain_entropy_by_domain_source[
+                                                domain_source
+                                            ]
+                                        )
+                                    )
+                                else:
+                                    cluster_metrics_domains_line.append("N/A")
+                                    cluster_metrics_domains_line.append("N/A")
+                            cluster_metrics_domains_output.append(
+                                "\t".join(
+                                    [
+                                        str(field)
+                                        for field in cluster_metrics_domains_line
+                                    ]
+                                )
+                            )
+                            for (
+                                domain_source
+                            ) in cluster.domain_counter_by_domain_source:
+                                for (
+                                    domain_id,
+                                    count,
+                                ) in cluster.domain_counter_by_domain_source[
+                                    domain_source
+                                ].most_common():
+                                    cluster_metrics_domains_detailed_output_line = []
+                                    cluster_metrics_domains_detailed_output_line.append(
+                                        cluster.cluster_id
+                                    )
+                                    cluster_metrics_domains_detailed_output_line.append(
+                                        domain_source
+                                    )
+                                    cluster_metrics_domains_detailed_output_line.append(
+                                        domain_id
+                                    )
+                                    if domain_source == "SignalP_EUK":
+                                        cluster_metrics_domains_detailed_output_line.append(
+                                            domain_id
+                                        )
+                                    else:
+                                        if (
+                                            domain_source
+                                            in self.proteinCollection.domain_desc_by_id_by_source
+                                        ):
+                                            cluster_metrics_domains_detailed_output_line.append(
+                                                self.proteinCollection.domain_desc_by_id_by_source[
+                                                    domain_source
+                                                ].get(
+                                                    domain_id, "N/A"
+                                                )
+                                            )
+                                        else:
+                                            cluster_metrics_domains_detailed_output_line.append(
+                                                "N/A"
+                                            )
+                                    cluster_metrics_domains_detailed_output_line.append(
+                                        cluster.protein_count
+                                    )
+                                    protein_with_domain_count_by_proteome_id = {}
+                                    proteome_count_with_domain = 0
+                                    protein_without_domain_count_by_proteome_id = {}
+                                    for proteome_id, protein_ids in list(
+                                        cluster.protein_ids_by_proteome_id.items()
+                                    ):
+                                        proteome_seen = False
+                                        for protein_id in protein_ids:
+                                            if (
+                                                domain_source
+                                                in self.proteinCollection.proteins_by_protein_id[
+                                                    protein_id
+                                                ].domain_counter_by_domain_source
+                                                and domain_id
+                                                in self.proteinCollection.proteins_by_protein_id[
+                                                    protein_id
+                                                ].domain_counter_by_domain_source[
+                                                    domain_source
+                                                ]
+                                            ):
+                                                protein_with_domain_count_by_proteome_id[
+                                                    proteome_id
+                                                ] = (
+                                                    protein_with_domain_count_by_proteome_id.get(
+                                                        proteome_id, 0
+                                                    )
+                                                    + 1
+                                                )
+                                                if not proteome_seen:
+                                                    proteome_count_with_domain += 1
+                                                    proteome_seen = True
+                                            else:
+                                                protein_without_domain_count_by_proteome_id[
+                                                    proteome_id
+                                                ] = (
+                                                    protein_without_domain_count_by_proteome_id.get(
+                                                        proteome_id, 0
+                                                    )
+                                                    + 1
+                                                )
+                                    proteomes_with_domain_count_string = ",".join(
+                                        sorted(
+                                            [
+                                                f"{proteome_id}:{count}/{len(cluster.protein_ids_by_proteome_id[proteome_id])}"
+                                                for proteome_id, count in list(
+                                                    protein_with_domain_count_by_proteome_id.items()
+                                                )
+                                            ]
+                                        )
+                                    )
+                                    proteomes_without_domain_count_string = ",".join(
+                                        sorted(
+                                            [
+                                                f"{proteome_id}:{count}/{len(cluster.protein_ids_by_proteome_id[proteome_id])}"
+                                                for proteome_id, count in list(
+                                                    protein_without_domain_count_by_proteome_id.items()
+                                                )
+                                            ]
+                                        )
+                                    )
+                                    cluster_metrics_domains_detailed_output_line.append(
+                                        sum(
+                                            protein_with_domain_count_by_proteome_id.values()
+                                        )
+                                    )
+                                    cluster_metrics_domains_detailed_output_line.append(
+                                        "{0:.3f}".format(
+                                            proteome_count_with_domain
+                                            / cluster.proteome_count
+                                        )
+                                    )
+                                    if proteomes_with_domain_count_string:
+                                        cluster_metrics_domains_detailed_output_line.append(
+                                            proteomes_with_domain_count_string
+                                        )
+                                    else:
+                                        cluster_metrics_domains_detailed_output_line.append(
+                                            "N/A"
+                                        )
+                                    if proteomes_without_domain_count_string:
+                                        cluster_metrics_domains_detailed_output_line.append(
+                                            proteomes_without_domain_count_string
+                                        )
+                                    else:
+                                        cluster_metrics_domains_detailed_output_line.append(
+                                            "N/A"
+                                        )
+                                    cluster_metrics_domains_detailed_output_by_domain_source[
+                                        domain_source
+                                    ].append(
+                                        "\t".join(
+                                            [
+                                                str(field)
+                                                for field in cluster_metrics_domains_detailed_output_line
+                                            ]
+                                        )
+                                    )
+
+                    ###########################
+                    # cluster_metrics_ALO : populate
+                    ###########################
+
+                    cluster_metrics_ALO_line = []
+                    cluster_metrics_ALO_line.append(cluster.cluster_id)
+                    if ALO:
+                        cluster_metrics_ALO_line.append(
+                            ALO.cluster_status_by_cluster_id[cluster.cluster_id]
+                        )
+                        cluster_metrics_ALO_line.append(
+                            ALO.cluster_type_by_cluster_id[cluster.cluster_id]
+                        )
+                    cluster_metrics_ALO_line.append(cluster.protein_count)
+                    cluster_metrics_ALO_line.append(cluster.proteome_count)
+                    cluster_metrics_ALO_line.append(
+                        sum(
+                            cluster.protein_counts_of_proteomes_by_level_by_attribute[
+                                attribute
+                            ][level]
+                        )
+                    )
+                    if (
+                        ALO
+                        and ALO.cluster_mean_ALO_count_by_cluster_id[cluster.cluster_id]
+                    ):
+                        cluster_metrics_ALO_line.append(
+                            ALO.cluster_mean_ALO_count_by_cluster_id[cluster.cluster_id]
+                        )
+                    else:
+                        cluster_metrics_ALO_line.append("N/A")
+                    if (
+                        ALO
+                        and ALO.cluster_mean_non_ALO_count_by_cluster_id[
+                            cluster.cluster_id
+                        ]
+                    ):
+                        cluster_metrics_ALO_line.append(
+                            ALO.cluster_mean_non_ALO_count_by_cluster_id[
+                                cluster.cluster_id
+                            ]
+                        )
+                    else:
+                        cluster_metrics_ALO_line.append("N/A")
+                    if (
+                        ALO
+                        and ALO.cluster_type_by_cluster_id[cluster.cluster_id]
+                        == "shared"
+                    ):
+                        if ALO.cluster_mwu_log2_mean_by_cluster_id[cluster.cluster_id]:
+                            background_pair = (level, "background")
+                            if (
+                                attribute
+                                not in background_representation_test_by_pair_by_attribute
+                            ):
+                                background_representation_test_by_pair_by_attribute[
+                                    attribute
+                                ] = {}
+                            if (
+                                background_pair
+                                not in background_representation_test_by_pair_by_attribute[
+                                    attribute
+                                ]
+                            ):
+                                background_representation_test_by_pair_by_attribute[
+                                    attribute
+                                ][background_pair] = []
+                            background_representation_test = []
+                            background_representation_test.append(cluster.cluster_id)
+                            background_representation_test.append(level)
+                            background_representation_test.append("background")
+                            background_representation_test.append(
+                                ALO.cluster_mean_ALO_count_by_cluster_id[
+                                    cluster.cluster_id
+                                ]
+                            )
+                            background_representation_test.append(
+                                ALO.cluster_mean_non_ALO_count_by_cluster_id[
+                                    cluster.cluster_id
+                                ]
+                            )
+                            background_representation_test.append(
+                                ALO.cluster_mwu_log2_mean_by_cluster_id[
+                                    cluster.cluster_id
+                                ]
+                            )
+                            background_representation_test.append(
+                                ALO.cluster_mwu_pvalue_by_cluster_id[cluster.cluster_id]
+                            )
+                            background_representation_test_by_pair_by_attribute[
+                                attribute
+                            ][background_pair].append(background_representation_test)
+
+                            if (
+                                ALO.cluster_mwu_log2_mean_by_cluster_id[
+                                    cluster.cluster_id
+                                ]
+                                > 0
+                            ):
+                                cluster_metrics_ALO_line.append("enriched")
+                            elif (
+                                ALO.cluster_mwu_log2_mean_by_cluster_id[
+                                    cluster.cluster_id
+                                ]
+                                < 0
+                            ):
+                                cluster_metrics_ALO_line.append("depleted")
+                            else:
+                                cluster_metrics_ALO_line.append("equal")
+                            cluster_metrics_ALO_line.append(
+                                ALO.cluster_mwu_log2_mean_by_cluster_id[
+                                    cluster.cluster_id
+                                ]
+                            )
+                            cluster_metrics_ALO_line.append(
+                                ALO.cluster_mwu_pvalue_by_cluster_id[cluster.cluster_id]
+                            )
+                        else:
+                            cluster_metrics_ALO_line.append("N/A")
+                            cluster_metrics_ALO_line.append("N/A")
+                            cluster_metrics_ALO_line.append("N/A")
+                    else:
+                        cluster_metrics_ALO_line.append("N/A")
+                        cluster_metrics_ALO_line.append("N/A")
+                        cluster_metrics_ALO_line.append("N/A")
+                    cluster_metrics_ALO_line.append(
+                        "{0:.2f}".format(
+                            cluster.proteome_coverage_by_level_by_attribute[attribute][
+                                level
+                            ]
+                        )
+                    )
+                    ALO_proteomes_present = cluster.proteome_ids.intersection(
+                        ALO.proteomes if ALO else set("")
+                    )
+                    non_ALO_proteomes_present = cluster.proteome_ids.difference(
+                        ALO.proteomes if ALO else set("")
+                    )
+                    cluster_metrics_ALO_line.append(len(ALO_proteomes_present))
+                    cluster_metrics_ALO_line.append(len(non_ALO_proteomes_present))
+                    if ALO_proteomes_present:
+                        cluster_metrics_ALO_line.append(
+                            ",".join(sorted(list(ALO_proteomes_present)))
+                        )
+                    else:
+                        cluster_metrics_ALO_line.append("N/A")
+                    if non_ALO_proteomes_present:
+                        cluster_metrics_ALO_line.append(
+                            ",".join(sorted(list(non_ALO_proteomes_present)))
+                        )
+                    else:
+                        cluster_metrics_ALO_line.append("N/A")
+                    # if cluster.go_terms:
+                    #    cluster_metrics_ALO_line.append(";".join(sorted(list(cluster.go_terms))))
+                    # else:
+                    #    cluster_metrics_ALO_line.append("N/A")
+                    # for domain_source in self.clusterCollection.domain_sources:
+                    #    if domain_source in cluster.domain_counter_by_domain_source:
+                    #        cluster_metrics_ALO_line.append(";".join(["%s:%s" % (domain, count) for domain, count in cluster.domain_counter_by_domain_source[domain_source].most_common()]))
+                    #    else:
+                    #        cluster_metrics_ALO_line.append("N/A")
+                    cluster_metrics_ALO_output.append(
+                        "\t".join([str(field) for field in cluster_metrics_ALO_line])
+                    )
+
+                    if (
+                        len(levels) > 1
+                        and len(ALO_proteomes_present) >= self.inputData.min_proteomes
+                    ):
+                        for result in self.pairwise_representation_test(
+                            cluster, attribute, level, levels_seen, levels
+                        ):
+                            # [cluster.cluster_id, level, other_level, mean_level, mean_other_level, log2fc_mean, pvalue]
+                            if (
+                                attribute
+                                not in pairwise_representation_test_by_pair_by_attribute
+                            ):
+                                pairwise_representation_test_by_pair_by_attribute[
+                                    attribute
+                                ] = {}
+                            pair = (result[1], result[2])
+                            if (
+                                pair
+                                not in pairwise_representation_test_by_pair_by_attribute[
+                                    attribute
+                                ]
+                            ):
+                                pairwise_representation_test_by_pair_by_attribute[
+                                    attribute
+                                ][pair] = []
+                            pairwise_representation_test_by_pair_by_attribute[
+                                attribute
+                            ][pair].append(result)
+
+                            pairwise_representation_test_line = []
+                            pairwise_representation_test_line.append(result[0])
+                            pairwise_representation_test_line.append(result[1])
+                            pairwise_representation_test_line.append(result[3])
+                            pairwise_representation_test_line.append(result[2])
+                            pairwise_representation_test_line.append(result[4])
+                            pairwise_representation_test_line.append(result[5])
+                            pairwise_representation_test_line.append(result[6])
+                            # if cluster.go_terms:
+                            #    pairwise_representation_test_line.append(";".join(sorted(list(cluster.go_terms))))
+                            # else:
+                            #    pairwise_representation_test_line.append("N/A")
+                            # for domain_source in clusterCollection.domain_sources:
+                            #    if domain_source in cluster.domain_counter_by_domain_source:
+                            #        pairwise_representation_test_line.append(";".join(["%s:%s" % (domain, count) for domain, count in cluster.domain_counter_by_domain_source[domain_source].most_common()]))
+                            #    else:
+                            #        pairwise_representation_test_line.append("N/A")
+                            pairwise_representation_test_output.append(
+                                "\t".join(
+                                    [
+                                        str(field)
+                                        for field in pairwise_representation_test_line
+                                    ]
+                                )
+                            )
+
+                levels_seen.add(level)
+                # END of cluster loop
+
+                if len(cafe_output) > 1:
+                    with open(cafe_f, "w") as cafe_fh:
+                        print(f"[STATUS] - Writing {cafe_f}")
+                        cafe_fh.write("\n".join(cafe_output) + "\n")
+                    cafe_output = []
+                if len(cluster_metrics_output) > 1:
+                    with open(cluster_metrics_f, "w") as cluster_metrics_fh:
+                        print(f"[STATUS] - Writing {cluster_metrics_f}")
+                        cluster_metrics_fh.write(
+                            "\n".join(cluster_metrics_output) + "\n"
+                        )
+                    cluster_metrics_output = []
+                if len(cluster_metrics_domains_output) > 1:
+                    with open(
+                        cluster_metrics_domains_f, "w"
+                    ) as cluster_metrics_domains_fh:
+                        print(f"[STATUS] - Writing {cluster_metrics_domains_f}")
+                        cluster_metrics_domains_fh.write(
+                            "\n".join(cluster_metrics_domains_output) + "\n"
+                        )
+                    cluster_metrics_domains_output = []
+                for (
+                    domain_source
+                ) in cluster_metrics_domains_detailed_output_by_domain_source:
+                    if (
+                        len(
+                            cluster_metrics_domains_detailed_output_by_domain_source[
+                                domain_source
+                            ]
+                        )
+                        > 1
+                    ):
+                        cluster_metrics_domains_detailed_f = (
+                            cluster_metrics_domains_detailed_f_by_domain_source[
+                                domain_source
+                            ]
+                        )
+                        with open(
+                            cluster_metrics_domains_detailed_f, "w"
+                        ) as cluster_metrics_domains_detailed_fh:
+                            print(
+                                f"[STATUS] - Writing {cluster_metrics_domains_detailed_f}"
+                            )
+                            cluster_metrics_domains_detailed_fh.write(
+                                "\n".join(
+                                    cluster_metrics_domains_detailed_output_by_domain_source[
+                                        domain_source
+                                    ]
+                                )
+                                + "\n"
+                            )
+                        cluster_metrics_domains_detailed_output_by_domain_source[
+                            domain_source
+                        ] = []
+                if len(cluster_metrics_ALO_output) > 1:
+                    with open(cluster_metrics_ALO_f, "w") as cluster_metrics_ALO_fh:
+                        print(f"[STATUS] - Writing {cluster_metrics_ALO_f}")
+                        cluster_metrics_ALO_fh.write(
+                            "\n".join(cluster_metrics_ALO_output) + "\n"
+                        )
+                    cluster_metrics_ALO_output = []
+                if len(cluster_1to1_ALO_output) > 1:
+                    with open(cluster_1to1_ALO_f, "w") as cluster_1to1_ALO_fh:
+                        print(f"[STATUS] - Writing {cluster_1to1_ALO_f}")
+                        cluster_1to1_ALO_fh.write(
+                            "\n".join(cluster_1to1_ALO_output) + "\n"
+                        )
+                    cluster_1to1_ALO_output = []
+                if background_representation_test_by_pair_by_attribute:
+                    self.plot_count_comparisons_volcano(
+                        background_representation_test_by_pair_by_attribute
+                    )
+
+            if len(attribute_metrics_output) > 1:
+                with open(attribute_metrics_f, "w") as attribute_metrics_fh:
+                    print(f"[STATUS] - Writing {attribute_metrics_f}")
+                    attribute_metrics_fh.write(
+                        "\n".join(attribute_metrics_output) + "\n"
+                    )
+            if len(pairwise_representation_test_output) > 1:
+                with open(
+                    pairwise_representation_test_f, "w"
+                ) as pairwise_representation_test_fh:
+                    print(f"[STATUS] - Writing {pairwise_representation_test_f}")
+                    pairwise_representation_test_fh.write(
+                        "\n".join(pairwise_representation_test_output) + "\n"
+                    )
+            if pairwise_representation_test_by_pair_by_attribute:
+                self.plot_count_comparisons_volcano(
+                    pairwise_representation_test_by_pair_by_attribute
+                )
