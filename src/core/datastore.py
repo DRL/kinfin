@@ -9,12 +9,8 @@ import numpy as np
 from matplotlib.lines import Line2D
 
 from core.alo_collections import AloCollection
-from core.build import (
-    build_AloCollection,
-    build_AloCollection_from_json,
-    build_ClusterCollection,
-    build_ProteinCollection,
-)
+from core.build import (build_AloCollection, build_AloCollection_from_json,
+                        build_ClusterCollection, build_ProteinCollection)
 from core.clusters import Cluster, ClusterCollection
 from core.input import InputData
 from core.logic import get_ALO_cluster_cardinality, get_attribute_cluster_type
@@ -1710,3 +1706,10 @@ class DataFactory:
                 self.plot_count_comparisons_volcano(
                     pairwise_representation_test_by_pair_by_attribute
                 )
+
+    def write_output(self) -> None:
+        """
+        generates the results and stores them into files
+        """
+        self.plot_cluster_sizes()
+        self.write_cluster_metrics()
