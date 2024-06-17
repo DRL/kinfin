@@ -1,4 +1,5 @@
 from collections import Counter
+from math import log
 from typing import DefaultDict, Dict, FrozenSet, List, Literal, Optional, Set
 
 from core.logic import compute_protein_ids_by_proteome
@@ -45,6 +46,7 @@ class Cluster:
         self.protein_length_stats: Optional[Dict[str,float]]= self.compute_protein_length_stats(proteinCollection, self.protein_ids)  # fmt:skip
         self.secreted_cluster_coverage: float = self.compute_secreted_cluster_coverage(proteinCollection, self.protein_ids, self.protein_count)  # fmt:skip
         self.domain_counter_by_domain_source: Dict[str, Counter[str]] = self.compute_domain_counter_by_domain_source(proteinCollection, self.protein_ids)  # fmt:skip
+        self.domain_entropy_by_domain_source: Dict[str,float] = self.compute_domain_entropy_by_domain_source()  # fmt:skip
 
     def compute_protein_length_stats(
         self,
@@ -132,6 +134,30 @@ class Cluster:
                         domain_source
                     ] += protein_domain_counter
         return cluster_domain_counter_by_domain_source
+
+    def compute_domain_entropy_by_domain_source(self) -> Dict[str, float]:
+        """
+        Computes entropy for domains grouped by different sources.
+
+        Returns:
+        - Dict[str, float]: Dictionary where keys are domain sources and values are computed entropy values.
+        """
+        self.domain_entropy_by_domain_source: Dict[str, float] = {}
+        for domain_source, domain_counter in list(
+            self.domain_counter_by_domain_source.items()
+        ):
+            total_count: int = len([domain for domain in domain_counter.elements()])
+            domain_entropy: float = -sum(
+                [
+                    i / total_count * log(i / total_count, 2)
+                    for i in list(domain_counter.values())
+                ]
+            )
+            if str(domain_entropy) == "-0.0":
+                self.domain_entropy_by_domain_source[domain_source] = 0.0
+            else:
+                self.domain_entropy_by_domain_source[domain_source] = domain_entropy
+        return self.domain_entropy_by_domain_source
 
 
 class ClusterCollection:
