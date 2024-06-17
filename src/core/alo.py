@@ -60,8 +60,6 @@ class AttributeLevel:
         self.protein_length_stats_by_cluster_id: Dict[str, Dict[str, int | float]] = {}  # fmt:skip
         self.protein_count_by_cluster_id: Dict[str, int] = {}
 
-        self.rarefaction_data = {}  # repetition : number of clusters
-
     def add_cluster(
         self,
         cluster: Cluster,
