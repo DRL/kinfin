@@ -214,3 +214,23 @@ class AttributeLevel:
             span = sum(self.protein_span_by_cluster_type[cluster_type])
 
         return span
+
+    def get_cluster_count_by_cluster_cardinality_by_cluster_type(
+        self,
+        cluster_type: str,
+        cluster_cardinality: str,
+    ) -> int:
+        """
+        Return the count of clusters of a specific type and cardinality.
+
+        Args:
+            cluster_type (str): Type of the cluster.
+            cluster_cardinality (str): Cardinality of the clusters.
+
+        Returns:
+            int: Number of clusters with the specified type and cardinality.
+
+        Raises:
+            KeyError: If 'cluster_type' or 'cluster_cardinality' is not found.
+        """
+        return len(self.clusters_by_cluster_cardinality_by_cluster_type[cluster_type][cluster_cardinality])  # fmt:skip
