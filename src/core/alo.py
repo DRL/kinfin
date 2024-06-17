@@ -186,3 +186,31 @@ class AttributeLevel:
                     cluster_type
                 ]
             )
+
+    def get_protein_span_by_cluster_type(self, cluster_type: str) -> int | float:
+        """
+        Get the total span of proteins for a specific cluster type.
+
+        Args:
+            cluster_type (str): The type of cluster for which to retrieve protein span.
+                Use "total" to get the total span across all cluster types.
+
+        Returns:
+            int | float: Total span of proteins in the specified cluster type.
+                If 'cluster_type' is "total", returns the sum of spans across all
+                cluster types.
+        """
+        span = 0
+        if cluster_type == "total":
+            span = sum(
+                [
+                    sum(protein_ids)
+                    for _, protein_ids in list(
+                        self.protein_span_by_cluster_type.items()
+                    )
+                ]
+            )
+        else:
+            span = sum(self.protein_span_by_cluster_type[cluster_type])
+
+        return span
