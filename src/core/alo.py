@@ -148,3 +148,41 @@ class AttributeLevel:
             )
         else:
             return len(self.protein_ids_by_cluster_type[cluster_type])
+
+    def get_cluster_count_by_cluster_status_by_cluster_type(
+        self,
+        cluster_status: str,
+        cluster_type: str,
+    ) -> int:
+        """
+        Get the count of clusters of a specific status and type.
+
+        Args:
+            cluster_status (str): The status of clusters to count.
+            cluster_type (str): The type of cluster to count. Use "total" to get
+                the total count across all cluster types for the given status.
+
+        Returns:
+            int: Number of clusters with the specified status and type.
+
+        Raises:
+            KeyError: If 'cluster_status' or 'cluster_type' is not found in
+                self.cluster_ids_by_cluster_type_by_cluster_status.
+        """
+        if cluster_type == "total":
+            return sum(
+                [
+                    len(cluster_ids)
+                    for _, cluster_ids in list(
+                        self.cluster_ids_by_cluster_type_by_cluster_status[
+                            cluster_status
+                        ].items()
+                    )
+                ]
+            )
+        else:
+            return len(
+                self.cluster_ids_by_cluster_type_by_cluster_status[cluster_status][
+                    cluster_type
+                ]
+            )
