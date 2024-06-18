@@ -2,15 +2,20 @@ import os
 import shutil
 import time
 from collections import Counter
-from typing import Any, Dict, Generator, List, Literal, Optional, Tuple
+from typing import Any, Dict, Generator, List, Literal, Optional, Set, Tuple
 
 import matplotlib as mat
 import numpy as np
 from matplotlib.lines import Line2D
 
+from core.alo import AttributeLevel
 from core.alo_collections import AloCollection
-from core.build import (build_AloCollection, build_AloCollection_from_json,
-                        build_ClusterCollection, build_ProteinCollection)
+from core.build import (
+    build_AloCollection,
+    build_AloCollection_from_json,
+    build_ClusterCollection,
+    build_ProteinCollection,
+)
 from core.clusters import Cluster, ClusterCollection
 from core.input import InputData
 from core.logic import get_ALO_cluster_cardinality, get_attribute_cluster_type
@@ -425,7 +430,7 @@ class DataFactory:
         f.savefig(count_plot_f, format=self.inputData.plot_format)
         plt.close()
 
-    def get_header_line(self, filetype, attribute):
+    def get_header_line(self, filetype: str, attribute: str) -> str:
         """
         Generate a header line based on the specified filetype and attribute.
 
@@ -579,14 +584,19 @@ class DataFactory:
             raise ValueError(error_msg)
 
     def pairwise_representation_test(
-        self, clusterObj, attribute, level, levels_seen, levels
+        self,
+        cluster: Cluster,
+        attribute: str,
+        level: str,
+        levels_seen: Set[str],
+        levels: List[str],
     ) -> Generator[Any, Any, Any]:
         """
         Conducts pairwise statistical tests between the protein counts of a given cluster
         at a specific level (`level`) and all other levels (`other_level`) within a set of `levels`.
 
         Parameters:
-        - clusterObj: The cluster object for which pairwise tests are conducted.
+        - cluster: The cluster object for which pairwise tests are conducted.
         - attribute: The attribute or level associated with the cluster metrics.
         - level: The specific level within the attribute for comparisons.
         - levels_seen: A set containing levels that have already been processed.
@@ -605,12 +615,11 @@ class DataFactory:
                 ]
                 if (
                     other_ALO
-                    and len(clusterObj.proteome_ids.intersection(other_ALO.proteomes))
-                    >= 2
+                    and len(cluster.proteome_ids.intersection(other_ALO.proteomes)) >= 2
                 ):
                     protein_counts_level = [
                         count
-                        for count in clusterObj.protein_counts_of_proteomes_by_level_by_attribute[
+                        for count in cluster.protein_counts_of_proteomes_by_level_by_attribute[
                             attribute
                         ][
                             level
@@ -619,7 +628,7 @@ class DataFactory:
                     ]
                     protein_counts_other_level = [
                         count
-                        for count in clusterObj.protein_counts_of_proteomes_by_level_by_attribute[
+                        for count in cluster.protein_counts_of_proteomes_by_level_by_attribute[
                             attribute
                         ][
                             other_level
@@ -639,7 +648,7 @@ class DataFactory:
                             self.inputData.min_proteomes,
                         )
                         yield [
-                            clusterObj.cluster_id,
+                            cluster.cluster_id,
                             level,
                             other_level,
                             mean_ALO_count,
@@ -655,9 +664,9 @@ class DataFactory:
                         # mean_level = mean(protein_counts_level)
                         # mean_other_level = mean(protein_counts_other_level)
                         # log2fc_mean = log((mean_level/mean_other_level), 2)
-                        # yield [clusterObj.cluster_id, level, other_level, mean_level, mean_other_level, log2fc_mean, pvalue]
+                        # yield [cluster.cluster_id, level, other_level, mean_level, mean_other_level, log2fc_mean, pvalue]
 
-    def get_attribute_metrics(self, ALO):
+    def get_attribute_metrics(self, ALO: AttributeLevel) -> str:
         """
         Retrieves various metrics related to an Attribute-Level Orthology (ALO) object.
 
@@ -761,7 +770,7 @@ class DataFactory:
         Returns:
         - None: Plots are saved as files.
         """
-        # [clusterObj.cluster_id, level, other_level, mean_level, mean_other_level, log2fc_mean, pvalue]
+        # [cluster.cluster_id, level, other_level, mean_level, mean_other_level, log2fc_mean, pvalue]
         for attribute in pairwise_representation_test_by_pair_by_attribute:
             for pair in pairwise_representation_test_by_pair_by_attribute[attribute]:
                 pair_list = list(pair)
@@ -1016,12 +1025,12 @@ class DataFactory:
 
             for level in levels:
                 ALO = self.aloCollection.ALO_by_level_by_attribute[attribute][level]
+                if ALO:
+                    ###########################
+                    # attribute_metrics
+                    ###########################
 
-                ###########################
-                # attribute_metrics
-                ###########################
-
-                attribute_metrics_output.append(self.get_attribute_metrics(ALO))
+                    attribute_metrics_output.append(self.get_attribute_metrics(ALO))
 
                 ###########################
                 # cluster_metrics_ALO : setup
