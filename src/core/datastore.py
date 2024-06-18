@@ -95,7 +95,6 @@ class DataFactory:
         print("[STATUS] - Creating directories ...")
         os.mkdir(output_path)
         for attribute in self.aloCollection.attributes:
-            print(attribute)
             attribute_path = os.path.join(output_path, attribute)
             self.dirs[attribute] = attribute_path
             if not os.path.exists(attribute_path):
