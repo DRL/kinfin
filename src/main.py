@@ -1,6 +1,7 @@
 import os
 import sys
 
+from cli import run_cli
 from cli.commands import parse_args
 from core.input import InputData, ServeArgs
 from core.utils import check_file
@@ -30,6 +31,7 @@ if __name__ == "__main__":
         pass
     elif isinstance(args, InputData):
         # run the cli script
+        run_cli(args)
         pass
 
     else:
