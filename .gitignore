@@ -9,3 +9,4 @@ example/test.*
 build/
 dist/
 
+.DS_Store
