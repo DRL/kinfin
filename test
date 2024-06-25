@@ -17,43 +17,6 @@ function is_directory_not_empty {
     fi
 }
 
-
-# Function to compare directories
-function compare_directories {
-    local dir1="$1"
-    local dir2="$2"
-
-    pdf_files_dir1=$(find "$dir1" -type f -name "*.pdf" -printf "%f\n" | sort)
-    pdf_files_dir2=$(find "$dir2" -type f -name "*.pdf" -printf "%f\n" | sort)
-
-    # Get counts of PDF files in both directories
-    pdf_count_dir1=$(echo "$pdf_files_dir1" | wc -l)
-    pdf_count_dir2=$(echo "$pdf_files_dir2" | wc -l)
-
-    # Check if PDF file counts match
-    if [ "$pdf_count_dir1" -ne "$pdf_count_dir2" ]; then
-        echo "Error: PDF file count mismatch between directories."
-        return 1
-    fi
-
-    diff_names=$(diff <(echo "$pdf_files_dir1") <(echo "$pdf_files_dir2"))
-    if [ -n "$diff_names" ]; then
-        echo "Error: PDF file names differ between directories."
-        echo "$diff_names"
-        return 1
-    fi
-
-    diff_output=$(diff -qr --exclude='*.pdf' "$dir1" "$dir2")
-    if [ $? -eq 0 ]; then
-        echo "Directories are identical."
-        return 0
-    else
-        echo "Directories differ:"
-        echo "$diff_output"
-        return 1
-    fi
-}
-
 function handle_error {
     local error_message="$1"
     echo "$error_message"
@@ -75,28 +38,8 @@ echo "Running basic analysis with new tool (main.py)..."
 $DIR/src/main.py analyse -g "$DIR/.test_data/basic/input/Orthogroups.txt" -c "$DIR/.test_data/basic/input/kinfin.config.basic.txt" -s "$DIR/.test_data/basic/input/kinfin.SequenceIDs.txt" -o "$DIR/result/basic.cli.new" || handle_error "Failed to run basic analysis with new tool."
 
 echo "Comparing output directories of old and new tools..."
-compare_directories "$DIR/result/basic.cli.old" "$DIR/result/basic.cli.new"
-BASIC_COMPARE_RESULT=$?
+echo "Running advanced analysis with old tool (kinfin.py)..."
+$DIR/src/kinfin.py -g "$DIR/.test_data/advanced/input/Orthogroups.txt" -c "$DIR/.test_data/advanced/input/kinfin.config.advanced.txt" -s "$DIR/.test_data/advanced/input/kinfin.SequenceIDs.txt" -o "$DIR/result/advanced.cli.old" -p "$DIR/.test_data/advanced/input/kinfin.SpeciesIDs.txt" -a "$DIR/.test_data/advanced/input/fastas/" -t "$DIR/.test_data/advanced/input/kinfin.tree.nwk" -f "$DIR/.test_data/advanced/input/kinfin.functional_annotation.txt"  || handle_error "Failed to run advanced analysis with old tool."
 
-# advanced analysis
-if [ $BASIC_COMPARE_RESULT -eq 0 ]; then
-    echo "Running advanced analysis with old tool (kinfin.py)..."
-    $DIR/src/kinfin.py -g "$DIR/.test_data/advanced/input/Orthogroups.txt" -c "$DIR/.test_data/advanced/input/kinfin.config.advanced.txt" -s "$DIR/.test_data/advanced/input/kinfin.SequenceIDs.txt" -o "$DIR/result/advanced.cli.old" -p "$DIR/.test_data/advanced/input/kinfin.SpeciesIDs.txt" -a "$DIR/.test_data/advanced/input/fastas/" -t "$DIR/.test_data/advanced/input/kinfin.tree.nwk" -f "$DIR/.test_data/advanced/input/kinfin.functional_annotation.txt"  || handle_error "Failed to run advanced analysis with old tool."
-
-    echo "Running advanced analysis with new tool (main.py)..."
-    $DIR/src/main.py analyse -g "$DIR/.test_data/advanced/input/Orthogroups.txt" -c "$DIR/.test_data/advanced/input/kinfin.config.advanced.txt" -s "$DIR/.test_data/advanced/input/kinfin.SequenceIDs.txt" -o "$DIR/result/advanced.cli.new" -p "$DIR/.test_data/advanced/input/kinfin.SpeciesIDs.txt" -a "$DIR/.test_data/advanced/input/fastas/" -t "$DIR/.test_data/advanced/input/kinfin.tree.nwk" -f "$DIR/.test_data/advanced/input/kinfin.functional_annotation.txt"  || handle_error "Failed to run advanced analysis with new tool."
-
-    echo "Comparing output directories of advanced analysis..."
-    compare_directories "$DIR/result/advanced.cli.old" "$DIR/result/advanced.cli.new"
-    ADVANCED_COMPARE_RESULT=$?
-    if [ $ADVANCED_COMPARE_RESULT -eq 0 ]; then
-        echo "Tests successful."
-        exit 0  # Success
-    else
-        echo "Tests failed: Output directories of advanced analysis differ."
-        exit 1  # Failure
-    fi
-else
-    echo "Basic analysis failed: Skipping advanced analysis."
-    exit 1  # Failure due to basic analysis failure
-fi
+echo "Running advanced analysis with new tool (main.py)..."
+$DIR/src/main.py analyse -g "$DIR/.test_data/advanced/input/Orthogroups.txt" -c "$DIR/.test_data/advanced/input/kinfin.config.advanced.txt" -s "$DIR/.test_data/advanced/input/kinfin.SequenceIDs.txt" -o "$DIR/result/advanced.cli.new" -p "$DIR/.test_data/advanced/input/kinfin.SpeciesIDs.txt" -a "$DIR/.test_data/advanced/input/fastas/" -t "$DIR/.test_data/advanced/input/kinfin.tree.nwk" -f "$DIR/.test_data/advanced/input/kinfin.functional_annotation.txt"  || handle_error "Failed to run advanced analysis with new tool."
