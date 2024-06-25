@@ -9,7 +9,7 @@ example/test.*
 build/
 dist/
 
-data
 venv
 .test_data
 result
+.DS_Store
