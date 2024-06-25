@@ -982,7 +982,20 @@ class DataFactory():
                             for domain_source in clusterCollection.domain_sources:
                                 # cluster_metrics_domains
                                 if domain_source in clusterObj.domain_counter_by_domain_source:
-                                    cluster_metrics_domains_line.append(";".join(["%s:%s" % (domain_id, count) for domain_id, count in clusterObj.domain_counter_by_domain_source[domain_source].most_common()]))
+                                    sorted_counts = sorted(
+                                        [
+                                            f"{domain_id}:{count}"
+                                            for domain_id, count in clusterObj.domain_counter_by_domain_source[
+                                                domain_source
+                                            ].most_common()
+                                        ],
+                                        key=lambda x: (
+                                            x.split(":")[-1],
+                                            x.split(":")[-2],
+                                        ),
+                                    )
+                                    sorted_counts_str = ";".join(sorted_counts)
+                                    cluster_metrics_domains_line.append(sorted_counts_str)
                                     cluster_metrics_domains_line.append("{0:.3f}".format(clusterObj.domain_entropy_by_domain_source[domain_source]))
                                 else:
                                     cluster_metrics_domains_line.append("N/A")

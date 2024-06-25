@@ -1232,15 +1232,21 @@ class DataFactory:
                                     domain_source
                                     in cluster.domain_counter_by_domain_source
                                 ):
+                                    sorted_counts = sorted(
+                                        [
+                                            f"{domain_id}:{count}"
+                                            for domain_id, count in cluster.domain_counter_by_domain_source[
+                                                domain_source
+                                            ].most_common()
+                                        ],
+                                        key=lambda x: (
+                                            x.split(":")[-1],
+                                            x.split(":")[-2],
+                                        ),
+                                    )
+                                    sorted_counts_str = ";".join(sorted_counts)
                                     cluster_metrics_domains_line.append(
-                                        ";".join(
-                                            [
-                                                f"{domain_id}:{count}"
-                                                for domain_id, count in cluster.domain_counter_by_domain_source[
-                                                    domain_source
-                                                ].most_common()
-                                            ]
-                                        )
+                                        sorted_counts_str
                                     )
                                     cluster_metrics_domains_line.append(
                                         "{0:.3f}".format(
