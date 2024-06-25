@@ -159,7 +159,7 @@ def statistic(
 
     mean_count_1 = mean(implicit_count_1)
     mean_count_2 = mean(implicit_count_2)
-    log2_mean = log(mean_count_1 / mean_count_2)
+    log2_mean = log(mean_count_1 / mean_count_2, 2)
 
     if (
         len(set(implicit_count_1)) == 1
