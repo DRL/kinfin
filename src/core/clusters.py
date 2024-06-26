@@ -20,8 +20,8 @@ class Cluster:
         try:
 
             self.proteomes_by_protein_id: Dict[str, str] = {
-                id: proteinCollection.proteins_by_protein_id[id].proteome_id
-                for id in protein_ids
+                _id: proteinCollection.proteins_by_protein_id[_id].proteome_id
+                for _id in protein_ids
             }
         except KeyError as e:
             error_msg = f"[ERROR] - Protein {e.args[0]} in clustering belongs to proteomes that are not present in the config-file. Please add those proteomes or recluster by omitting these proteomes."
