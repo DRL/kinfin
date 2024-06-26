@@ -16,7 +16,7 @@ from core.logic import (
     parse_tree_from_file,
 )
 from core.proteins import Protein, ProteinCollection
-from core.utils import progress, yield_file_lines
+from core.utils import logger, progress, yield_file_lines
 
 
 def get_singletons(
@@ -36,7 +36,7 @@ def get_singletons(
     This function iterates through proteins in the given protein collection that are not yet clustered.
     For each unclustered protein, it creates a new singleton cluster and appends it to cluster_list.
     """
-    print("[STATUS] - Inferring singletons ...")
+    logger.info("[STATUS] - Inferring singletons ...")
     singleton_idx = 0
     for protein in proteinCollection.proteins_list:
         if protein.clustered is False:
@@ -114,7 +114,9 @@ def parse_domains_from_functional_annotations_file(
     - Updates proteinCollection.functional_annotation_parsed and proteinCollection.domain_desc_by_id_by_source.
     """
 
-    print(f"[STATUS] - Parsing {functional_annotation_f} ... this may take a while")
+    logger.info(
+        f"[STATUS] - Parsing {functional_annotation_f} ... this may take a while"
+    )
 
     for line in yield_file_lines(functional_annotation_f):
         temp: List[str] = line.split()
@@ -195,7 +197,7 @@ def build_AloCollection(
 
     # Add taxonomy if needed
     if "TAXID" in set(attributes):
-        print("[STATUS] - Attribute 'TAXID' found, inferring taxonomic ranks from nodesDB")  # fmt: skip
+        logger.info("[STATUS] - Attribute 'TAXID' found, inferring taxonomic ranks from nodesDB")  # fmt: skip
         attributes, level_by_attribute_by_proteome_id = add_taxid_attributes(
             attributes=attributes,
             level_by_attribute_by_proteome_id=level_by_attribute_by_proteome_id,
@@ -218,7 +220,7 @@ def build_AloCollection(
         ]
         tree_ete, node_idx_by_proteome_ids = parse_tree_from_file(tree_f, outgroups)
 
-    print("[STATUS] - Building AloCollection ...")
+    logger.info("[STATUS] - Building AloCollection ...")
     return AloCollection(
         proteomes=proteomes,
         attributes=attributes,
@@ -262,7 +264,7 @@ def build_AloCollection_from_json(
 
     # Add taxonomy if needed
     if "TAXID" in set(attributes):
-        print("[STATUS] - Attribute 'TAXID' found, inferring taxonomic ranks from nodesDB")  # fmt: skip
+        logger.info("[STATUS] - Attribute 'TAXID' found, inferring taxonomic ranks from nodesDB")  # fmt: skip
         attributes, level_by_attribute_by_proteome_id = add_taxid_attributes(
             attributes=attributes,
             level_by_attribute_by_proteome_id=level_by_attribute_by_proteome_id,
@@ -284,7 +286,7 @@ def build_AloCollection_from_json(
         ]
         tree_ete, node_idx_by_proteome_ids = parse_tree_from_file(tree_f, outgroups)
 
-    print("[STATUS] - Building AloCollection ...")
+    logger.info("[STATUS] - Building AloCollection ...")
     return AloCollection(
         proteomes=proteomes,
         attributes=attributes,
@@ -308,7 +310,7 @@ def build_ProteinCollection(
     go_mapping_f: str,
     ipr_mapping_f: str,
 ) -> ProteinCollection:
-    print(f"[STATUS] - Parsing sequence IDs: {sequence_ids_f} ...")
+    logger.info(f"[STATUS] - Parsing sequence IDs: {sequence_ids_f} ...")
     proteins_list: List[Protein] = []
 
     for line in yield_file_lines(sequence_ids_f):
@@ -333,14 +335,14 @@ def build_ProteinCollection(
 
     proteinCollection = ProteinCollection(proteins_list)
 
-    print(f"[STATUS]\t - Proteins found = {proteinCollection.protein_count}")
+    logger.info(f"[STATUS]\t - Proteins found = {proteinCollection.protein_count}")
 
     if fasta_dir is not None and species_ids_f is not None:
         fasta_len_by_protein_id = parse_fasta_dir(
             fasta_dir=fasta_dir,
             species_ids_f=species_ids_f,
         )
-        print("[STATUS] - Adding FASTAs to ProteinCollection ...")
+        logger.info("[STATUS] - Adding FASTAs to ProteinCollection ...")
         parse_steps: float = proteinCollection.protein_count / 100
         for idx, protein in enumerate(proteinCollection.proteins_list):
             protein.update_length(fasta_len_by_protein_id[protein.protein_id])
@@ -348,7 +350,7 @@ def build_ProteinCollection(
         aloCollection.fastas_parsed = True
         proteinCollection.fastas_parsed = True
     else:
-        print("[STATUS] - No Fasta-Dir given, no AA-span information will be reported ...")  # fmt: skip
+        logger.info("[STATUS] - No Fasta-Dir given, no AA-span information will be reported ...")  # fmt: skip
 
     if functional_annotation_f is not None:
         parse_domains_from_functional_annotations_file(
@@ -369,7 +371,7 @@ def build_ClusterCollection(
     proteinCollection: ProteinCollection,
     infer_singletons: Optional[bool],
 ) -> ClusterCollection:
-    print(f"[STATUS] - Parsing {cluster_f} ... this may take a while")
+    logger.info(f"[STATUS] - Parsing {cluster_f} ... this may take a while")
     cluster_list: List[Cluster] = parse_cluster_file(cluster_f, proteinCollection)
 
     inferred_singletons_count = 0

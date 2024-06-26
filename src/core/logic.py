@@ -6,7 +6,7 @@ from typing import DefaultDict, Dict, List, Literal, Optional, Set, Tuple
 import ete3
 from ete3 import Tree, TreeNode
 
-from core.utils import progress, read_fasta_len, yield_file_lines
+from core.utils import logger, progress, read_fasta_len, yield_file_lines
 
 
 # common
@@ -25,7 +25,7 @@ def parse_nodesdb(filepath: str) -> Dict[str, Dict[str, str]]:
                 - 'name': The name of the node.
                 - 'parent': The parent of the node.
     """
-    print(f"[STATUS] - Parsing nodesDB {filepath}")
+    logger.info(f"[STATUS] - Parsing nodesDB {filepath}")
 
     nodesdb: Dict[str, Dict[str, str]] = {}
     nodesdb_count = 0
@@ -109,7 +109,7 @@ def parse_attributes_from_config_file(
         - The 'TAXON' attribute is expected to be unique for each line.
     """
 
-    print(f"[STATUS] - Parsing config file: {config_f} ...")
+    logger.info(f"[STATUS] - Parsing config file: {config_f} ...")
     attributes: List[str] = []
     level_by_attribute_by_proteome_id: Dict[str, Dict[str, str]] = {}
     proteomes: Set[str] = set()
@@ -220,19 +220,19 @@ def parse_tree_from_file(
         tuple[ete3.Tree, Dict[str, int]]: A tuple containing the parsed phylogenetic tree
             and a dictionary mapping proteome IDs to node indices.
     """
-    print(f"[STATUS] - Parsing Tree file : {tree_f} ...")
+    logger.info(f"[STATUS] - Parsing Tree file : {tree_f} ...")
     tree_ete: TreeNode = ete3.Tree(tree_f)
     if len(outgroups) > 1:
         outgroup_node: TreeNode = tree_ete.get_common_ancestor(outgroups)  # type: ignore
         try:
-            print(f"[STATUS] - Setting LCA of {", ".join(outgroups)} as outgroup : ...")
+            logger.info(f"[STATUS] - Setting LCA of {", ".join(outgroups)} as outgroup : ...")
             tree_ete.set_outgroup(outgroup_node)  # type: ignore
         except ete3.coretype.tree.TreeError:  # type: ignore
-            print("[STATUS] - Tree seems to be rooted already : ...")
+            logger.info("[STATUS] - Tree seems to be rooted already : ...")
     else:
-        print(f"[STATUS] - Setting {",".join(outgroups)} as outgroup : ...")
+        logger.info(f"[STATUS] - Setting {",".join(outgroups)} as outgroup : ...")
         tree_ete.set_outgroup(outgroups[0])  # type: ignore
-    print(tree_ete)
+    logger.info(tree_ete)
     node_idx_by_proteome_ids: Dict[frozenset[str], str] = {}
     for idx, node in enumerate(tree_ete.traverse("levelorder")):  # type: ignore
         proteome_ids = frozenset([leaf.name for leaf in node])
@@ -297,7 +297,7 @@ def parse_attributes_from_json(
         - The 'TAXON' attribute is expected to be unique for each line.
     """
 
-    print("[STATUS] - Parsing JSON list...")
+    logger.info("[STATUS] - Parsing JSON list...")
     attributes: List[str] = []
     level_by_attribute_by_proteome_id: Dict[str, Dict[str, str]] = {}
     proteomes: Set[str] = set()
@@ -345,7 +345,7 @@ def parse_fasta_dir(species_ids_f: str, fasta_dir: str) -> Dict[str, int]:
     - Dict[str, int]: A dictionary mapping header strings (protein IDs) to their
       corresponding sequence lengths extracted from the FASTA files.
     """
-    print("[STATUS] - Parsing FASTAs ...")
+    logger.info("[STATUS] - Parsing FASTAs ...")
     fasta_file_by_species_id: Dict[str, str] = {}
 
     for line in yield_file_lines(species_ids_f):
@@ -377,7 +377,7 @@ def parse_pfam_mapping(pfam_mapping_f: str) -> Dict[str, str]:
     Raises:
     - ValueError: If conflicting descriptions are found for the same domain ID.
     """
-    print(f"[STATUS] - Parsing {pfam_mapping_f} ... ")
+    logger.info(f"[STATUS] - Parsing {pfam_mapping_f} ... ")
 
     pfam_mapping_dict: Dict[str, str] = {}
     for line in yield_file_lines(pfam_mapping_f):
@@ -408,7 +408,7 @@ def parse_ipr_mapping(ipr_mapping_f: str) -> Dict[str, str]:
     Raises:
     - ValueError: If conflicting descriptions are found for the same InterPro ID.
     """
-    print(f"[STATUS] - Parsing {ipr_mapping_f} ... ")
+    logger.info(f"[STATUS] - Parsing {ipr_mapping_f} ... ")
 
     ipr_mapping_dict: Dict[str, str] = {}
     for line in yield_file_lines(ipr_mapping_f):
@@ -439,7 +439,7 @@ def parse_go_mapping(go_mapping_f: str) -> Dict[str, str]:
     Raises:
     - ValueError: If conflicting descriptions are found for the same GO ID.
     """
-    print(f"[STATUS] - Parsing {go_mapping_f} ... ")
+    logger.info(f"[STATUS] - Parsing {go_mapping_f} ... ")
     go_mapping_dict: Dict[str, str] = {}
     for line in yield_file_lines(go_mapping_f):
         if not line.startswith("!"):

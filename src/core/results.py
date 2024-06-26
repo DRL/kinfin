@@ -2,6 +2,7 @@ import time
 
 from core.datastore import DataFactory
 from core.input import InputData
+from core.utils import logger
 
 
 def analyse(input_data: InputData):
@@ -25,4 +26,4 @@ def analyse(input_data: InputData):
     dataFactory.write_output()
     overall_end = time.time()
     overall_elapsed = overall_end - overall_start
-    print("[STATUS] - Took %ss to run kinfin." % (overall_elapsed))
+    logger.info("[STATUS] - Took %ss to run kinfin." % (overall_elapsed))

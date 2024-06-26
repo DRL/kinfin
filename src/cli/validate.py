@@ -1,6 +1,6 @@
 import sys
 
-from core.utils import check_file
+from core.utils import check_file, logger
 
 
 def validate_cli_args(args) -> None:
@@ -76,4 +76,5 @@ def validate_cli_args(args) -> None:
         )
 
     if error_msgs:
-        sys.exit("\n".join(error_msgs))
+        logger.error("\n".join(error_msgs))
+        sys.exit(1)

@@ -7,7 +7,7 @@ from api import run_server
 from cli import run_cli
 from cli.commands import parse_args
 from core.input import InputData, ServeArgs
-from core.utils import check_file
+from core.utils import check_file, logger
 
 if __name__ == "__main__":
 
@@ -24,7 +24,7 @@ if __name__ == "__main__":
         check_file(ipr_mapping_f, install_kinfin=True)
         check_file(go_mapping_f, install_kinfin=True)
     except FileNotFoundError as e:
-        print(e)
+        logger.error(e)
         sys.exit(1)
 
     args = parse_args(nodesdb_f, pfam_mapping_f, ipr_mapping_f, go_mapping_f)
@@ -38,16 +38,16 @@ if __name__ == "__main__":
 
         # Without env variables being absolute paths, application won't start
         if cluster_f is None or not os.path.isabs(cluster_f):
-            print("[ERROR] CLUSTER_FILE_PATH should be an absolute path.")
+            logger.error("[ERROR] CLUSTER_FILE_PATH should be an absolute path.")
             sys.exit(1)
         if sequence_ids_f is None or not os.path.isabs(sequence_ids_f):
-            print("[ERROR] SEQUENCE_IDS_FILE_PATH should be an absolute path.")
+            logger.error("[ERROR] SEQUENCE_IDS_FILE_PATH should be an absolute path.")
             sys.exit(1)
         if taxon_idx_mapping_file is None or not os.path.isabs(taxon_idx_mapping_file):
-            print("[ERROR] TAXON_IDX_MAPPING_FILE_PATH should be an absolute path.")
+            logger.error("[ERROR] TAXON_IDX_MAPPING_FILE_PATH should be an absolute path.")  # fmt:skip
             sys.exit(1)
         if results_base_dir is None or not os.path.isabs(results_base_dir):
-            print("[ERROR] RESULTS_BASE_DIR should be an absolute path.")
+            logger.error("[ERROR] RESULTS_BASE_DIR should be an absolute path.")
             sys.exit(1)
 
         try:
@@ -55,7 +55,7 @@ if __name__ == "__main__":
             check_file(sequence_ids_f, install_kinfin=True)
             check_file(taxon_idx_mapping_file, install_kinfin=True)
         except FileNotFoundError as e:
-            print(e)
+            logger.error(e)
             sys.exit(1)
 
         run_server(
@@ -74,5 +74,5 @@ if __name__ == "__main__":
         run_cli(args)
 
     else:
-        print("[ERROR] - invalid input provided.")
+        logger.error("[ERROR] - invalid input provided.")
         sys.exit(1)

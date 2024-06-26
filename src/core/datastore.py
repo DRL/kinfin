@@ -20,7 +20,7 @@ from core.clusters import Cluster, ClusterCollection
 from core.input import InputData
 from core.logic import get_ALO_cluster_cardinality, get_attribute_cluster_type
 from core.proteins import ProteinCollection
-from core.utils import median, progress, statistic
+from core.utils import logger, median, progress, statistic
 
 mat.use("agg")
 import matplotlib.pyplot as plt
@@ -87,18 +87,19 @@ class DataFactory:
             output_path = os.path.join(os.getcwd(), "kinfin_results")
 
         self.dirs["main"] = output_path
-        print(f"[STATUS] - Output directories in \n\t{output_path}")
+        logger.info(f"[STATUS] - Output directories in")
+        logger.info(f"\t{output_path}")
         if os.path.exists(output_path):
-            print("[STATUS] - Directory exists. Deleting directory ...")
+            logger.info("[STATUS] - Directory exists. Deleting directory ...")
             shutil.rmtree(output_path)
 
-        print("[STATUS] - Creating directories ...")
+        logger.info("[STATUS] - Creating directories ...")
         os.mkdir(output_path)
         for attribute in self.aloCollection.attributes:
             attribute_path = os.path.join(output_path, attribute)
             self.dirs[attribute] = attribute_path
             if not os.path.exists(attribute_path):
-                print(f"\t{attribute_path}")
+                logger.info(f"\t{attribute_path}")
                 os.mkdir(attribute_path)
 
         if self.aloCollection.tree_ete is not None:
@@ -107,16 +108,16 @@ class DataFactory:
             node_header_path = os.path.join(tree_path, "headers")
 
             if not os.path.exists(tree_path):
-                print(f"\t{tree_path}")
+                logger.info(f"\t{tree_path}")
                 os.mkdir(tree_path)
                 self.dirs["tree"] = tree_path
 
-                print(f"\t{node_chart_path}")
+                logger.info(f"\t{node_chart_path}")
                 os.mkdir(node_chart_path)
                 self.dirs["tree_charts"] = node_chart_path
 
                 if self.inputData.plot_tree:
-                    print(f"\t{node_header_path}")
+                    logger.info(f"\t{node_header_path}")
                     os.mkdir(node_header_path)
                     self.dirs["tree_headers"] = node_header_path
 
@@ -366,21 +367,21 @@ class DataFactory:
 
     def analyse_clusters(self) -> None:
         if self.clusterCollection.inferred_singletons_count:
-            print(f"[STATUS]\t - Clusters found = {self.clusterCollection.cluster_count} (of which {self.clusterCollection.inferred_singletons_count} were inferred singletons)")  # fmt:skip
+            logger.info(f"[STATUS]\t - Clusters found = {self.clusterCollection.cluster_count} (of which {self.clusterCollection.inferred_singletons_count} were inferred singletons)")  # fmt:skip
 
         else:
-            print(f"[STATUS]\t - Clusters found = {self.clusterCollection.cluster_count}")  # fmt:skip
+            logger.info(f"[STATUS]\t - Clusters found = {self.clusterCollection.cluster_count}")  # fmt:skip
 
         parse_steps = self.clusterCollection.cluster_count / 100
 
-        print("[STATUS] - Analysing clusters ...")
+        logger.info("[STATUS] - Analysing clusters ...")
         analyse_clusters_start = time.time()
         for idx, cluster in enumerate(self.clusterCollection.cluster_list):
             self.analyse_cluster(cluster)
             progress(idx + 1, parse_steps, self.clusterCollection.cluster_count)
         analyse_clusters_end = time.time()
         analyse_clusters_elapsed = analyse_clusters_end - analyse_clusters_start
-        print(f"[STATUS] - Took {analyse_clusters_elapsed}s to analyse clusters")
+        logger.info(f"[STATUS] - Took {analyse_clusters_elapsed}s to analyse clusters")
 
     def plot_cluster_sizes(self):
         """
@@ -425,7 +426,7 @@ class DataFactory:
 
         ax.grid(True, linewidth=1, which="major", color="lightgrey")
         ax.grid(True, linewidth=0.5, which="minor", color="lightgrey")
-        print(f"[STATUS] - Plotting {count_plot_f}")
+        logger.info(f"[STATUS] - Plotting {count_plot_f}")
         f.savefig(count_plot_f, format=self.inputData.plot_format)
         plt.close()
 
@@ -942,7 +943,7 @@ class DataFactory:
                     # ax.set_yscale('log')
                     axScatter.set_yscale("log")
                     axHistx.set_xlim(axScatter.get_xlim())
-                    print(f"[STATUS] - Plotting {pairwise_representation_test_f}")
+                    logger.info(f"[STATUS] - Plotting {pairwise_representation_test_f}")
                     # plt.gca().invert_yaxis()
                     plt.savefig(
                         pairwise_representation_test_f,
@@ -1631,12 +1632,12 @@ class DataFactory:
 
                 if len(cafe_output) > 1:
                     with open(cafe_f, "w") as cafe_fh:
-                        print(f"[STATUS] - Writing {cafe_f}")
+                        logger.info(f"[STATUS] - Writing {cafe_f}")
                         cafe_fh.write("\n".join(cafe_output) + "\n")
                     cafe_output = []
                 if len(cluster_metrics_output) > 1:
                     with open(cluster_metrics_f, "w") as cluster_metrics_fh:
-                        print(f"[STATUS] - Writing {cluster_metrics_f}")
+                        logger.info(f"[STATUS] - Writing {cluster_metrics_f}")
                         cluster_metrics_fh.write(
                             "\n".join(cluster_metrics_output) + "\n"
                         )
@@ -1645,7 +1646,7 @@ class DataFactory:
                     with open(
                         cluster_metrics_domains_f, "w"
                     ) as cluster_metrics_domains_fh:
-                        print(f"[STATUS] - Writing {cluster_metrics_domains_f}")
+                        logger.info(f"[STATUS] - Writing {cluster_metrics_domains_f}")
                         cluster_metrics_domains_fh.write(
                             "\n".join(cluster_metrics_domains_output) + "\n"
                         )
@@ -1669,7 +1670,7 @@ class DataFactory:
                         with open(
                             cluster_metrics_domains_detailed_f, "w"
                         ) as cluster_metrics_domains_detailed_fh:
-                            print(
+                            logger.info(
                                 f"[STATUS] - Writing {cluster_metrics_domains_detailed_f}"
                             )
                             cluster_metrics_domains_detailed_fh.write(
@@ -1685,14 +1686,14 @@ class DataFactory:
                         ] = []
                 if len(cluster_metrics_ALO_output) > 1:
                     with open(cluster_metrics_ALO_f, "w") as cluster_metrics_ALO_fh:
-                        print(f"[STATUS] - Writing {cluster_metrics_ALO_f}")
+                        logger.info(f"[STATUS] - Writing {cluster_metrics_ALO_f}")
                         cluster_metrics_ALO_fh.write(
                             "\n".join(cluster_metrics_ALO_output) + "\n"
                         )
                     cluster_metrics_ALO_output = []
                 if len(cluster_1to1_ALO_output) > 1:
                     with open(cluster_1to1_ALO_f, "w") as cluster_1to1_ALO_fh:
-                        print(f"[STATUS] - Writing {cluster_1to1_ALO_f}")
+                        logger.info(f"[STATUS] - Writing {cluster_1to1_ALO_f}")
                         cluster_1to1_ALO_fh.write(
                             "\n".join(cluster_1to1_ALO_output) + "\n"
                         )
@@ -1704,7 +1705,7 @@ class DataFactory:
 
             if len(attribute_metrics_output) > 1:
                 with open(attribute_metrics_f, "w") as attribute_metrics_fh:
-                    print(f"[STATUS] - Writing {attribute_metrics_f}")
+                    logger.info(f"[STATUS] - Writing {attribute_metrics_f}")
                     attribute_metrics_fh.write(
                         "\n".join(attribute_metrics_output) + "\n"
                     )
@@ -1712,7 +1713,7 @@ class DataFactory:
                 with open(
                     pairwise_representation_test_f, "w"
                 ) as pairwise_representation_test_fh:
-                    print(f"[STATUS] - Writing {pairwise_representation_test_f}")
+                    logger.info(f"[STATUS] - Writing {pairwise_representation_test_f}")
                     pairwise_representation_test_fh.write(
                         "\n".join(pairwise_representation_test_output) + "\n"
                     )

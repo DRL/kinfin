@@ -9,7 +9,7 @@ from ete3 import Tree
 
 from core.alo import AttributeLevel
 from core.config import ATTRIBUTE_RESERVED
-from core.utils import median
+from core.utils import logger, median
 
 mat.use("agg")
 
@@ -198,7 +198,7 @@ class AloCollection:
                 cell.visible_edges = "T"
         ax.axis("tight")
         ax.axis("off")
-        print(f"[STATUS]\t- Plotting {node_header_f}")
+        logger.info(f"[STATUS]\t- Plotting {node_header_f}")
         fig.savefig(node_header_f, pad=0, bbox_inches="tight", format="png")
         plt.close()
         return node_header_f
@@ -249,13 +249,13 @@ class AloCollection:
             f.suptitle("Synapomorphies", y=1.1)
             ax.set_ylabel("Count", fontsize=fontsize)
             ax.set_xlabel("Proteome coverage", fontsize=fontsize)
-            print(f"[STATUS]\t- Plotting {chart_f}")
+            logger.info(f"[STATUS]\t- Plotting {chart_f}")
             f.savefig(chart_f, bbox_inches="tight", format="png")
             if plot_format == "pdf":
                 pdf_chart_f = os.path.join(
                     dirs["tree_charts"], f"{node.name}.barchart.pdf"
                 )
-                print(f"[STATUS]\t- Plotting {pdf_chart_f}")
+                logger.info(f"[STATUS]\t- Plotting {pdf_chart_f}")
                 f.savefig(pdf_chart_f, bbox_inches="tight", format="pdf")
             plt.close()
             return chart_f
@@ -332,7 +332,7 @@ class AloCollection:
         ts.show_leaf_name = False
         ts.allow_face_overlap = True
         ts.guiding_lines_color = "lightgrey"
-        print(f"[STATUS] - Writing tree {tree_f}... ")
+        logger.info(f"[STATUS] - Writing tree {tree_f}... ")
         self.tree_ete.render(tree_f, dpi=600, h=1189, units="mm", tree_style=ts)  # type: ignore
 
     def write_tree(
@@ -359,7 +359,7 @@ class AloCollection:
         - None
         """
         if self.tree_ete:
-            print("[STATUS] - Writing data for tree ... ")
+            logger.info("[STATUS] - Writing data for tree ... ")
             # Node stats
             node_stats_f = os.path.join(dirs["tree"], "tree.node_metrics.txt")
             node_stats_header: List[str] = []
@@ -408,10 +408,10 @@ class AloCollection:
                 if render_tree:
                     header_f_by_node_name[node.name] = self.generate_header_for_node(node, dirs)  # fmt:skip
                 charts_f_by_node_name[node.name] = self.generate_chart_for_node(node, dirs, plot_format, fontsize)  # fmt:skip
-            print("[STATUS] - Writing %s ... " % node_stats_f)
+            logger.info("[STATUS] - Writing %s ... " % node_stats_f)
             with open(node_stats_f, "w") as node_stats_fh:
                 node_stats_fh.write("\n".join(node_stats) + "\n")
-            print("[STATUS] - Writing %s ... " % node_clusters_f)
+            logger.info("[STATUS] - Writing %s ... " % node_clusters_f)
             with open(node_clusters_f, "w") as node_clusters_fh:
                 node_clusters_fh.write("\n".join(node_clusters) + "\n")
             if render_tree:
@@ -447,7 +447,7 @@ class AloCollection:
         rarefaction_by_samplesize_by_level_by_attribute: Dict[
             str, Dict[str, Dict[int, List[int]]]
         ] = {}
-        print("[STATUS] - Generating rarefaction data ...")
+        logger.info("[STATUS] - Generating rarefaction data ...")
         for attribute in self.attributes:
             for level in self.proteome_ids_by_level_by_attribute[attribute]:
                 proteome_ids = self.proteome_ids_by_level_by_attribute[attribute][level]
@@ -552,6 +552,6 @@ class AloCollection:
                 ncol=1, numpoints=1, loc="lower right", frameon=True, fontsize=fontsize
             )
             legend.get_frame().set_facecolor("white")
-            print(f"[STATUS]\t- Plotting {rarefaction_plot_f}")
+            logger.info(f"[STATUS]\t- Plotting {rarefaction_plot_f}")
             f.savefig(rarefaction_plot_f, format=plot_format)
             plt.close()
