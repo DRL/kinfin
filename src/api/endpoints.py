@@ -15,7 +15,7 @@ class InputSchema(BaseModel):
 router = APIRouter()
 
 
-@router.get("/init")
+@router.post("/init")
 async def initialize(input_data: InputSchema):
     session_id, session_path = session_manager.new()
     data = InputData(
