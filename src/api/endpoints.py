@@ -31,7 +31,7 @@ async def initialize(input_data: InputSchema):
                     status_code=400,
                     detail="Each item in data must be a dictionary.",
                 )
-        session_id, session_path = session_manager.new()
+        session_id, result_dir = session_manager.new()
         data = InputData(
             nodesdb_f=session_manager.nodesdb_f,
             go_mapping_f=session_manager.go_mapping_f,
@@ -41,11 +41,11 @@ async def initialize(input_data: InputSchema):
             cluster_file=session_manager.cluster_f,
             config_data=input_data.data,
             taxon_idx_mapping_file=session_manager.taxon_idx_mapping_file,
-            output_path=session_path,
+            output_path=result_dir,
             plot_format="png",  # as we require images
         )
         analyse(data)
-        file_path = os.path.join(session_path, "cluster_size_distribution.png")
+        file_path = os.path.join(result_dir, "cluster_size_distribution.png")
         if not os.path.exists(file_path):
             raise HTTPException(
                 status_code=500,
