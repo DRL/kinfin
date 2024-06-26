@@ -13,3 +13,5 @@ venv
 .test_data
 result
 .DS_Store
+.env
+data
