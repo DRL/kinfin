@@ -4,16 +4,16 @@ import signal
 import threading
 import time
 from datetime import datetime, timedelta
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 from uuid import uuid4
 
 
 class Session:
-    def __init__(self, base_dir: str) -> None:
+    def __init__(self, results_base_dir: str) -> None:
         self.session_id = uuid4().hex
 
-        self.session_path = os.path.join(base_dir, f"sessions/{self.session_id}")
-        os.makedirs(self.session_path, exist_ok=True)
+        self.result_path = os.path.join(results_base_dir, self.session_id)
+        os.makedirs(self.result_path, exist_ok=True)
         self.last_activity = datetime.now()
 
     def update_activity(self) -> None:
@@ -25,7 +25,7 @@ class Session:
 
 class SessionManager:
     def __init__(self) -> None:
-        self.base_dir = ""
+        self.results_base_dir = ""
         self.cluster_f = ""
         self.sequence_ids_f = ""
         self.taxon_idx_mapping_file = ""
@@ -39,12 +39,12 @@ class SessionManager:
         self.cleanup_thread.start()
 
     def new(self) -> Tuple[str, str]:
-        session = Session(self.base_dir)
+        session = Session(self.results_base_dir)
         self.sessions[session.session_id] = session
-        return session.session_id, session.session_path
+        return session.session_id, session.result_path
 
-    def get(self, id) -> Session | None:
-        session = self.sessions.get(id)
+    def get(self, session_id) -> Optional[str]:
+        session = self.sessions.get(session_id)
 
         if not session:
             return None
@@ -53,17 +53,17 @@ class SessionManager:
 
         if not expired:
             session.update_activity()
-            return session
+            return session.result_path
         else:
-            self.remove(id)
+            self.remove(session_id)
             return None
 
-    def remove(self, id) -> bool:
-        shutil.rmtree(self.sessions[id].session_path)
-        session = self.sessions.pop(id, None)
+    def remove(self, session_id) -> bool:
+        shutil.rmtree(self.sessions[session_id].result_path)
+        session = self.sessions.pop(session_id, None)
         if session:
             try:
-                os.rmdir(f"sessions/{id}")
+                os.rmdir(session.result_path)
             except FileNotFoundError:
                 pass
             return True
@@ -80,8 +80,7 @@ class SessionManager:
             self.remove(session_id)
 
     def clear_all_sessions(self):
-        for session_id in list(self.sessions.keys()):
-            self.remove(session_id)
+        shutil.rmtree(self.results_base_dir)
 
     def cleanup_loop(self):
         while True:

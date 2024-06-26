@@ -6,7 +6,7 @@ from core.input import ServeArgs
 
 def run_server(
     args: ServeArgs,
-    base_dir: str,
+    results_base_dir: str,
     nodesdb_f: str,
     pfam_mapping_f: str,
     ipr_mapping_f: str,
@@ -21,7 +21,7 @@ def run_server(
     from api.endpoints import router
     from api.sessions import session_manager
 
-    session_manager.base_dir = base_dir
+    session_manager.results_base_dir = results_base_dir
     session_manager.cluster_f = cluster_f
     session_manager.sequence_ids_f = sequence_ids_f
     session_manager.taxon_idx_mapping_file = taxon_idx_mapping_file
