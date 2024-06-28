@@ -1065,41 +1065,31 @@ class DataFactory:
                                 ][
                                     cluster_cardinality
                                 ]:
-                                    cluster_1to1_ALO_line = []
-                                    cluster_1to1_ALO_line.append(cluster_id)
-                                    cluster_1to1_ALO_line.append(cluster_type)
-                                    cluster_1to1_ALO_line.append(cluster_cardinality)
-                                    cluster_1to1_ALO_line.append(
-                                        self.clusterCollection.cluster_list_by_cluster_id[
+                                    cluster_1to1_ALO_line = f"{cluster_id}"
+                                    cluster_1to1_ALO_line += f"\t{cluster_type}"
+                                    cluster_1to1_ALO_line += f"\t{cluster_cardinality}"
+                                    cluster_1to1_ALO_line += f"\t{self.clusterCollection.cluster_list_by_cluster_id[
+                                            cluster_id
+                                        ].proteome_count}"
+                                    cluster_1to1_ALO_line += "\t{0:.2f}".format(
+                                        len(
+                                            [
+                                                protein_count
+                                                for proteome_id, protein_count in list(
+                                                    self.clusterCollection.cluster_list_by_cluster_id[
+                                                        cluster_id
+                                                    ].protein_count_by_proteome_id.items()
+                                                )
+                                                if protein_count
+                                                == self.inputData.fuzzy_count
+                                            ]
+                                        )
+                                        / self.clusterCollection.cluster_list_by_cluster_id[
                                             cluster_id
                                         ].proteome_count
                                     )
-                                    cluster_1to1_ALO_line.append(
-                                        "{0:.2f}".format(
-                                            len(
-                                                [
-                                                    protein_count
-                                                    for proteome_id, protein_count in list(
-                                                        self.clusterCollection.cluster_list_by_cluster_id[
-                                                            cluster_id
-                                                        ].protein_count_by_proteome_id.items()
-                                                    )
-                                                    if protein_count
-                                                    == self.inputData.fuzzy_count
-                                                ]
-                                            )
-                                            / self.clusterCollection.cluster_list_by_cluster_id[
-                                                cluster_id
-                                            ].proteome_count
-                                        )
-                                    )
                                     cluster_1to1_ALO_output.append(
-                                        "\t".join(
-                                            [
-                                                str(field)
-                                                for field in cluster_1to1_ALO_line
-                                            ]
-                                        )
+                                        cluster_1to1_ALO_line
                                     )
 
                 for cluster in self.clusterCollection.cluster_list:
@@ -1109,82 +1099,58 @@ class DataFactory:
                     ###########################
 
                     if not levels_seen:
-                        cluster_metrics_line = []
-                        cluster_metrics_line.append(cluster.cluster_id)
-                        cluster_metrics_line.append(cluster.protein_count)
-                        cluster_metrics_line.append(cluster.protein_median)
-                        cluster_metrics_line.append(cluster.proteome_count)
-                        cluster_metrics_line.append(attribute)
-                        cluster_metrics_line.append(
-                            cluster.cluster_type_by_attribute[attribute]
+                        cluster_metrics_line = f"{cluster.cluster_id}"
+                        cluster_metrics_line += f"\t{cluster.protein_count}"
+                        cluster_metrics_line += f"\t{cluster.protein_median}"
+                        cluster_metrics_line += f"\t{cluster.proteome_count}"
+                        cluster_metrics_line += f"\t{attribute}"
+                        cluster_metrics_line += (
+                            f"\t{cluster.cluster_type_by_attribute[attribute]}"
                         )
                         if (
                             self.clusterCollection.fastas_parsed
                             and cluster.protein_length_stats
                         ):
-                            cluster_metrics_line.append(
-                                cluster.protein_length_stats["mean"]
+                            cluster_metrics_line += (
+                                f"\t{cluster.protein_length_stats["mean"]}"
                             )
-                            cluster_metrics_line.append(
-                                cluster.protein_length_stats["sd"]
+                            cluster_metrics_line += (
+                                f"\t{cluster.protein_length_stats["sd"]}"
                             )
                         else:
-                            cluster_metrics_line.append("N/A")
-                            cluster_metrics_line.append("N/A")
+                            cluster_metrics_line += "\tN/A"
+                            cluster_metrics_line += "\tN/A"
                         for _level in levels:
-                            cluster_metrics_line.append(
-                                sum(
-                                    cluster.protein_counts_of_proteomes_by_level_by_attribute[
-                                        attribute
-                                    ][
-                                        _level
-                                    ]
-                                )
-                            )
+                            cluster_metrics_line += f"\t{sum(cluster.protein_counts_of_proteomes_by_level_by_attribute[attribute][_level])}"
                         if not attribute == "TAXON":
                             for _level in levels:
-                                cluster_metrics_line.append(
-                                    median(
-                                        cluster.protein_counts_of_proteomes_by_level_by_attribute[
-                                            attribute
-                                        ][
-                                            _level
-                                        ]
-                                    )
-                                )
+                                cluster_metrics_line += f"\t{median(
+                                        cluster.protein_counts_of_proteomes_by_level_by_attribute[attribute][_level])}"
                             for _level in levels:
-                                cluster_metrics_line.append(
-                                    "{0:.2f}".format(
-                                        cluster.proteome_coverage_by_level_by_attribute[
-                                            attribute
-                                        ][_level]
-                                    )
+                                cluster_metrics_line += "\t{0:.2f}".format(
+                                    cluster.proteome_coverage_by_level_by_attribute[
+                                        attribute
+                                    ][_level]
                                 )
-                        cluster_metrics_output.append(
-                            "\t".join([str(field) for field in cluster_metrics_line])
-                        )
+
+                        cluster_metrics_output.append(cluster_metrics_line)
 
                     ###########################
                     # cafe (only done for attribute "TAXON")
                     ###########################
 
                     if not levels_seen and attribute == "TAXON":
-                        cafe_line = []
+                        cafe_line = f"{cluster.cluster_id}"
                         # cafe_line.append("None")
-                        cafe_line.append(str(cluster.cluster_id))
                         for _level in levels:
-                            cafe_line.append(
-                                sum(
+                            cafe_line += f"\t{sum(
                                     cluster.protein_counts_of_proteomes_by_level_by_attribute[
                                         attribute
                                     ][
                                         _level
                                     ]
-                                )
-                            )
-                        cafe_output.append(
-                            "\t".join([str(field) for field in cafe_line])
-                        )
+                                )}"
+                        cafe_output.append(cafe_line)
 
                     ###########################
                     # cluster_metrics_domains (only done for attribute "TAXON")
@@ -1195,29 +1161,31 @@ class DataFactory:
                     if not levels_seen and attribute == "TAXON":
                         if self.clusterCollection.functional_annotation_parsed:
                             # cluster_metrics_domain_line
-                            cluster_metrics_domains_line = []
-                            cluster_metrics_domains_line.append(cluster.cluster_id)
-                            cluster_metrics_domains_line.append(cluster.protein_count)
-                            cluster_metrics_domains_line.append(cluster.proteome_count)
+                            cluster_metrics_domains_line = f"{cluster.cluster_id}"
+                            cluster_metrics_domains_line += f"\t{cluster.protein_count}"
+                            cluster_metrics_domains_line += (
+                                f"\t{cluster.proteome_count}"
+                            )
                             if (
                                 self.clusterCollection.fastas_parsed
                                 and cluster.protein_length_stats
                             ):
-                                cluster_metrics_domains_line.append(
-                                    cluster.protein_length_stats["mean"]
+                                cluster_metrics_domains_line += (
+                                    f"\t{cluster.protein_length_stats["mean"]}"
                                 )
-                                cluster_metrics_domains_line.append(
-                                    cluster.protein_length_stats["sd"]
+                                cluster_metrics_domains_line += (
+                                    f"\t{cluster.protein_length_stats["sd"]}"
                                 )
+
                             else:
-                                cluster_metrics_domains_line.append("N/A")
-                                cluster_metrics_domains_line.append("N/A")
+                                cluster_metrics_domains_line += "\tN/A"
+                                cluster_metrics_domains_line += "\tN/A"
                             if "SignalP_EUK" in self.clusterCollection.domain_sources:
-                                cluster_metrics_domains_line.append(
-                                    "{0:.2f}".format(cluster.secreted_cluster_coverage)
+                                cluster_metrics_domains_line += "\t{0:.2f}".format(
+                                    cluster.secreted_cluster_coverage
                                 )
                             else:
-                                cluster_metrics_domains_line.append("N/A")
+                                cluster_metrics_domains_line += "\tN/A"
                             for domain_source in self.clusterCollection.domain_sources:
                                 # cluster_metrics_domains
                                 if (
@@ -1237,26 +1205,20 @@ class DataFactory:
                                         ),
                                     )
                                     sorted_counts_str = ";".join(sorted_counts)
-                                    cluster_metrics_domains_line.append(
-                                        sorted_counts_str
+                                    cluster_metrics_domains_line += (
+                                        f"\t{sorted_counts_str}"
                                     )
-                                    cluster_metrics_domains_line.append(
-                                        "{0:.3f}".format(
-                                            cluster.domain_entropy_by_domain_source[
-                                                domain_source
-                                            ]
-                                        )
+
+                                    cluster_metrics_domains_line += "\t{0:.3f}".format(
+                                        cluster.domain_entropy_by_domain_source[
+                                            domain_source
+                                        ]
                                     )
                                 else:
-                                    cluster_metrics_domains_line.append("N/A")
-                                    cluster_metrics_domains_line.append("N/A")
+                                    cluster_metrics_domains_line += "\tN/A"
+                                    cluster_metrics_domains_line += "\tN/A"
                             cluster_metrics_domains_output.append(
-                                "\t".join(
-                                    [
-                                        str(field)
-                                        for field in cluster_metrics_domains_line
-                                    ]
-                                )
+                                cluster_metrics_domains_line
                             )
                             for (
                                 domain_source
@@ -1267,38 +1229,36 @@ class DataFactory:
                                 ) in cluster.domain_counter_by_domain_source[
                                     domain_source
                                 ].most_common():
-                                    cluster_metrics_domains_detailed_output_line = []
-                                    cluster_metrics_domains_detailed_output_line.append(
-                                        cluster.cluster_id
+                                    cluster_metrics_domains_detailed_output_line = (
+                                        f"{cluster.cluster_id}"
                                     )
-                                    cluster_metrics_domains_detailed_output_line.append(
-                                        domain_source
+                                    cluster_metrics_domains_detailed_output_line += (
+                                        f"\t{domain_source}"
                                     )
-                                    cluster_metrics_domains_detailed_output_line.append(
-                                        domain_id
+                                    cluster_metrics_domains_detailed_output_line += (
+                                        f"\t{domain_id}"
                                     )
                                     if domain_source == "SignalP_EUK":
-                                        cluster_metrics_domains_detailed_output_line.append(
-                                            domain_id
+                                        cluster_metrics_domains_detailed_output_line += (
+                                            f"\t{domain_id}"
                                         )
                                     else:
                                         if (
                                             domain_source
                                             in self.proteinCollection.domain_desc_by_id_by_source
                                         ):
-                                            cluster_metrics_domains_detailed_output_line.append(
-                                                self.proteinCollection.domain_desc_by_id_by_source[
+                                            cluster_metrics_domains_detailed_output_line += f"\t{self.proteinCollection.domain_desc_by_id_by_source[
                                                     domain_source
                                                 ].get(
                                                     domain_id, "N/A"
-                                                )
-                                            )
+                                                )}"
                                         else:
-                                            cluster_metrics_domains_detailed_output_line.append(
-                                                "N/A"
+                                            cluster_metrics_domains_detailed_output_line += (
+                                                "\tN/A"
                                             )
-                                    cluster_metrics_domains_detailed_output_line.append(
-                                        cluster.protein_count
+
+                                    cluster_metrics_domains_detailed_output_line += (
+                                        f"\t{cluster.protein_count}"
                                     )
                                     protein_with_domain_count_by_proteome_id = {}
                                     proteome_count_with_domain = 0
@@ -1360,88 +1320,74 @@ class DataFactory:
                                             ]
                                         )
                                     )
-                                    cluster_metrics_domains_detailed_output_line.append(
-                                        sum(
+                                    cluster_metrics_domains_detailed_output_line += f"\t{sum(
                                             protein_with_domain_count_by_proteome_id.values()
-                                        )
-                                    )
-                                    cluster_metrics_domains_detailed_output_line.append(
-                                        "{0:.3f}".format(
+                                        )}"
+                                    cluster_metrics_domains_detailed_output_line += (
+                                        "\t{0:.3f}".format(
                                             proteome_count_with_domain
                                             / cluster.proteome_count
                                         )
                                     )
                                     if proteomes_with_domain_count_string:
-                                        cluster_metrics_domains_detailed_output_line.append(
-                                            proteomes_with_domain_count_string
+                                        cluster_metrics_domains_detailed_output_line += (
+                                            f"\t{proteomes_with_domain_count_string}"
                                         )
                                     else:
-                                        cluster_metrics_domains_detailed_output_line.append(
-                                            "N/A"
+                                        cluster_metrics_domains_detailed_output_line += (
+                                            "\tN/A"
                                         )
                                     if proteomes_without_domain_count_string:
-                                        cluster_metrics_domains_detailed_output_line.append(
-                                            proteomes_without_domain_count_string
+                                        cluster_metrics_domains_detailed_output_line += (
+                                            f"\t{proteomes_without_domain_count_string}"
                                         )
                                     else:
-                                        cluster_metrics_domains_detailed_output_line.append(
-                                            "N/A"
+                                        cluster_metrics_domains_detailed_output_line += (
+                                            "\tN/A"
                                         )
                                     cluster_metrics_domains_detailed_output_by_domain_source[
                                         domain_source
                                     ].append(
-                                        "\t".join(
-                                            [
-                                                str(field)
-                                                for field in cluster_metrics_domains_detailed_output_line
-                                            ]
-                                        )
+                                        cluster_metrics_domains_detailed_output_line
                                     )
 
                     ###########################
                     # cluster_metrics_ALO : populate
                     ###########################
 
-                    cluster_metrics_ALO_line = []
-                    cluster_metrics_ALO_line.append(cluster.cluster_id)
+                    cluster_metrics_ALO_line = f"{cluster.cluster_id}"
                     if ALO:
-                        cluster_metrics_ALO_line.append(
-                            ALO.cluster_status_by_cluster_id[cluster.cluster_id]
+                        cluster_metrics_ALO_line += (
+                            f"\t{ALO.cluster_status_by_cluster_id[cluster.cluster_id]}"
                         )
-                        cluster_metrics_ALO_line.append(
-                            ALO.cluster_type_by_cluster_id[cluster.cluster_id]
+                        cluster_metrics_ALO_line += (
+                            f"\t{ALO.cluster_type_by_cluster_id[cluster.cluster_id]}"
                         )
-                    cluster_metrics_ALO_line.append(cluster.protein_count)
-                    cluster_metrics_ALO_line.append(cluster.proteome_count)
-                    cluster_metrics_ALO_line.append(
-                        sum(
+                    cluster_metrics_ALO_line += f"\t{cluster.protein_count}"
+                    cluster_metrics_ALO_line += f"\t{cluster.proteome_count}"
+                    cluster_metrics_ALO_line += f"\t{sum(
                             cluster.protein_counts_of_proteomes_by_level_by_attribute[
                                 attribute
                             ][level]
-                        )
-                    )
+                        )}"
                     if (
                         ALO
                         and ALO.cluster_mean_ALO_count_by_cluster_id[cluster.cluster_id]
                     ):
-                        cluster_metrics_ALO_line.append(
-                            ALO.cluster_mean_ALO_count_by_cluster_id[cluster.cluster_id]
-                        )
+                        cluster_metrics_ALO_line += f"\t{ALO.cluster_mean_ALO_count_by_cluster_id[cluster.cluster_id]}"
                     else:
-                        cluster_metrics_ALO_line.append("N/A")
+                        cluster_metrics_ALO_line += "\tN/A"
                     if (
                         ALO
                         and ALO.cluster_mean_non_ALO_count_by_cluster_id[
                             cluster.cluster_id
                         ]
                     ):
-                        cluster_metrics_ALO_line.append(
-                            ALO.cluster_mean_non_ALO_count_by_cluster_id[
+                        cluster_metrics_ALO_line += f"\t{ALO.cluster_mean_non_ALO_count_by_cluster_id[
                                 cluster.cluster_id
-                            ]
-                        )
+                            ]}"
                     else:
-                        cluster_metrics_ALO_line.append("N/A")
+                        cluster_metrics_ALO_line += "\tN/A"
                     if (
                         ALO
                         and ALO.cluster_type_by_cluster_id[cluster.cluster_id]
@@ -1497,38 +1443,32 @@ class DataFactory:
                                 ]
                                 > 0
                             ):
-                                cluster_metrics_ALO_line.append("enriched")
+                                cluster_metrics_ALO_line += "\tenriched"
                             elif (
                                 ALO.cluster_mwu_log2_mean_by_cluster_id[
                                     cluster.cluster_id
                                 ]
                                 < 0
                             ):
-                                cluster_metrics_ALO_line.append("depleted")
+                                cluster_metrics_ALO_line += "\tdepleted"
                             else:
-                                cluster_metrics_ALO_line.append("equal")
-                            cluster_metrics_ALO_line.append(
-                                ALO.cluster_mwu_log2_mean_by_cluster_id[
+                                cluster_metrics_ALO_line += "\tequal"
+                            cluster_metrics_ALO_line += f"\t{ALO.cluster_mwu_log2_mean_by_cluster_id[
                                     cluster.cluster_id
-                                ]
-                            )
-                            cluster_metrics_ALO_line.append(
-                                ALO.cluster_mwu_pvalue_by_cluster_id[cluster.cluster_id]
-                            )
+                                ]}"
+                            cluster_metrics_ALO_line += f"\t{ALO.cluster_mwu_pvalue_by_cluster_id[cluster.cluster_id]}"
                         else:
-                            cluster_metrics_ALO_line.append("N/A")
-                            cluster_metrics_ALO_line.append("N/A")
-                            cluster_metrics_ALO_line.append("N/A")
+                            cluster_metrics_ALO_line += "\tN/A"
+                            cluster_metrics_ALO_line += "\tN/A"
+                            cluster_metrics_ALO_line += "\tN/A"
                     else:
-                        cluster_metrics_ALO_line.append("N/A")
-                        cluster_metrics_ALO_line.append("N/A")
-                        cluster_metrics_ALO_line.append("N/A")
-                    cluster_metrics_ALO_line.append(
-                        "{0:.2f}".format(
-                            cluster.proteome_coverage_by_level_by_attribute[attribute][
-                                level
-                            ]
-                        )
+                        cluster_metrics_ALO_line += "\tN/A"
+                        cluster_metrics_ALO_line += "\tN/A"
+                        cluster_metrics_ALO_line += "\tN/A"
+                    cluster_metrics_ALO_line += "\t{0:.2f}".format(
+                        cluster.proteome_coverage_by_level_by_attribute[attribute][
+                            level
+                        ]
                     )
                     ALO_proteomes_present = cluster.proteome_ids.intersection(
                         ALO.proteomes if ALO else set("")
@@ -1536,20 +1476,20 @@ class DataFactory:
                     non_ALO_proteomes_present = cluster.proteome_ids.difference(
                         ALO.proteomes if ALO else set("")
                     )
-                    cluster_metrics_ALO_line.append(len(ALO_proteomes_present))
-                    cluster_metrics_ALO_line.append(len(non_ALO_proteomes_present))
+                    cluster_metrics_ALO_line += f"\t{len(ALO_proteomes_present)}"
+                    cluster_metrics_ALO_line += f"\t{len(non_ALO_proteomes_present)}"
                     if ALO_proteomes_present:
-                        cluster_metrics_ALO_line.append(
-                            ",".join(sorted(list(ALO_proteomes_present)))
+                        cluster_metrics_ALO_line += (
+                            f"\t{",".join(sorted(list(ALO_proteomes_present)))}"
                         )
                     else:
-                        cluster_metrics_ALO_line.append("N/A")
+                        cluster_metrics_ALO_line += "\tN/A"
                     if non_ALO_proteomes_present:
-                        cluster_metrics_ALO_line.append(
-                            ",".join(sorted(list(non_ALO_proteomes_present)))
+                        cluster_metrics_ALO_line += (
+                            f"\t{",".join(sorted(list(non_ALO_proteomes_present)))}"
                         )
                     else:
-                        cluster_metrics_ALO_line.append("N/A")
+                        cluster_metrics_ALO_line += "\tN/A"
                     # if cluster.go_terms:
                     #    cluster_metrics_ALO_line.append(";".join(sorted(list(cluster.go_terms))))
                     # else:
@@ -1559,9 +1499,7 @@ class DataFactory:
                     #        cluster_metrics_ALO_line.append(";".join(["%s:%s" % (domain, count) for domain, count in cluster.domain_counter_by_domain_source[domain_source].most_common()]))
                     #    else:
                     #        cluster_metrics_ALO_line.append("N/A")
-                    cluster_metrics_ALO_output.append(
-                        "\t".join([str(field) for field in cluster_metrics_ALO_line])
-                    )
+                    cluster_metrics_ALO_output.append(cluster_metrics_ALO_line)
 
                     if (
                         len(levels) > 1
@@ -1592,14 +1530,6 @@ class DataFactory:
                                 attribute
                             ][pair].append(result)
 
-                            pairwise_representation_test_line = []
-                            pairwise_representation_test_line.append(result[0])
-                            pairwise_representation_test_line.append(result[1])
-                            pairwise_representation_test_line.append(result[3])
-                            pairwise_representation_test_line.append(result[2])
-                            pairwise_representation_test_line.append(result[4])
-                            pairwise_representation_test_line.append(result[5])
-                            pairwise_representation_test_line.append(result[6])
                             # if cluster.go_terms:
                             #    pairwise_representation_test_line.append(";".join(sorted(list(cluster.go_terms))))
                             # else:
@@ -1610,11 +1540,14 @@ class DataFactory:
                             #    else:
                             #        pairwise_representation_test_line.append("N/A")
                             pairwise_representation_test_output.append(
-                                "\t".join(
-                                    [
-                                        str(field)
-                                        for field in pairwise_representation_test_line
-                                    ]
+                                "{}\t{}\t{}\t{}\t{}\t{}\t{}".format(
+                                    result[0],
+                                    result[1],
+                                    result[3],
+                                    result[2],
+                                    result[4],
+                                    result[5],
+                                    result[6],
                                 )
                             )
 
