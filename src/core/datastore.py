@@ -962,17 +962,14 @@ class DataFactory:
         - None: Metrics are saved as files.
         """
         cafe_f = os.path.join(self.dirs["main"], "cluster_counts_by_taxon.txt")
-        cafe_output = []
-        cafe_output.append(self.get_header_line("cafe", "TAXON"))
+        cafe_output = [self.get_header_line("cafe", "TAXON")]
 
         cluster_metrics_domains_f = os.path.join(
             self.dirs["main"], "cluster_metrics_domains.txt"
         )
-        cluster_metrics_domains_output = []
-        cluster_metrics_domains_output.append(
+        cluster_metrics_domains_output = [
             self.get_header_line("cluster_metrics_domains", "TAXON")
-        )
-
+        ]
         cluster_metrics_domains_detailed_output_by_domain_source = {}
         cluster_metrics_domains_detailed_f_by_domain_source = {}
         for domain_source in self.clusterCollection.domain_sources:
@@ -991,19 +988,15 @@ class DataFactory:
             attribute_metrics_f = os.path.join(
                 self.dirs[attribute], f"{attribute}.attribute_metrics.txt"
             )
-            attribute_metrics_output = []
-            attribute_metrics_output.append(
+            attribute_metrics_output = [
                 self.get_header_line("attribute_metrics", attribute)
-            )
-
+            ]
             pairwise_representation_test_f = os.path.join(
                 self.dirs[attribute], f"{attribute}.pairwise_representation_test.txt"
             )
-            pairwise_representation_test_output = []
-            pairwise_representation_test_output.append(
+            pairwise_representation_test_output = [
                 self.get_header_line("pairwise_representation_test", attribute)
-            )
-
+            ]
             pairwise_representation_test_by_pair_by_attribute = {}
 
             ###########################
@@ -1013,10 +1006,9 @@ class DataFactory:
             cluster_metrics_f = os.path.join(
                 self.dirs[attribute], f"{attribute}.cluster_summary.txt"
             )
-            cluster_metrics_output = []
-            cluster_metrics_output.append(
+            cluster_metrics_output = [
                 self.get_header_line("cluster_metrics", attribute)
-            )
+            ]
 
             levels = sorted(
                 [x for x in self.aloCollection.ALO_by_level_by_attribute[attribute]]
@@ -1039,10 +1031,9 @@ class DataFactory:
                 cluster_metrics_ALO_f = os.path.join(
                     self.dirs[attribute], f"{attribute}.{level}.cluster_metrics.txt"
                 )
-                cluster_metrics_ALO_output = []
-                cluster_metrics_ALO_output.append(
+                cluster_metrics_ALO_output = [
                     self.get_header_line("cluster_metrics_ALO", attribute)
-                )
+                ]
 
                 background_representation_test_by_pair_by_attribute = {}
 
@@ -1053,10 +1044,10 @@ class DataFactory:
                 cluster_1to1_ALO_f = os.path.join(
                     self.dirs[attribute], f"{attribute}.{level}.cluster_1to1s.txt"
                 )
-                cluster_1to1_ALO_output = []
-                cluster_1to1_ALO_output.append(
+                cluster_1to1_ALO_output = [
                     self.get_header_line("cluster_1to1s_ALO", attribute)
-                )
+                ]
+
                 if not attribute == "TAXON":
                     if ALO:
                         for (
