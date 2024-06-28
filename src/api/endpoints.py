@@ -1,8 +1,8 @@
 import os
 from typing import Dict, List
 
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 
@@ -12,7 +12,7 @@ from core.results import analyse
 
 
 class InputSchema(BaseModel):
-    data: List[Dict[str, str]]
+    config: List[Dict[str, str]]
 
 
 # X-Session-ID header will be required to access plots/files later
@@ -22,19 +22,36 @@ router = APIRouter()
 
 
 @router.post("/init")
-async def initialize(input_data: InputSchema):
+async def initialize(
+    input_data: InputSchema,
+    background_tasks: BackgroundTasks,
+) -> JSONResponse | HTTPException:
+    """
+    Initialize the analysis process.
+
+    Args:
+        input_data (InputSchema): The input data for analysis.
+        background_tasks (BackgroundTasks): FastAPI's BackgroundTasks for running analysis asynchronously.
+
+    Returns:
+        JSONResponse: A response indicating that the analysis task has been queued.
+
+    Raises:
+        HTTPException: If there's an error in the input data or during processing.
+    """
     try:
-        if not isinstance(input_data.data, list):
+        if not isinstance(input_data.config, list):
             raise HTTPException(
                 status_code=400,
                 detail="Data must be a list of dictionaries.",
             )
-        for item in input_data.data:
-            if not isinstance(item, dict):
-                raise HTTPException(
-                    status_code=400,
-                    detail="Each item in data must be a dictionary.",
-                )
+
+        if not all(isinstance(item, dict) for item in input_data.config):
+            raise HTTPException(
+                status_code=400,
+                detail="Each item in data must be a dictionary.",
+            )
+
         session_id, result_dir = session_manager.new()
         data = InputData(
             nodesdb_f=session_manager.nodesdb_f,
@@ -43,23 +60,18 @@ async def initialize(input_data: InputSchema):
             sequence_ids_file=session_manager.sequence_ids_f,
             ipr_mapping_f=session_manager.ipr_mapping_f,
             cluster_file=session_manager.cluster_f,
-            config_data=input_data.data,
+            config_data=input_data.config,
             taxon_idx_mapping_file=session_manager.taxon_idx_mapping_file,
             output_path=result_dir,
             plot_format="png",  # as we require images
         )
-        analyse(data)
-        file_path = os.path.join(result_dir, "cluster_size_distribution.png")
-        if not os.path.exists(file_path):
-            raise HTTPException(
-                status_code=500,
-                detail="cluster_size_distribution.png could not be generated",
-            )
 
-        return FileResponse(
-            file_path,
-            media_type="image/png",
+        background_tasks.add_task(analyse, data)
+
+        return JSONResponse(
+            content={"detail": "Analysis task has been queued."},
             headers={"X-Session-ID": session_id},
+            status_code=202,
         )
 
     except HTTPException as http_exc:
@@ -73,7 +85,20 @@ async def initialize(input_data: InputSchema):
 async def get_plot(
     plot_type: str,
     session_id: str = Depends(header_scheme),
-):
+) -> FileResponse | HTTPException:
+    """
+    Retrieve a specific plot type for a given session.
+
+    Args:
+        plot_type (str): The type of plot to retrieve.
+        session_id (str): The session ID for authentication.
+
+    Returns:
+        FileResponse: The requested plot file.
+
+    Raises:
+        HTTPException: If the plot type is invalid, session ID is invalid, or the file is not found.
+    """
     if plot_type not in ["cluster-size-distribution", "all-rarefaction-curve"]:
         raise HTTPException(status_code=404)
 
