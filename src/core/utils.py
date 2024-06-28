@@ -22,13 +22,28 @@ logger.addHandler(console_handler)
 
 
 def progress(iteration: int, steps: int | float, max_value: int) -> None:
+    """
+    Print progress in percentage based on the current iteration, steps, and maximum value.
+
+    Parameters:
+    - iteration (int): Current iteration or step number.
+    - steps (int | float): Number of steps or intervals after which progress is updated.
+    - max_value (int): Maximum value or total number of iterations.
+
+    Returns:
+    - None
+
+    Example:
+    >>> progress(5, 2, 10)
+    [PROGRESS]     - 50%
+    """
     if int(iteration) == int(max_value):
         sys.stdout.write("\r")
-        print("[PROGRESS] \t- %d%%" % (100))
+        print("[PROGRESS]\t- %d%%" % (100))
     elif int(iteration) % int(steps + 1) == 0:
         sys.stdout.write("\r")
         print(
-            "[PROGRESS] \t- %d%%" % (float(int(iteration) / int(max_value)) * 100),
+            "[PROGRESS]\t- %d%%" % (float(int(iteration) / int(max_value)) * 100),
             end=" ",
         )
         sys.stdout.flush()
@@ -120,6 +135,15 @@ def read_fasta_len(fasta_file: str) -> Generator[Tuple[str, int], Any, None]:
 
 
 def median(lst) -> float:
+    """
+    Calculate the median of a list of numbers.
+
+    Args:
+    - lst (list): List of numerical values.
+
+    Returns:
+    - float: Median of the list.
+    """
     list_sorted = sorted(lst)
     list_length = len(lst)
     index = (list_length - 1) // 2
@@ -130,6 +154,15 @@ def median(lst) -> float:
 
 
 def mean(lst) -> float:
+    """
+    Calculate the mean (average) of a list of numbers.
+
+    Args:
+    - lst (list): List of numerical values.
+
+    Returns:
+    - float: Mean of the list.
+    """
     if lst:
         return float(sum(lst)) / len(lst)
     else:
@@ -137,6 +170,17 @@ def mean(lst) -> float:
 
 
 def sd(lst, population=True) -> float:
+    """
+    Calculate the standard deviation of a list of numbers.
+
+    Args:
+    - lst (list): List of numerical values.
+    - population (bool, optional): If True, calculates population standard deviation,
+      otherwise calculates sample standard deviation. Default is True.
+
+    Returns:
+    - float: Standard deviation of the list.
+    """
     n = len(lst)
     differences = [x_ - mean(lst) for x_ in lst]
     sq_differences = [d**2 for d in differences]
@@ -160,6 +204,23 @@ def statistic(
     Optional[float],
     Optional[float],
 ]:
+    """
+    Perform statistical tests and calculate relevant statistics between two lists of counts.
+
+    Args:
+    - count_1 (list): List of counts (integers).
+    - count_2 (list): Another list of counts (integers).
+    - test (str): Type of statistical test to perform, one of "welch", "mannwhitneyu", "ttest", "ks", "kruskal".
+    - min_proteomes (int): Minimum number of proteomes required for valid analysis.
+
+    Returns:
+    - Tuple[Optional[float], Optional[float], Optional[float], Optional[float]]:
+      Tuple containing:
+      - pvalue: p-value of the statistical test (or None if test is not applicable).
+      - log2_mean: Logarithm base 2 of the mean of count_1 divided by count_2.
+      - mean_count_1: Mean of count_1.
+      - mean_count_2: Mean of count_2.
+    """
     pvalue: Optional[float] = None
     log2_mean: Optional[float] = None
     mean_count_1: Optional[float] = None

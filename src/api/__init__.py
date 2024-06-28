@@ -1,6 +1,3 @@
-import sys
-from os import path
-
 from core.input import ServeArgs
 
 
@@ -14,7 +11,21 @@ def run_server(
     cluster_f: str,
     taxon_idx_mapping_file: str,
     sequence_ids_f: str,
-):
+) -> None:
+    """
+    Starts the uvicorn server
+
+    Parameters:
+    - args [ServeArgs] : An object containing server configuration arguments, such as the port.
+    - results_base_dir [str] : Base directory for storing server results.
+    - nodesdb_f [str] : File path to the nodesDB file.
+    - pfam_mapping_f [str] : File path to the PFAM mapping file.
+    - ipr_mapping_f [str] : File path to the InterPro mapping file.
+    - go_mapping_f [str] : File path to the Gene Ontology mapping file.
+    - cluster_f [str] : File path to the clustering data file.
+    - taxon_idx_mapping_file [str] : File path to the taxon index mapping file.
+    - sequence_ids_f [str] : File path to the sequence IDs file.
+    """
     import uvicorn
     from fastapi import FastAPI
 

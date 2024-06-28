@@ -5,7 +5,19 @@ from core.input import InputData
 from core.utils import logger
 
 
-def analyse(input_data: InputData):
+def analyse(input_data: InputData) -> None:
+    """
+    Performs KinFin analysis based on the provided input data using DataFactory.
+
+    Args:
+        input_data (InputData): An instance of InputData containing input parameters and data.
+
+    Returns:
+        None
+
+    Raises:
+        Any exceptions raised by DataFactory methods.
+    """
     overall_start = time.time()
     dataFactory = DataFactory(input_data)
     dataFactory.setup_dirs()
